@@ -16,3 +16,25 @@ node_modules/
 .claude/downloads/
 .claude/history.jsonl
 .claude/.last-*
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# Frontend build output
+dist/
+.claude/sessions/
+.claude/shell-snapshots/
+.claude/backups/
+.claude/tasks/
+.claude/cache/
+.claude/telemetry/
+.claude/daemon*
+.claude/file-history/
+.claude/jobs/
+.claude/paste-cache/
+.claude/downloads/
+.claude/history.jsonl
+.claude/.last-*

@@ -1,0 +1,17 @@
+.skeleton-card { background: #fff; padding: 14px 16px; border-bottom: 1px solid #f5f5f5; }
+.skeleton-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.skeleton-avatar { width: 40px; height: 40px; border-radius: 50%; background: #f0f0f0; animation: shimmer 1.5s infinite; }
+.skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.skeleton-line {
+  height: 14px; border-radius: 4px; background: #f0f0f0;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton-line.short { width: 30%; }
+.skeleton-line.shorter { width: 20%; }
+.skeleton-line.medium { width: 60%; }
+.skeleton-body { display: flex; flex-direction: column; gap: 8px; }
+@keyframes shimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}

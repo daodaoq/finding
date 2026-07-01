@@ -1,0 +1,41 @@
+.user-card {
+  background: #fff;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.user-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.user-card-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.user-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.user-card-info { flex: 1; min-width: 0; }
+.user-card-name { font-size: 16px; font-weight: 600; color: #333; }
+.gender-tag { font-size: 13px; margin-left: 4px; }
+.gender-tag.male { color: #4a90d9; }
+.gender-tag.female { color: #ff6b81; }
+
+.user-card-meta { display: flex; gap: 8px; font-size: 12px; color: #999; margin-top: 4px; flex-wrap: wrap; }
+
+.more-btn { background: none; border: none; font-size: 18px; color: #ccc; cursor: pointer; flex-shrink: 0; }
+
+.user-card-bio { font-size: 14px; color: #666; margin-bottom: 10px; line-height: 1.5; }
+
+.user-card-footer { display: flex; justify-content: space-between; align-items: center; }
+.time-text { font-size: 12px; color: #bbb; }
+.heart-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 0; transition: transform 0.2s; }
+.heart-btn:active { transform: scale(1.3); }

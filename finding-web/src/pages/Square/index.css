@@ -1,0 +1,37 @@
+.square-page {
+  background: #f8f8f8;
+  overflow-y: auto;
+  height: 100vh;
+  -webkit-overflow-scrolling: touch;
+}
+.square-tabs {
+  display: flex;
+  background: #fff;
+  padding: 0 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.square-tab {
+  flex: 1;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #999;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.square-tab.active {
+  color: #ff6b81;
+  border-bottom-color: #ff6b81;
+  font-weight: 600;
+}
+.post-list {
+  background: #fff;
+}
+.no-more {
+  text-align: center;
+  padding: 20px;
+  color: #ccc;
+  font-size: 13px;
+}

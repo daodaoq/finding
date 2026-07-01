@@ -1,0 +1,19 @@
+.auth-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff6b81 0%, #ff9a76 100%);
+  padding: 20px;
+}
+.auth-container {
+  width: 100%;
+  max-width: 360px;
+}
+.auth-brand { text-align: center; margin-bottom: 32px; }
+.auth-brand h1 {
+  color: #fff;
+  font-size: 36px;
+  margin: 0 0 8px;
+}
+.auth-brand p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 0; }

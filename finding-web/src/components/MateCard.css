@@ -1,0 +1,19 @@
+.mate-card {
+  background: #fff;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+}
+.mate-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.mate-category { font-size: 12px; color: #ff6b81; background: #fff0f3; padding: 2px 8px; border-radius: 10px; }
+.mate-status { font-size: 12px; color: #52c41a; }
+.mate-status.status-2, .mate-status.status-0 { color: #999; }
+.mate-title { font-size: 16px; font-weight: 600; margin: 0 0 6px; color: #333; }
+.mate-desc { font-size: 14px; color: #666; margin: 0 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mate-meta { display: flex; gap: 10px; font-size: 12px; color: #999; margin-bottom: 10px; flex-wrap: wrap; }
+.mate-card-bottom { display: flex; justify-content: space-between; align-items: center; }
+.mate-participants { font-size: 13px; color: #666; }
+.mate-author { margin-left: 8px; color: #999; }
+.join-btn { background: #ff6b81; color: #fff; border: none; padding: 6px 16px; border-radius: 14px; font-size: 13px; cursor: pointer; }
+.join-btn:active { opacity: 0.8; }
+.joined-tag { font-size: 13px; color: #52c41a; }

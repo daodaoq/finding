@@ -1,0 +1,41 @@
+.login-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+}
+.login-tabs {
+  display: flex;
+  margin-bottom: 24px;
+}
+.login-tabs button {
+  flex: 1; padding: 10px;
+  background: none; border: none;
+  font-size: 15px; color: #999; cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.login-tabs button.active { color: #ff6b81; border-bottom-color: #ff6b81; font-weight: 600; }
+.input {
+  width: 100%; height: 48px;
+  border: 1px solid #eee; border-radius: 12px;
+  padding: 0 16px; margin-bottom: 14px;
+  outline: none; font-size: 15px;
+}
+.input:focus { border-color: #ff6b81; }
+.sms-row { display: flex; gap: 10px; }
+.sms-input { flex: 1; }
+.sms-btn {
+  height: 48px; padding: 0 16px;
+  border: 1px solid #ff6b81; border-radius: 12px;
+  background: #fff; color: #ff6b81;
+  font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.sms-btn:disabled { color: #ccc; border-color: #eee; }
+.submit-btn {
+  width: 100%; height: 48px; margin-top: 8px;
+  border-radius: 12px; border: none;
+  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+}
+.submit-btn:active { opacity: 0.9; }
+.login-footer { text-align: center; margin-top: 16px; font-size: 13px; color: #999; }
+.login-footer a { color: #ff6b81; margin-left: 4px; }
