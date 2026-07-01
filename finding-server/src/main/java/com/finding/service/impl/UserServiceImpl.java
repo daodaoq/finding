@@ -82,16 +82,20 @@ public class UserServiceImpl implements UserService {
         if (userMapper.selectById(followeeId) == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
-        if (followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
-                .eq(UserFollow::getFollowerId, followerId)
-                .eq(UserFollow::getFolloweeId, followeeId)) > 0) {
-            throw new BusinessException(ResultCode.ALREADY_FOLLOWED);
-        }
 
-        UserFollow follow = new UserFollow();
-        follow.setFollowerId(followerId);
-        follow.setFolloweeId(followeeId);
-        followMapper.insert(follow);
+        // 已关注 → 取消关注；未关注 → 关注
+        UserFollow existing = followMapper.selectOne(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, followerId)
+                .eq(UserFollow::getFolloweeId, followeeId));
+
+        if (existing != null) {
+            followMapper.deleteById(existing.getId());
+        } else {
+            UserFollow follow = new UserFollow();
+            follow.setFollowerId(followerId);
+            follow.setFolloweeId(followeeId);
+            followMapper.insert(follow);
+        }
     }
 
     @Override

@@ -27,7 +27,13 @@ export default function MyMatesPage() {
   };
 
   const handleFollow = async (id: number) => {
-    try { await userApi.follow(id); loadUsers(); } catch { /* */ }
+    try {
+      await userApi.follow(id);
+      // 立即更新UI状态
+      setUsers(prev => prev.map(u =>
+        u.id === id ? { ...u, isFollowed: !u.isFollowed } : u
+      ));
+    } catch { /* */ }
   };
 
   return (

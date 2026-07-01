@@ -110,17 +110,17 @@ export default function MinePage() {
         </button>
       </div>
 
-      {/* 统计数据 */}
+      {/* 统计数据 — 点击可跳转 */}
       <div className="mine-stats">
-        <div className="stat-item">
+        <div className="stat-item" onClick={() => navigate('/mine/posts')}>
           <span className="stat-num">{displayUser?.postCount || 0}</span>
           <span className="stat-label">动态</span>
         </div>
-        <div className="stat-item">
+        <div className="stat-item" onClick={() => navigate('/mine/mates')}>
           <span className="stat-num">{displayUser?.followingCount || 0}</span>
           <span className="stat-label">关注</span>
         </div>
-        <div className="stat-item">
+        <div className="stat-item" onClick={() => navigate('/mine/mates')}>
           <span className="stat-num">{displayUser?.followerCount || 0}</span>
           <span className="stat-label">粉丝</span>
         </div>
