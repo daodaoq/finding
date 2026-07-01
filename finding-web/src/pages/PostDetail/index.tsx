@@ -24,7 +24,27 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 移动端键盘适配：监听 visualViewport 变化
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleResize = () => {
+      // 键盘弹出时 visualViewport.height < window.innerHeight
+      const offset = window.innerHeight - vv.height;
+      setKeyboardOffset(offset > 0 ? offset : 0);
+    };
+
+    vv.addEventListener('resize', handleResize);
+    vv.addEventListener('scroll', handleResize);
+    return () => {
+      vv.removeEventListener('resize', handleResize);
+      vv.removeEventListener('scroll', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     loadPost();
@@ -168,8 +188,8 @@ export default function PostDetailPage() {
         ))}
       </div>
 
-      {/* 底部输入栏 */}
-      <div className="pd-input-bar">
+      {/* 底部输入栏 — 移动端键盘适配 */}
+      <div className="pd-input-bar" style={{ bottom: keyboardOffset > 0 ? keyboardOffset : 56 }}>
         {replyTo && (
           <div className="reply-indicator">
             回复 @{replyTo.name}
