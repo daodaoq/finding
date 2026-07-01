@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { userApi } from '../../../api/user';
 import { useAuthStore } from '../../../store/authStore';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
@@ -8,7 +8,9 @@ import type { User } from '../../../types/user';
 import '../subpage.css';
 
 export default function MyMatesPage() {
-  const [activeTab, setActiveTab] = useState<'following' | 'followers'>('following');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as 'following' | 'followers') || 'following';
+  const [activeTab, setActiveTab] = useState<'following' | 'followers'>(initialTab);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -30,10 +32,10 @@ export default function MyMatesPage() {
     try {
       await userApi.follow(user.id);
       if (activeTab === 'following') {
-        // 关注列表：点击"已关注"→取消关注→从列表移除
+        // 关注/互关 → 取消关注 → 从列表移除
         setUsers(prev => prev.filter(u => u.id !== user.id));
       } else {
-        // 粉丝列表：点击切换互关/关注状态
+        // 粉丝列表：点击 +关注/互相关注 → 切换
         setUsers(prev => prev.map(u =>
           u.id === user.id ? { ...u, isFollowed: !u.isFollowed } : u
         ));
@@ -42,12 +44,14 @@ export default function MyMatesPage() {
   };
 
   const getFollowLabel = (u: User) => {
+    if (u.isFollowed) return '互相关注';
     if (activeTab === 'following') return '已关注';
-    return u.isFollowed ? '互相关注' : '+ 关注';
+    return '+ 关注';
   };
 
   const getFollowStyle = (u: User) => {
-    if (activeTab === 'following' || u.isFollowed) return {};
+    if (u.isFollowed) return { color: '#ff6b81', borderColor: '#ff6b81' };
+    if (activeTab === 'following') return {};
     return { background: '#ff6b81', color: '#fff', borderColor: '#ff6b81' };
   };
 

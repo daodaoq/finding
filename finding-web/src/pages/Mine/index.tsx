@@ -116,11 +116,11 @@ export default function MinePage() {
           <span className="stat-num">{displayUser?.postCount || 0}</span>
           <span className="stat-label">动态</span>
         </div>
-        <div className="stat-item" onClick={() => navigate('/mine/mates')}>
+        <div className="stat-item" onClick={() => navigate('/mine/mates?tab=following')}>
           <span className="stat-num">{displayUser?.followingCount || 0}</span>
           <span className="stat-label">关注</span>
         </div>
-        <div className="stat-item" onClick={() => navigate('/mine/mates')}>
+        <div className="stat-item" onClick={() => navigate('/mine/mates?tab=followers')}>
           <span className="stat-num">{displayUser?.followerCount || 0}</span>
           <span className="stat-label">粉丝</span>
         </div>

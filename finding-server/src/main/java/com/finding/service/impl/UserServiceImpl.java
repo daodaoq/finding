@@ -146,7 +146,12 @@ public class UserServiceImpl implements UserService {
         List<User> users = userMapper.selectBatchIds(followeeIds);
         List<UserVO> records = users.stream().map(u -> {
             UserVO vo = toVO(u);
-            vo.setIsFollowed(true); // 我关注的人，一定是已关注
+            // 检查对方是否也关注了我 → 互关
+            boolean mutual = followMapper.selectCount(
+                    new LambdaQueryWrapper<UserFollow>()
+                            .eq(UserFollow::getFollowerId, u.getId())
+                            .eq(UserFollow::getFolloweeId, userId)) > 0;
+            vo.setIsFollowed(mutual); // true=互关 false=仅我关注ta
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
