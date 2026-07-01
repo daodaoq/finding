@@ -1,4 +1,5 @@
 import type { Mate } from '../types/mate';
+import { useAuthStore } from '../store/authStore';
 import './MateCard.css';
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export default function MateCard({ mate, onJoin, onClick }: Props) {
+  const currentUserId = useAuthStore(s => s.user?.id);
+  const isOwner = currentUserId != null && mate.userId === currentUserId;
   return (
     <div className="mate-card" onClick={() => onClick(mate.id)}>
       <div className="mate-card-top">
@@ -32,12 +35,18 @@ export default function MateCard({ mate, onJoin, onClick }: Props) {
             <span className="mate-author">发起: {mate.author.nickname}</span>
           )}
         </div>
-        {!mate.hasJoined && mate.status === 1 && !mate.isFull && (
-          <button className="join-btn" onClick={(e) => { e.stopPropagation(); onJoin(mate.id); }}>
-            加入
-          </button>
+        {isOwner ? (
+          <span className="owner-tag">我发布的</span>
+        ) : (
+          <>
+            {!mate.hasJoined && mate.status === 1 && !mate.isFull && (
+              <button className="join-btn" onClick={(e) => { e.stopPropagation(); onJoin(mate.id); }}>
+                加入
+              </button>
+            )}
+            {mate.hasJoined && <span className="joined-tag">已加入</span>}
+          </>
         )}
-        {mate.hasJoined && <span className="joined-tag">已加入</span>}
       </div>
     </div>
   );
