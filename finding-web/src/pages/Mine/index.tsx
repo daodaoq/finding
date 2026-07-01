@@ -17,13 +17,16 @@ export default function MinePage() {
     <div className="mine-page">
       {/* Top section */}
       <div className="mine-top">
-        <h2 className="mine-title">
-          {isLoggedIn ? user?.nickname : '登录（实名认证！）'}
-        </h2>
-        {!isLoggedIn && (
-          <button className="login-btn" onClick={() => navigate('/login')}>
-            立即登录
-          </button>
+        {isLoggedIn ? (
+          <h2 className="mine-title">{user?.nickname}</h2>
+        ) : (
+          <>
+            <h2 className="mine-title">登录 Finding</h2>
+            <p className="mine-subtitle">登录后可查看个人信息、管理搭子、查看消息</p>
+            <button className="login-btn" onClick={() => navigate('/login')}>
+              手机号登录 / 注册
+            </button>
+          </>
         )}
         {isLoggedIn && user?.realNameVerified !== 2 && (
           <div className="verify-banner" onClick={() => navigate('/mine/verify')}>

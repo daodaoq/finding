@@ -1,0 +1,32 @@
+.notifications-page {
+  background: #f8f8f8;
+  min-height: 100vh;
+}
+
+.notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notif-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #333;
+  padding: 0;
+}
+
+.notif-list {
+  background: #fff;
+}

@@ -12,7 +12,12 @@
 
 .mine-title {
   font-size: 20px;
-  margin: 0 0 12px;
+  margin: 0 0 6px;
+}
+.mine-subtitle {
+  font-size: 13px;
+  opacity: 0.8;
+  margin: 0 0 14px;
 }
 
 .login-btn {

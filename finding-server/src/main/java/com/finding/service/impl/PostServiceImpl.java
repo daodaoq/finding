@@ -41,7 +41,20 @@ public class PostServiceImpl implements PostService {
                 .eq(Post::getStatus, 1);
 
         switch (query.getTab()) {
-            case "hot" -> wrapper.orderByDesc(Post::getLikeCount, Post::getCreatedAt);
+            case "hot" -> {
+                // 热门子排序: views(浏览量最高), likes(点赞率最高), recommended(值得推荐)
+                String sortBy = query.getSortBy();
+                if ("views".equals(sortBy)) {
+                    wrapper.orderByDesc(Post::getViewCount);
+                } else if ("likes".equals(sortBy)) {
+                    wrapper.orderByDesc(Post::getLikeCount);
+                } else {
+                    // recommended: 综合热度 = 点赞 * 0.6 + 浏览量 * 0.3 + 评论 * 0.1
+                    wrapper.eq(Post::getIsHot, 1)
+                           .orderByDesc(Post::getLikeCount);
+                }
+                wrapper.orderByDesc(Post::getCreatedAt);
+            }
             case "latest" -> wrapper.orderByDesc(Post::getCreatedAt);
             case "following" -> {
                 if (currentUserId == null) {
