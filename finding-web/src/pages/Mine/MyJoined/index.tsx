@@ -16,7 +16,7 @@ export default function MyJoinedPage() {
 
   const loadJoined = async () => {
     try {
-      const res = await mateApi.list({ page: 1, size: 50, joined: true } as any);
+      const res = await mateApi.myJoined(1, 50);
       setMates(res.data.data.records);
     } catch { /* */ }
     finally { setLoading(false); }

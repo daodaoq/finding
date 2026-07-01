@@ -16,7 +16,7 @@ export default function MyInvitationsPage() {
 
   const loadMyInvitations = async () => {
     try {
-      const res = await mateApi.list({ page: 1, size: 50, my: true } as any);
+      const res = await mateApi.myInvitations(1, 50);
       setMates(res.data.data.records);
     } catch { /* */ }
     finally { setLoading(false); }

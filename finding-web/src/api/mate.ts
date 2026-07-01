@@ -17,4 +17,12 @@ export const mateApi = {
 
   categories: () =>
     request.get<ApiResponse<MateCategory[]>>('/mates/categories'),
+
+  /** 我发布的邀约 */
+  myInvitations: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<Mate>>>('/mates/my', { params: { page, size } }),
+
+  /** 我加入的搭子 */
+  myJoined: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<Mate>>>('/mates/my-joined', { params: { page, size } }),
 };
