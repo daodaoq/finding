@@ -201,6 +201,27 @@ public class PostServiceImpl implements PostService {
         commentMapper.deleteById(commentId);
     }
 
+    @Override
+    public PageVO<PostVO> getMyLikedPosts(Long userId, int page, int size) {
+        Page<PostLike> likePage = new Page<>(page, size);
+        Page<PostLike> likes = likeMapper.selectPage(likePage,
+                new LambdaQueryWrapper<PostLike>()
+                        .eq(PostLike::getUserId, userId)
+                        .orderByDesc(PostLike::getCreatedAt));
+
+        List<Long> postIds = likes.getRecords().stream()
+                .map(PostLike::getId).collect(Collectors.toList());
+        if (postIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, page, size);
+        }
+
+        List<Post> posts = postMapper.selectBatchIds(postIds);
+        List<PostVO> records = posts.stream()
+                .map(p -> toVO(p, userId))
+                .collect(Collectors.toList());
+        return PageVO.of(records, likes.getTotal(), page, size);
+    }
+
     private PostVO toVO(Post post, Long currentUserId) {
         PostVO vo = new PostVO();
         vo.setId(post.getId());

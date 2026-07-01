@@ -80,6 +80,22 @@ public class MateController {
         return Result.ok();
     }
 
+    /** 我发布的搭子邀约 */
+    @GetMapping("/my")
+    public Result<PageVO<MateVO>> myInvitations(@Valid MateQueryDTO query) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(mateService.getMyInvitations(userId, query));
+    }
+
+    /** 我加入的搭子邀约 */
+    @GetMapping("/my-joined")
+    public Result<PageVO<MateVO>> myJoined(@Valid MateQueryDTO query) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(mateService.getMyJoinedInvitations(userId, query));
+    }
+
     @GetMapping("/categories")
     public Result<List<Map<String, String>>> categories() {
         List<Map<String, String>> list = List.of(

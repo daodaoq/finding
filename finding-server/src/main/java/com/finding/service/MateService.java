@@ -15,4 +15,7 @@ public interface MateService {
     void joinInvitation(Long userId, Long id, String message);
     void leaveInvitation(Long userId, Long id);
     void handleJoinRequest(Long userId, Long id, Long participantId, boolean accept);
+
+    PageVO<MateVO> getMyInvitations(Long userId, MateQueryDTO query);
+    PageVO<MateVO> getMyJoinedInvitations(Long userId, MateQueryDTO query);
 }

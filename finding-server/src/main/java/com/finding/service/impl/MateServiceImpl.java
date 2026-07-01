@@ -192,6 +192,46 @@ public class MateServiceImpl implements MateService {
         }
     }
 
+    @Override
+    public PageVO<MateVO> getMyInvitations(Long userId, MateQueryDTO query) {
+        Page<MateInvitation> page = new Page<>(query.getPage(), query.getSize());
+        Page<MateInvitation> result = invitationMapper.selectPage(page,
+                new LambdaQueryWrapper<MateInvitation>()
+                        .eq(MateInvitation::getUserId, userId)
+                        .orderByDesc(MateInvitation::getCreatedAt));
+
+        Double lat = query.getLatitude() != null ? query.getLatitude().doubleValue() : null;
+        Double lng = query.getLongitude() != null ? query.getLongitude().doubleValue() : null;
+        List<MateVO> records = result.getRecords().stream()
+                .map(m -> toVO(m, userId, lat, lng))
+                .collect(Collectors.toList());
+        return PageVO.of(records, result.getTotal(), query.getPage(), query.getSize());
+    }
+
+    @Override
+    public PageVO<MateVO> getMyJoinedInvitations(Long userId, MateQueryDTO query) {
+        Page<MateParticipant> page = new Page<>(query.getPage(), query.getSize());
+        Page<MateParticipant> participants = participantMapper.selectPage(page,
+                new LambdaQueryWrapper<MateParticipant>()
+                        .eq(MateParticipant::getUserId, userId)
+                        .eq(MateParticipant::getStatus, 1)
+                        .orderByDesc(MateParticipant::getCreatedAt));
+
+        List<Long> invitationIds = participants.getRecords().stream()
+                .map(MateParticipant::getInvitationId).collect(Collectors.toList());
+        if (invitationIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
+        }
+
+        List<MateInvitation> invitations = invitationMapper.selectBatchIds(invitationIds);
+        Double lat = query.getLatitude() != null ? query.getLatitude().doubleValue() : null;
+        Double lng = query.getLongitude() != null ? query.getLongitude().doubleValue() : null;
+        List<MateVO> records = invitations.stream()
+                .map(m -> toVO(m, userId, lat, lng))
+                .collect(Collectors.toList());
+        return PageVO.of(records, participants.getTotal(), query.getPage(), query.getSize());
+    }
+
     private MateVO toVO(MateInvitation m, Long currentUserId, Double userLat, Double userLng) {
         MateVO vo = new MateVO();
         vo.setId(m.getId());

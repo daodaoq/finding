@@ -74,4 +74,13 @@ public class PostController {
         postService.deleteComment(userId, commentId);
         return Result.ok();
     }
+
+    /** 我点赞过的动态 */
+    @GetMapping("/my-likes")
+    public Result<PageVO<PostVO>> myLikes(@RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(postService.getMyLikedPosts(userId, page, size));
+    }
 }
