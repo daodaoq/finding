@@ -33,6 +33,7 @@ public class PostServiceImpl implements PostService {
     private final PostCommentMapper commentMapper;
     private final MessageMapper messageMapper;
     private final UserMapper userMapper;
+    private final UserFollowMapper followMapper;
     private final UserService userService;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -61,8 +62,10 @@ public class PostServiceImpl implements PostService {
                 if (currentUserId == null) {
                     return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
                 }
-                // Get followed user IDs
-                List<Long> followedIds = List.of(); // simplified: would query follow table
+                // 查询关注的用户ID
+                List<Long> followedIds = followMapper.selectList(
+                        new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, currentUserId))
+                        .stream().map(UserFollow::getFolloweeId).collect(Collectors.toList());
                 if (followedIds.isEmpty()) {
                     return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
                 }

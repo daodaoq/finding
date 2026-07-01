@@ -6,8 +6,12 @@ import com.finding.common.ResultCode;
 import com.finding.common.constant.UserStatusEnum;
 import com.finding.dto.LoginDTO;
 import com.finding.dto.RegisterDTO;
+import com.finding.entity.Post;
 import com.finding.entity.User;
+import com.finding.entity.UserFollow;
 import com.finding.entity.UserVerification;
+import com.finding.mapper.PostMapper;
+import com.finding.mapper.UserFollowMapper;
 import com.finding.mapper.UserMapper;
 import com.finding.mapper.UserVerificationMapper;
 import com.finding.security.JwtTokenProvider;
@@ -20,6 +24,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +33,7 @@ import org.springframework.util.StringUtils;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -38,6 +44,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;
     private final UserVerificationMapper verificationMapper;
+    private final UserFollowMapper followMapper;
+    private final PostMapper postMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisUtils redisUtils;
     private final PasswordEncoder passwordEncoder;
@@ -59,15 +67,13 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.ACCOUNT_DISABLED);
         }
 
-        // Authenticate via Spring Security's AuthenticationManager
         if ("password".equals(dto.getLoginType())) {
             if (!StringUtils.hasText(dto.getPassword())) {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "密码不能为空");
             }
             try {
-                Authentication auth = authenticationManager.authenticate(
+                authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(dto.getPhone(), dto.getPassword()));
-                // Use the authenticated principal
             } catch (BadCredentialsException e) {
                 throw new BusinessException(ResultCode.LOGIN_FAILED);
             }
@@ -80,14 +86,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的登录类型");
         }
 
-        // Update last login
         user.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(user);
 
-        // Generate tokens
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 user.getId(), null,
-                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())));
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())));
         String accessToken = jwtTokenProvider.createAccessToken(auth);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
@@ -120,7 +124,7 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus(UserStatusEnum.ACTIVE.getCode());
         userMapper.insert(user);
 
-        log.info("New user registered: id={}, phone={}", user.getId(), dto.getPhone());
+        log.info("新用户注册: id={}, phone={}", user.getId(), dto.getPhone());
     }
 
     @Override
@@ -134,7 +138,7 @@ public class AuthServiceImpl implements AuthService {
         redisUtils.set(SMS_CODE_PREFIX + type + ":" + phone, code, 5, TimeUnit.MINUTES);
         redisUtils.set(limitKey, "1", 60, TimeUnit.SECONDS);
 
-        log.info("SMS code for {} (type={}): {}", phone, type, code);
+        log.info("SMS验证码 phone={} type={} code={}", phone, type, code);
     }
 
     @Override
@@ -156,7 +160,7 @@ public class AuthServiceImpl implements AuthService {
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 userId, null,
-                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())));
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())));
         return jwtTokenProvider.createAccessToken(auth);
     }
 
@@ -178,15 +182,25 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
-        return toVO(user);
+        UserVO vo = toVO(user);
+
+        // 统计关注/粉丝/动态数
+        vo.setFollowerCount(followMapper.selectCount(
+                new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFolloweeId, userId)).intValue());
+        vo.setFollowingCount(followMapper.selectCount(
+                new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId)).intValue());
+        vo.setPostCount(postMapper.selectCount(
+                new LambdaQueryWrapper<Post>()
+                        .eq(Post::getUserId, userId)
+                        .eq(Post::getStatus, 1)).intValue());
+
+        return vo;
     }
 
     @Override
     public void updateProfile(Long userId, UserVO vo) {
         User user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException(ResultCode.USER_NOT_FOUND);
-        }
+        if (user == null) throw new BusinessException(ResultCode.USER_NOT_FOUND);
         if (StringUtils.hasText(vo.getNickname())) user.setNickname(vo.getNickname());
         if (vo.getAvatar() != null) user.setAvatar(vo.getAvatar());
         if (vo.getSignature() != null) user.setSignature(vo.getSignature());
@@ -219,7 +233,7 @@ public class AuthServiceImpl implements AuthService {
         userMapper.updateById(user);
     }
 
-    // ── Private helpers ──
+    // ── 私有方法 ──
 
     private void verifySmsCode(String phone, String code) {
         String stored = redisUtils.get(SMS_CODE_PREFIX + "login:" + phone);
