@@ -75,6 +75,16 @@ public class PostServiceImpl implements PostService {
         Page<Post> page = new Page<>(query.getPage(), query.getSize());
         Page<Post> result = postMapper.selectPage(page, wrapper);
 
+        // 同步评论数
+        result.getRecords().forEach(p -> {
+            Long c = commentMapper.selectCount(
+                    new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, p.getId()));
+            if (!c.equals((long) p.getCommentCount())) {
+                p.setCommentCount(c.intValue());
+                postMapper.updateById(p);
+            }
+        });
+
         List<PostVO> records = result.getRecords().stream()
                 .map(p -> toVO(p, currentUserId))
                 .collect(Collectors.toList());
@@ -87,7 +97,11 @@ public class PostServiceImpl implements PostService {
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ResultCode.POST_NOT_FOUND);
         }
-        // Increment view count
+        // 自动同步实际评论数
+        Long realCount = commentMapper.selectCount(
+                new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, postId));
+        post.setCommentCount(realCount.intValue());
+        // 增加浏览量
         post.setViewCount(post.getViewCount() + 1);
         postMapper.updateById(post);
         return toVO(post, currentUserId);
