@@ -22,9 +22,9 @@ export function useWebSocket(onMessage: (msg: WsMessage) => void) {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const ws = new WebSocket(`${protocol}//${host}/ws/chat?token=${token}`);
+    // 相对路径 → Vite 代理自动转发 ws://localhost:3000/ws → ws://localhost:8080/ws
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('WebSocket 已连接');
