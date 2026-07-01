@@ -43,9 +43,15 @@ knife4j:
   setting:
     language: zh_cn
 
-# File upload
+# MinIO 对象存储（默认值，dev/prod 环境覆盖）
+minio:
+  endpoint: http://localhost:9000
+  access-key: admin
+  secret-key: admin123456
+  bucket: finding
+
+# 文件上传限制
 finding:
   upload:
-    path: ./uploads
     max-size: 5242880   # 5MB
     allowed-types: image/jpeg,image/png,image/webp

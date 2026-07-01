@@ -1,50 +1,38 @@
 package com.finding.interceptor;
 
-import com.finding.utils.JwtUtils;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.HandlerInterceptor;
+import com.finding.security.UserPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
-@Slf4j
-@Component
-@RequiredArgsConstructor
-public class JwtInterceptor implements HandlerInterceptor {
+/**
+ * Static helper to get the current authenticated user ID from Spring Security's
+ * SecurityContext. No longer an interceptor — auth is handled by
+ * JwtAuthenticationFilter.
+ */
+public final class JwtInterceptor {
 
-    private final JwtUtils jwtUtils;
+    private JwtInterceptor() {}
 
-    public static final ThreadLocal<Long> CURRENT_USER = new ThreadLocal<>();
-
-    @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String token = extractToken(request);
-        if (StringUtils.hasText(token) && jwtUtils.validateAccessToken(token)) {
-            Long userId = jwtUtils.getUserIdFromToken(token);
-            CURRENT_USER.set(userId);
-            return true;
-        }
-        response.setStatus(401);
-        return false;
-    }
-
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-                                 Object handler, Exception ex) {
-        CURRENT_USER.remove();
-    }
-
-    private String extractToken(HttpServletRequest request) {
-        String bearer = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
-        }
-        return null;
-    }
-
+    /**
+     * Returns the current user ID from SecurityContext, or null if not authenticated.
+     */
     public static Long getCurrentUserId() {
-        return CURRENT_USER.get();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        if (principal instanceof UserPrincipal p) {
+            return p.getId();
+        }
+        if (principal instanceof Long id) {
+            return id;
+        }
+        // Fallback: try parsing the principal name
+        try {
+            return Long.valueOf(auth.getName());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

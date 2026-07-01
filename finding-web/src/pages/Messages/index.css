@@ -53,3 +53,54 @@
   background: #fff;
   margin-top: 8px;
 }
+
+/* 会话列表 */
+.chat-conv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+}
+.chat-conv-item:active { background: #fafafa; }
+.conv-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%; background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0; overflow: hidden;
+}
+.conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.conv-info { flex: 1; min-width: 0; }
+.conv-name { font-size: 15px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 8px; }
+.conv-badge {
+  background: #ff4757; color: #fff; font-size: 11px;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px;
+}
+.conv-preview { font-size: 13px; color: #999; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-time { font-size: 11px; color: #ccc; flex-shrink: 0; }
+
+/* 消息标签切换 */
+.msg-tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.msg-tab {
+  flex: 1;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #999;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.msg-tab.active {
+  color: #ff6b81;
+  border-bottom-color: #ff6b81;
+  font-weight: 600;
+}

@@ -6,6 +6,7 @@ import SquarePage from '../pages/Square';
 import MatePage from '../pages/Mate';
 import MessagesPage from '../pages/Messages';
 import MinePage from '../pages/Mine';
+import ChatDetailPage from '../pages/Chat';
 import LoginPage from '../pages/Login';
 import RegisterPage from '../pages/Register';
 
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: 'square', element: <SquarePage /> },
       { path: 'mate', element: <MatePage /> },
       { path: 'messages', element: <MessagesPage /> },
+      { path: 'messages/chat', element: <ChatDetailPage /> },
       { path: 'mine', element: <MinePage /> },
     ],
   },

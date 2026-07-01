@@ -1,29 +1,26 @@
 package com.finding.config;
 
+import com.finding.websocket.WebSocketServer;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
-import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
+/**
+ * WebSocket 配置 —— 注册自定义 WebSocketServer 处理器。
+ * 参考 MallChat 的 Netty 方案，用 Spring 原生 WebSocket 实现。
+ */
 @Configuration
-@EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+@EnableWebSocket
+@RequiredArgsConstructor
+public class WebSocketConfig implements WebSocketConfigurer {
+
+    private final WebSocketServer webSocketServer;
 
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Enable a simple in-memory message broker
-        registry.enableSimpleBroker("/topic", "/queue", "/user");
-        // Prefix for messages bound for @MessageMapping methods
-        registry.setApplicationDestinationPrefixes("/app");
-        // Prefix for user-specific destinations
-        registry.setUserDestinationPrefix("/user");
-    }
-
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(webSocketServer, "/ws/chat")
+                .setAllowedOriginPatterns("*");
     }
 }

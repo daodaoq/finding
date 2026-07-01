@@ -35,8 +35,10 @@ export default function LoginPage() {
         ...(mode === 'password' ? { password } : { smsCode }),
       });
       const { accessToken, refreshToken } = res.data.data;
+      // 先存储 token，后续请求才能带上 Authorization 头
+      localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
-      // Fetch user info
+      // 获取用户信息
       const meRes = await authApi.getMe();
       setAuth(meRes.data.data, accessToken);
       showToast('登录成功');
