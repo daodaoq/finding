@@ -1,0 +1,102 @@
+.md-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+.md-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  position: sticky; top: 0; z-index: 10;
+}
+.md-header h3 { margin: 0; font-size: 16px; }
+
+/* 活动头部 */
+.md-hero {
+  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  color: #fff; padding: 28px 20px 24px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px;
+}
+.md-category-badge {
+  background: rgba(255,255,255,0.25);
+  padding: 4px 14px; border-radius: 12px; font-size: 13px;
+}
+.md-title {
+  font-size: 22px; font-weight: 700; margin: 0; text-align: center;
+}
+.md-status-tag {
+  padding: 3px 12px; border-radius: 10px; font-size: 12px;
+  background: rgba(255,255,255,0.3);
+}
+.md-status-tag.status-2, .md-status-tag.status-0 { background: rgba(0,0,0,0.15); }
+
+/* 信息卡片 */
+.md-info-card {
+  background: #fff; margin: 0 0 8px; padding: 4px 0;
+}
+.md-info-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px; border-bottom: 1px solid #f5f5f5;
+}
+.md-info-row:last-child { border-bottom: none; }
+.md-info-icon { font-size: 20px; flex-shrink: 0; }
+.md-info-label { font-size: 12px; color: #999; display: block; }
+.md-info-value { font-size: 15px; color: #333; font-weight: 500; }
+.md-full-badge {
+  margin-left: 8px; background: #fff0f3; color: #ff6b81;
+  padding: 1px 8px; border-radius: 8px; font-size: 11px;
+}
+
+/* 描述 */
+.md-section {
+  background: #fff; padding: 16px 20px; margin-bottom: 8px;
+}
+.md-section-title {
+  font-size: 14px; font-weight: 600; color: #333; margin: 0 0 10px;
+}
+.md-desc {
+  font-size: 14px; color: #666; line-height: 1.7; margin: 0; white-space: pre-wrap;
+}
+
+/* 发起人 */
+.md-author-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.md-author-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #f0f0f0; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; overflow: hidden;
+}
+.md-author-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.md-author-name { font-size: 15px; font-weight: 600; display: block; }
+.md-author-school { font-size: 12px; color: #999; }
+.md-owner-badge {
+  margin-left: auto; font-size: 12px; color: #ff6b81;
+  background: #fff0f3; padding: 3px 10px; border-radius: 10px;
+}
+
+/* 底部操作栏 */
+.md-bottom-bar {
+  position: fixed; bottom: 56px; left: 0; right: 0;
+  max-width: 480px; margin: 0 auto;
+  padding: 10px 20px; background: #fff;
+  border-top: 1px solid #eee; z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.md-btn {
+  width: 100%; padding: 14px; border-radius: 12px;
+  border: none; font-size: 16px; font-weight: 600; cursor: pointer;
+}
+.md-btn-join {
+  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  color: #fff;
+}
+.md-btn-leave {
+  background: #fff; color: #ff4757; border: 1px solid #ff4757;
+}
+.md-btn-disabled {
+  background: #f5f5f5; color: #bbb; cursor: not-allowed;
+}
+.md-btn:active:not(:disabled) { opacity: 0.85; }

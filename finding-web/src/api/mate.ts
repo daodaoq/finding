@@ -25,4 +25,8 @@ export const mateApi = {
   /** 我加入的搭子 */
   myJoined: (page = 1, size = 20) =>
     request.get<ApiResponse<PageResult<Mate>>>('/mates/my-joined', { params: { page, size } }),
+
+  /** 退出搭子 */
+  leave: (id: number) =>
+    request.delete<ApiResponse<null>>(`/mates/${id}/leave`),
 };
