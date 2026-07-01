@@ -4,6 +4,7 @@ import { mateApi } from '../../api/mate';
 import { useAuthStore } from '../../store/authStore';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import LoginModal from '../../components/LoginModal';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { showToast } from '../../components/Toast';
 import type { Mate } from '../../types/mate';
@@ -19,6 +20,7 @@ export default function MateDetailPage() {
   const [mate, setMate] = useState<Mate | null>(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   useEffect(() => { loadDetail(); }, [mateId]);
 
@@ -44,8 +46,10 @@ export default function MateDetailPage() {
     });
   };
 
-  const handleLeave = async () => {
-    if (!window.confirm('确定要退出这个搭子活动吗？')) return;
+  const handleLeave = () => setShowLeaveConfirm(true);
+
+  const confirmLeave = async () => {
+    setShowLeaveConfirm(false);
     setLeaving(true);
     try {
       await mateApi.leave(mateId);
@@ -163,6 +167,15 @@ export default function MateDetailPage() {
       </div>
 
       <LoginModal visible={showLogin} onClose={handleClose} onSuccess={handleLoginSuccess} />
+      <ConfirmDialog
+        visible={showLeaveConfirm}
+        title="退出搭子活动"
+        message="确定要退出这个搭子活动吗？退出后将不再参与本次活动。"
+        confirmText="确定退出"
+        danger
+        onConfirm={confirmLeave}
+        onCancel={() => setShowLeaveConfirm(false)}
+      />
     </div>
   );
 }
