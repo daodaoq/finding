@@ -1,7 +1,7 @@
 .post-detail-page {
   background: #f8f8f8;
   min-height: 100vh;
-  padding-bottom: 80px;
+  padding-bottom: 120px; /* 输入栏 52px + 底部导航 56px + 安全区 */
 }
 
 .pd-header {
@@ -63,11 +63,12 @@
 
 /* 输入栏 */
 .pd-input-bar {
-  position: fixed; bottom: 0; left: 0; right: 0;
+  position: fixed; bottom: 56px; left: 0; right: 0;
   max-width: 480px; margin: 0 auto;
   background: #fff; border-top: 1px solid #eee;
-  z-index: 100;
+  z-index: 1001;
   padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
 }
 .reply-indicator {
   display: flex; justify-content: space-between; align-items: center;

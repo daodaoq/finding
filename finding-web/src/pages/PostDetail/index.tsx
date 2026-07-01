@@ -82,7 +82,11 @@ export default function PostDetailPage() {
   const handleReply = (comment: Comment) => {
     setReplyTo({ id: comment.id, name: comment.nickname });
     setInputText('');
-    inputRef.current?.focus();
+    // 延迟聚焦，确保 DOM 更新后再聚焦
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   };
 
   const handleCommentLike = (commentId: number) => {
