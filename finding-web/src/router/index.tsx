@@ -47,4 +47,7 @@ const router = createBrowserRouter([
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
 
+/** 消除 React Router v7 future flag warning（当前版本不支持 object form future flags） */
+/* 升级 react-router-dom 到 v7 后移除上述注释并使用: future: { v7_startTransition: true } */
+
 export default router;
