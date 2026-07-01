@@ -48,16 +48,12 @@ export default function MinePage() {
       return;
     }
     switch (key) {
-      case 'my-posts':
-      case 'my-likes':
-      case 'my-mates':
-      case 'my-invitations':
-      case 'my-joined':
-        showToast('功能已接入，完善中');
-        break;
-      case 'messages':
-        navigate('/messages');
-        break;
+      case 'my-posts': navigate('/mine/posts'); break;
+      case 'my-likes': navigate('/mine/likes'); break;
+      case 'my-mates': navigate('/mine/mates'); break;
+      case 'my-invitations': navigate('/mine/invitations'); break;
+      case 'my-joined': navigate('/mine/joined'); break;
+      case 'messages': navigate('/messages'); break;
       case 'about':
         showToast('Finding 大学生社交平台 v1.0\n山东理工大学');
         break;
