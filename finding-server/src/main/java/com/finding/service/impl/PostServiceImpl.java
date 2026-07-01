@@ -210,7 +210,7 @@ public class PostServiceImpl implements PostService {
                         .orderByDesc(PostLike::getCreatedAt));
 
         List<Long> postIds = likes.getRecords().stream()
-                .map(PostLike::getId).collect(Collectors.toList());
+                .map(PostLike::getPostId).collect(Collectors.toList());
         if (postIds.isEmpty()) {
             return PageVO.of(List.of(), 0L, page, size);
         }

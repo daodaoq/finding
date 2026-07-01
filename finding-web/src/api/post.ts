@@ -12,6 +12,9 @@ export const postApi = {
   create: (data: { content: string; images?: string[]; location?: string; city?: string }) =>
     request.post<ApiResponse<Post>>('/posts', data),
 
+  myLikes: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<Post>>>('/posts/my-likes', { params: { page, size } }),
+
   delete: (id: number) =>
     request.delete<ApiResponse<null>>(`/posts/${id}`),
 

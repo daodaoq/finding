@@ -16,7 +16,7 @@ export default function MyLikesPage() {
 
   const loadLikes = async () => {
     try {
-      const res = await postApi.list({ tab: 'latest', page: 1, size: 50, myLikes: true } as any);
+      const res = await postApi.myLikes(1, 50);
       setPosts(res.data.data.records);
     } catch { /* */ }
     finally { setLoading(false); }
@@ -24,7 +24,14 @@ export default function MyLikesPage() {
 
   const handleLike = async (id: number) => {
     try { await postApi.like(id);
-      setPosts(prev => prev.map(p => p.id === id ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
+      // 取消点赞后从列表中移除
+      setPosts(prev => {
+        const post = prev.find(p => p.id === id);
+        if (post?.isLiked) {
+          return prev.filter(p => p.id !== id);
+        }
+        return prev.map(p => p.id === id ? { ...p, isLiked: true, likeCount: p.likeCount + 1 } : p);
+      });
     } catch { /* */ }
   };
 
