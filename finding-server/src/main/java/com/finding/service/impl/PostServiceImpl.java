@@ -10,6 +10,7 @@ import com.finding.entity.*;
 import com.finding.mapper.*;
 import com.finding.service.PostService;
 import com.finding.service.UserService;
+import com.finding.vo.CommentVO;
 import com.finding.vo.PageVO;
 import com.finding.vo.PostVO;
 import com.finding.vo.UserVO;
@@ -159,7 +160,8 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public PageVO<PostVO> listComments(Long postId, int page, int size) {
+    public PageVO<CommentVO> listComments(Long postId, int page, int size, Long currentUserId) {
+        // 查询一级评论（parent_id IS NULL）
         Page<PostComment> pg = new Page<>(page, size);
         Page<PostComment> result = commentMapper.selectPage(pg,
                 new LambdaQueryWrapper<PostComment>()
@@ -167,12 +169,14 @@ public class PostServiceImpl implements PostService {
                         .isNull(PostComment::getParentId)
                         .orderByDesc(PostComment::getCreatedAt));
 
-        // TODO: load child comments and author info
-        return PageVO.of(List.<PostVO>of(), result.getTotal(), page, size);
+        List<CommentVO> records = result.getRecords().stream()
+                .map(c -> toCommentVO(c, currentUserId))
+                .collect(Collectors.toList());
+        return PageVO.of(records, result.getTotal(), page, size);
     }
 
     @Override
-    public PostVO addComment(Long userId, Long postId, Long parentId, String content) {
+    public CommentVO addComment(Long userId, Long postId, Long parentId, String content) {
         Post post = postMapper.selectById(postId);
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ResultCode.POST_NOT_FOUND);
@@ -186,7 +190,73 @@ public class PostServiceImpl implements PostService {
 
         post.setCommentCount(post.getCommentCount() + 1);
         postMapper.updateById(post);
-        return toVO(post, userId);
+
+        // 如果回复了别人的评论，发通知
+        if (parentId != null) {
+            PostComment parent = commentMapper.selectById(parentId);
+            if (parent != null && !parent.getUserId().equals(userId)) {
+                Message msg = new Message();
+                msg.setFromUserId(userId);
+                msg.setToUserId(parent.getUserId());
+                msg.setType("comment");
+                msg.setContent("回复了你的评论");
+                msg.setRelatedId(postId);
+                messageMapper.insert(msg);
+            }
+        } else {
+            // 评论了帖子，通知帖主
+            if (!post.getUserId().equals(userId)) {
+                Message msg = new Message();
+                msg.setFromUserId(userId);
+                msg.setToUserId(post.getUserId());
+                msg.setType("comment");
+                msg.setContent("评论了你的动态");
+                msg.setRelatedId(postId);
+                messageMapper.insert(msg);
+            }
+        }
+
+        return toCommentVO(comment, userId);
+    }
+
+    /** 评论转 VO，含作者信息 + 前3条子回复 */
+    private CommentVO toCommentVO(PostComment comment, Long currentUserId) {
+        CommentVO vo = new CommentVO();
+        vo.setId(comment.getId());
+        vo.setPostId(comment.getPostId());
+        vo.setUserId(comment.getUserId());
+        vo.setParentId(comment.getParentId());
+        vo.setContent(comment.getContent());
+        vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
+        vo.setCreatedAt(comment.getCreatedAt());
+
+        // 作者信息
+        User author = userMapper.selectById(comment.getUserId());
+        if (author != null) {
+            vo.setNickname(author.getNickname());
+            vo.setAvatar(author.getAvatar());
+        }
+
+        // 是否点过赞（评论点赞暂用 post_like 表逻辑，后续可扩展）
+        vo.setIsLiked(false);
+
+        // 加载子回复（最多3条）
+        List<PostComment> children = commentMapper.selectList(
+                new LambdaQueryWrapper<PostComment>()
+                        .eq(PostComment::getParentId, comment.getId())
+                        .orderByAsc(PostComment::getCreatedAt)
+                        .last("LIMIT 3"));
+        if (!children.isEmpty()) {
+            vo.setReplies(children.stream()
+                    .map(c -> toCommentVO(c, currentUserId))
+                    .collect(Collectors.toList()));
+            Long total = commentMapper.selectCount(
+                    new LambdaQueryWrapper<PostComment>()
+                            .eq(PostComment::getParentId, comment.getId()));
+            vo.setReplyCount(total.intValue());
+        }
+
+        return vo;
     }
 
     @Override

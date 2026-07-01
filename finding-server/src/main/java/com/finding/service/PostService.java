@@ -2,6 +2,7 @@ package com.finding.service;
 
 import com.finding.dto.PostCreateDTO;
 import com.finding.dto.PostQueryDTO;
+import com.finding.vo.CommentVO;
 import com.finding.vo.PageVO;
 import com.finding.vo.PostVO;
 
@@ -12,8 +13,8 @@ public interface PostService {
     PostVO createPost(Long userId, PostCreateDTO dto);
     void deletePost(Long userId, Long postId);
     void toggleLike(Long userId, Long postId);
-    PageVO<PostVO> listComments(Long postId, int page, int size);
-    PostVO addComment(Long userId, Long postId, Long parentId, String content);
+    PageVO<CommentVO> listComments(Long postId, int page, int size, Long currentUserId);
+    CommentVO addComment(Long userId, Long postId, Long parentId, String content);
     void deleteComment(Long userId, Long commentId);
 
     /** 获取当前用户点赞过的动态列表 */

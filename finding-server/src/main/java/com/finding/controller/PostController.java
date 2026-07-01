@@ -5,6 +5,7 @@ import com.finding.dto.PostCreateDTO;
 import com.finding.dto.PostQueryDTO;
 import com.finding.interceptor.JwtInterceptor;
 import com.finding.service.PostService;
+import com.finding.vo.CommentVO;
 import com.finding.vo.PageVO;
 import com.finding.vo.PostVO;
 import jakarta.validation.Valid;
@@ -52,14 +53,14 @@ public class PostController {
     }
 
     @GetMapping("/{id}/comments")
-    public Result<PageVO<PostVO>> comments(@PathVariable Long id,
+    public Result<PageVO<CommentVO>> comments(@PathVariable Long id,
                                             @RequestParam(defaultValue = "1") int page,
                                             @RequestParam(defaultValue = "10") int size) {
-        return Result.ok(postService.listComments(id, page, size));
+        return Result.ok(postService.listComments(id, page, size, JwtInterceptor.getCurrentUserId()));
     }
 
     @PostMapping("/{id}/comments")
-    public Result<PostVO> addComment(@PathVariable Long id,
+    public Result<CommentVO> addComment(@PathVariable Long id,
                                       @RequestParam(required = false) Long parentId,
                                       @RequestParam String content) {
         Long userId = JwtInterceptor.getCurrentUserId();

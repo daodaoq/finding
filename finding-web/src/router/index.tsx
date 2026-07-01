@@ -12,6 +12,7 @@ import MyLikesPage from '../pages/Mine/MyLikes';
 import MyMatesPage from '../pages/Mine/MyMates';
 import MyInvitationsPage from '../pages/Mine/MyInvitations';
 import MyJoinedPage from '../pages/Mine/MyJoined';
+import PostDetailPage from '../pages/PostDetail';
 import ChatDetailPage from '../pages/Chat';
 import LoginPage from '../pages/Login';
 import RegisterPage from '../pages/Register';
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'square', element: <SquarePage /> },
+      { path: 'square/post/:id', element: <PostDetailPage /> },
       { path: 'mate', element: <MatePage /> },
       { path: 'messages', element: <MessagesPage /> },
       { path: 'messages/notifications', element: <NotificationsPage /> },
