@@ -26,14 +26,29 @@ export default function MyMatesPage() {
     finally { setLoading(false); }
   };
 
-  const handleFollow = async (id: number) => {
+  const handleFollow = async (user: User) => {
     try {
-      await userApi.follow(id);
-      // 立即更新UI状态
-      setUsers(prev => prev.map(u =>
-        u.id === id ? { ...u, isFollowed: !u.isFollowed } : u
-      ));
+      await userApi.follow(user.id);
+      if (activeTab === 'following') {
+        // 关注列表：点击"已关注"→取消关注→从列表移除
+        setUsers(prev => prev.filter(u => u.id !== user.id));
+      } else {
+        // 粉丝列表：点击切换互关/关注状态
+        setUsers(prev => prev.map(u =>
+          u.id === user.id ? { ...u, isFollowed: !u.isFollowed } : u
+        ));
+      }
     } catch { /* */ }
+  };
+
+  const getFollowLabel = (u: User) => {
+    if (activeTab === 'following') return '已关注';
+    return u.isFollowed ? '互相关注' : '+ 关注';
+  };
+
+  const getFollowStyle = (u: User) => {
+    if (activeTab === 'following' || u.isFollowed) return {};
+    return { background: '#ff6b81', color: '#fff', borderColor: '#ff6b81' };
   };
 
   return (
@@ -43,24 +58,34 @@ export default function MyMatesPage() {
         <h2>我的搭子</h2>
       </div>
       <div className="subpage-tabs">
-        <button className={`tab ${activeTab === 'following' ? 'active' : ''}`} onClick={() => setActiveTab('following')}>关注</button>
-        <button className={`tab ${activeTab === 'followers' ? 'active' : ''}`} onClick={() => setActiveTab('followers')}>粉丝</button>
+        <button className={`tab ${activeTab === 'following' ? 'active' : ''}`}
+          onClick={() => setActiveTab('following')}>关注</button>
+        <button className={`tab ${activeTab === 'followers' ? 'active' : ''}`}
+          onClick={() => setActiveTab('followers')}>粉丝</button>
       </div>
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
         {!loading && users.map(u => (
           <div key={u.id} className="user-row">
-            <div className="user-row-avatar">{u.avatar ? <img src={u.avatar} alt="" /> : <span>👤</span>}</div>
+            <div className="user-row-avatar">
+              {u.avatar ? <img src={u.avatar} alt="" /> : <span>👤</span>}
+            </div>
             <div className="user-row-info">
               <span className="user-row-name">{u.nickname}</span>
               <span className="user-row-school">{u.school || ''}</span>
             </div>
-            <button className="follow-btn-sm" onClick={() => handleFollow(u.id)}>
-              {u.isFollowed ? '已关注' : '+ 关注'}
+            <button
+              className="follow-btn-sm"
+              style={getFollowStyle(u)}
+              onClick={() => handleFollow(u)}
+            >
+              {getFollowLabel(u)}
             </button>
           </div>
         ))}
-        {!loading && users.length === 0 && <EmptyState message={activeTab === 'following' ? '还没有关注任何人' : '还没有粉丝'} />}
+        {!loading && users.length === 0 && (
+          <EmptyState message={activeTab === 'following' ? '还没有关注任何人' : '还没有粉丝'} />
+        )}
       </div>
     </div>
   );

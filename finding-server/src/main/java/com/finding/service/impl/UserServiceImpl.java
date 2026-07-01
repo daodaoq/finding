@@ -120,7 +120,12 @@ public class UserServiceImpl implements UserService {
         }
 
         List<User> users = userMapper.selectBatchIds(followerIds);
-        List<UserVO> records = users.stream().map(this::toVO).collect(Collectors.toList());
+        List<UserVO> records = users.stream().map(u -> {
+            UserVO vo = toVO(u);
+            // 检查我是否也关注了ta → 互关
+            vo.setIsFollowed(isFollowing(userId, u.getId()));
+            return vo;
+        }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
     }
 
@@ -139,7 +144,11 @@ public class UserServiceImpl implements UserService {
         }
 
         List<User> users = userMapper.selectBatchIds(followeeIds);
-        List<UserVO> records = users.stream().map(this::toVO).collect(Collectors.toList());
+        List<UserVO> records = users.stream().map(u -> {
+            UserVO vo = toVO(u);
+            vo.setIsFollowed(true); // 我关注的人，一定是已关注
+            return vo;
+        }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
     }
 
