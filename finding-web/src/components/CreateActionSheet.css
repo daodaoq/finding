@@ -1,0 +1,38 @@
+.action-sheet-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.action-sheet {
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 480px;
+  padding: 4px 0 env(safe-area-inset-bottom);
+  animation: slideUp 0.25s;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.action-sheet-header {
+  text-align: center; padding: 16px;
+  font-size: 14px; color: #999; border-bottom: 1px solid #f5f5f5;
+}
+
+.as-option {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 16px 20px;
+  background: none; border: none; border-bottom: 1px solid #f5f5f5;
+  cursor: pointer; text-align: left;
+}
+.as-option:active { background: #fafafa; }
+.as-option-icon { font-size: 28px; flex-shrink: 0; }
+.as-option-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.as-option-label { font-size: 16px; font-weight: 600; color: #333; }
+.as-option-desc { font-size: 13px; color: #bbb; }
+.as-option-arrow { font-size: 20px; color: #ddd; }
+
+.as-cancel {
+  display: block; width: calc(100% - 32px);
+  margin: 12px 16px; padding: 14px;
+  background: #f5f5f5; border: none; border-radius: 12px;
+  font-size: 16px; color: #666; cursor: pointer;
+}

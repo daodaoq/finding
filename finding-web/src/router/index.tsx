@@ -15,6 +15,8 @@ import MyJoinedPage from '../pages/Mine/MyJoined';
 import PostDetailPage from '../pages/PostDetail';
 import MateDetailPage from '../pages/MateDetail';
 import ChatDetailPage from '../pages/Chat';
+import CreatePostPage from '../pages/CreatePost';
+import CreateMatePage from '../pages/CreateMate';
 import LoginPage from '../pages/Login';
 import RegisterPage from '../pages/Register';
 
@@ -37,6 +39,8 @@ const router = createBrowserRouter([
       { path: 'mine/mates', element: <MyMatesPage /> },
       { path: 'mine/invitations', element: <MyInvitationsPage /> },
       { path: 'mine/joined', element: <MyJoinedPage /> },
+      { path: 'create-post', element: <CreatePostPage /> },
+      { path: 'create-mate', element: <CreateMatePage /> },
     ],
   },
   {

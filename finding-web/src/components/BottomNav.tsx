@@ -2,7 +2,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { BOTTOM_NAV_ITEMS } from '../utils/constants';
 import './BottomNav.css';
 
-export default function BottomNav() {
+interface Props {
+  onCenterClick?: () => void;
+}
+
+export default function BottomNav({ onCenterClick }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -22,8 +26,7 @@ export default function BottomNav() {
           }`}
           onClick={() => {
             if (item.isCenter) {
-              // Open create action sheet (post/mate/group)
-              navigate(location.pathname, { state: { showCreateSheet: true } });
+              onCenterClick?.();
             } else {
               navigate(item.path);
             }
