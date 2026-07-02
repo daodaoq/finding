@@ -1,235 +1,220 @@
-# Finding CI/CD 配置指南 — Gitee + Webhook 自动部署
+# Finding CI/CD 配置指南 — GitHub SSH + crontab 自动部署
 
-> 推送代码到 Gitee → 服务器自动拉取 → 增量构建 → 不停机发布
-
----
-
-## 方案对比
-
-| 方案 | 复杂度 | 费用 | 适合场景 |
-|------|--------|------|---------|
-| **Gitee Webhook + 自建监听** ★ | ⭐ 简单 | 免费 | 个人项目、单服务器 |
-| Gitee Go (官方流水线) | ⭐⭐ 中等 | 免费(限高校) | 高校认证用户 |
-| Gitee + Jenkins | ⭐⭐⭐ 复杂 | 免费 | 团队项目、多环境 |
-| GitHub Actions + 国内镜像 | ⭐⭐ 中等 | 免费 | 有 GitHub 账号 |
-
-> **推荐方案**：Webhook → 服务器自动部署（本文档方案），零依赖，十分钟搭完。
+> `git push` → 服务器每 5 分钟自动检查 → 有更新就增量构建 → 零停机发布
 
 ---
 
-## 1. 工作原理
+## 工作原理
 
 ```
-你在 Windows 写代码
-    │ git push
-    ▼
-┌─────────────────┐
-│  Gitee 远程仓库   │
-│  gitee.com/xxx   │
-└────────┬────────┘
-         │ POST /webhook (携带提交信息)
-         ▼
-┌─────────────────┐
-│  你的 Linux 服务器  │
-│  Node.js Webhook  │  ← PM2 守护，端口 9000
-│  验证签名 → 触发   │
-└────────┬────────┘
-         │ bash cicd/deploy.sh
-         ▼
-┌─────────────────┐
-│  deploy.sh       │
-│  1. git pull     │
-│  2. 增量编译      │  ← 只编译变更的模块
-│  3. 重启后端      │
-│  4. 重载 Nginx   │
-└─────────────────┘
+┌─────────────────────────────────────────────┐
+│  你在 Windows 写代码                           │
+│  git push origin master                      │
+└──────────────────┬──────────────────────────┘
+                   │ SSH (22 端口，国内直连无压力)
+                   ▼
+┌─────────────────────────────────────────────┐
+│  GitHub: daodaoq/finding                     │
+└──────────────────┬──────────────────────────┘
+                   │
+     ╔═════════════╧═════════════╗
+     ║  crontab 每 5 分钟触发     ║
+     ║  bash cicd/deploy.sh      ║
+     ╚═════════════╤═════════════╝
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  deploy.sh 增量构建                            │
+│  ① git fetch → 比较有无新提交                   │
+│  ② 无新提交 → 直接跳过，3 秒结束                 │
+│  ③ 有更新 → git pull → 只编译变更的模块         │
+│  ④ 重启后端 + reload Nginx（3~60 秒）           │
+└─────────────────────────────────────────────┘
 ```
+
+**为什么用 crontab 而不是 Webhook**：GitHub 在国内访问偶尔不稳定，Webhook 推送可能超时。SSH 协议（22 端口）走的是不同通道，`git fetch/pull` 很稳定。5 分钟延迟对个人项目完全没影响。
 
 ---
 
-## 2. 一次配置，终身自动
+## 1. 服务器配置（一次配置，永久自动）
 
-### 2.1 服务器安装依赖
+### 1.1 生成 SSH Key
 
 ```bash
 ssh root@你的服务器
 
-# 安装 PM2（守护 webhook 进程）
-npm install -g pm2
+ssh-keygen -t ed25519 -C "finding-server"
+# 一路回车，不设密码
+```
 
-# 创建日志目录
+### 1.2 添加公钥到 GitHub
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+# 复制输出内容
+```
+
+打开 https://github.com/settings/keys → **New SSH Key**：
+- Title: `finding-server`
+- Key: 粘贴刚才复制的公钥
+
+### 1.3 验证连接
+
+```bash
+ssh -T git@github.com
+# 看到 "Hi daodaoq!" 说明成功
+```
+
+### 1.4 克隆项目到服务器
+
+```bash
+cd /root
+git clone git@github.com:daodaoq/finding.git
+```
+
+### 1.5 创建日志目录 + 赋予执行权限
+
+```bash
 mkdir -p /root/finding/deploy/cicd/logs
-```
-
-### 2.2 配置 Webhook 密钥
-
-```bash
-cd /root/finding/deploy/cicd
-
-# 编辑 webhook-server.js，修改 SECRET
-vim webhook-server.js
-# 把 your-webhook-secret-change-me 改成一个随机字符串
-# 比如: SECRET = 'f1nd1ng-C1CD-s3cr3t-2026';
-```
-
-也记下来，待会配 Gitee 要用。
-
-### 2.3 给脚本加执行权限
-
-```bash
 chmod +x /root/finding/deploy/cicd/deploy.sh
 ```
 
-### 2.4 启动 Webhook 服务
+### 1.6 添加定时任务
 
 ```bash
-cd /root/finding/deploy/cicd
-
-# 用 PM2 启动
-pm2 start ecosystem.config.js
-
-# 设为开机自启
-pm2 save
-pm2 startup
-
-# 验证
-curl http://localhost:9000/health
-# 返回 {"status":"ok","uptime":...}
-```
-
-### 2.5 防火墙开放端口
-
-```bash
-# 让 Gitee 能 POST 到服务器
-ufw allow 9000/tcp
-```
-
----
-
-## 3. Gitee 配置
-
-### 3.1 推送代码到 Gitee
-
-```bash
-# Windows 本地
-cd D:\FullStack\finding
-
-# 添加 Gitee 远程仓库
-git remote add gitee https://gitee.com/你的用户名/finding.git
-
-# 推送
-git push gitee master
-```
-
-### 3.2 添加 Webhook
-
-1. 打开 `https://gitee.com/你的用户名/finding/settings/hooks`
-2. 点击 **添加 Webhook**
-3. 填写：
-
-| 字段 | 值 |
-|------|-----|
-| URL | `http://你的服务器IP:9000/webhook` |
-| 密码/签名密钥 | `f1nd1ng-C1CD-s3cr3t-2026`（你在 webhook-server.js 里设的那个） |
-| 触发事件 | ☑ Push（勾选这个就够了） |
-
-4. 点击 **添加**
-5. 点击 **测试** → 看服务器日志 `pm2 logs finding-webhook`
-
-如果测试显示 "签名验证失败" → 检查 SECRET 是否一致
-如果返回 200 → 配置成功！
-
----
-
-## 4. 日常使用
-
-```bash
-# Windows 本地写代码 → 提交 → 推送
-git add .
-git commit -m "feat: 新功能"
-git push gitee master
-
-# 之后什么都不用管，服务器自动：
-# 1. 拉取最新代码
-# 2. 增量构建（只编译改了的部分）
-# 3. 重启后端（不影响用户，3 秒完成）
-# 4. 重载 Nginx
-```
-
-查看部署日志：
-```bash
-ssh root@服务器
-pm2 logs finding-webhook           # 实时日志
-tail -f /root/finding/deploy/app.log   # 后端日志
-```
-
----
-
-## 5. 高级：增量编译策略
-
-`deploy.sh` 会根据变更文件决定编译哪些模块：
-
-| 变更文件路径 | 动作 |
-|-------------|------|
-| `finding-server/**` | 重新编译 jar + 重启后端 |
-| `finding-web/**` | 重新构建学生端 + 重载 Nginx |
-| `finding-admin/**` | 重新构建管理端 + 重载 Nginx |
-| `deploy/**` | 仅 git pull，不触发构建 |
-
-> 只改前端 → 后端不重启，秒级完成；只改后端 → 前端不构建。
-
----
-
-## 6. 备选方案：不用 Webhook，用 crontab 定时检查
-
-如果因为网络/安全原因 Gitee Webhook 访问不了服务器（比如服务器在家里），可以用定时检查：
-
-```bash
-# 每 5 分钟检查一次是否有新代码
 crontab -e
-# 添加:
+```
+
+添加这一行：
+
+```
 */5 * * * * bash /root/finding/deploy/cicd/deploy.sh >> /root/finding/deploy/cicd/logs/cron.log 2>&1
 ```
 
-> 缺点：有 5 分钟延迟。适合不要求实时更新的项目。
+### 1.7 验证
+
+```bash
+# 手动跑一次，确认能正常工作
+bash /root/finding/deploy/cicd/deploy.sh
+```
+
+看到 `=== 部署完成 ===` 就 OK。
 
 ---
 
-## 7. 常用命令速查
+## 2. 日常使用
 
 ```bash
-# Webhook 服务管理
-pm2 status                        # 查看状态
-pm2 logs finding-webhook          # 实时日志
-pm2 restart finding-webhook       # 重启服务
-pm2 stop finding-webhook          # 停止服务
-pm2 delete finding-webhook        # 卸载
+# Windows 本地写代码 → 推送
+git add .
+git commit -m "feat: 新功能"
+git push origin master
 
-# 手动触发布署
+# 搞定。5 分钟内服务器自动完成：
+# ① git fetch 发现新提交
+# ② 增量编译（只编译改了的模块）
+# ③ 重启后端 + 重载 Nginx
+```
+
+查看部署日志：
+
+```bash
+ssh root@服务器
+
+# CI/CD 调度日志
+tail -f /root/finding/deploy/cicd/logs/cron.log
+
+# 后端日志
+tail -f /root/finding/deploy/app.log
+```
+
+---
+
+## 3. 增量编译策略
+
+`cicd/deploy.sh` 根据变更文件决定编译哪些模块：
+
+| 你改了 | 触发动作 | 耗时 |
+|--------|---------|------|
+| `finding-web/**` | 构建学生端 + reload nginx | ~10 秒 |
+| `finding-admin/**` | 构建管理端 + reload nginx | ~8 秒 |
+| `finding-server/**` | 编译 jar + 重启后端 | ~30 秒 |
+| 三个都改了 | 全部重新构建 | ~1 分钟 |
+| 都没改 | 直接跳过，无操作 | ~1 秒 |
+
+> 只改前端 → 后端不重启，用户无感知。只改后端 → 前端不动，NGINX 不重载。
+
+---
+
+## 4. 手动操作
+
+```bash
+# 立即部署（不等 crontab）
 bash /root/finding/deploy/cicd/deploy.sh
 
-# 查看最近部署日志
-tail -50 /root/finding/deploy/cicd/logs/out.log
-tail -50 /root/finding/deploy/cicd/logs/error.log
+# 查看最近部署记录
+tail -50 /root/finding/deploy/cicd/logs/cron.log
+
+# 修改检查间隔（比如改成 2 分钟）
+crontab -e
+# */5 改为 */2
 ```
 
 ---
 
-## 8. 故障排查
+## 5. 故障排查
 
-### Webhook 测试返回 403 Forbidden
-→ 密码/签名密钥不一致，Gitee 填的和 webhook-server.js 里的 `SECRET` 必须完全一致
-
-### Webhook 测试返回 200 但没触发部署
-→ `pm2 logs finding-webhook` 查看日志，检查 `deploy.sh` 路径是否正确
-
-### git pull 失败
-→ 确认服务器上 `/root/finding` 是 git 仓库且 remote 指向 Gitee：
+### git fetch 报 Permission denied
 ```bash
-cd /root/finding && git remote -v
-# origin  https://gitee.com/你的用户名/finding.git
+# 确认 SSH key 已添加到 GitHub
+ssh -T git@github.com
+# 如果失败：
+cat ~/.ssh/id_ed25519.pub   # 确认公钥已复制到 GitHub Settings → SSH Keys
 ```
 
-### 端口 9000 不通
-→ 云服务器需要在**安全组**中放行 9000 端口（不只是 ufw）
-→ 阿里云/腾讯云：控制台 → 安全组 → 添加入站规则 TCP:9000
+### crontab 不执行
+```bash
+# 检查 crontab 是否在跑
+systemctl status cron    # Debian/Ubuntu
+systemctl status crond   # CentOS
+
+# 手动测试
+bash /root/finding/deploy/cicd/deploy.sh
+```
+
+### 编译失败
+```bash
+tail -50 /root/finding/deploy/cicd/logs/cron.log
+# 看具体报错，常见原因：
+# - npm ci 失败 → 服务器磁盘满或网络问题
+# - mvn package 失败 → Java 版本不对
+```
+
+### 想看实时部署状态
+```bash
+# SSH 登录服务器，开两个窗口：
+# 窗口 1: 实时看 CI 日志
+tail -f /root/finding/deploy/cicd/logs/cron.log
+
+# 窗口 2: 实时看后端日志
+tail -f /root/finding/deploy/app.log
+```
+
+---
+
+## 附：push 同时到 GitHub 和 Gitee（备用）
+
+你的 Windows 本地已经配了两个 remote，一个命令同时推两个：
+
+```bash
+# 推 GitHub
+git push origin master
+
+# 也推 Gitee（当备份）
+git push gitee master
+
+# 或者一次推两个
+git push origin master && git push gitee master
+```
+
+Gitee 留着当镜像备份，万一 GitHub SSH 抽风也能从 Gitee 拉。
