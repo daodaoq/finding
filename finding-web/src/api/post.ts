@@ -7,6 +7,9 @@ export const postApi = {
   list: (params: { tab?: string; page?: number; size?: number; city?: string }) =>
     request.get<ApiResponse<PageResult<Post>>>('/posts', { params }),
 
+  myPosts: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<Post>>>('/posts/my', { params: { page, size } }),
+
   detail: (id: number) =>
     request.get<ApiResponse<Post>>(`/posts/${id}`),
 

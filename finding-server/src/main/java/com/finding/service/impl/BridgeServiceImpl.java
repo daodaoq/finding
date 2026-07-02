@@ -54,68 +54,106 @@ public class BridgeServiceImpl implements BridgeService {
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
-        // Collect IDs to exclude: self, already applied, already followed
         Set<Long> excludeIds = new HashSet<>();
+        User currentUser = null;
         if (userId != null) {
             excludeIds.add(userId);
+            currentUser = userMapper.selectById(userId);
 
-            // Exclude users already applied to
+            // 排除已申请过的
             List<ChatApply> sentApplies = chatApplyMapper.selectList(
                     new LambdaQueryWrapper<ChatApply>().eq(ChatApply::getFromUserId, userId));
             sentApplies.forEach(a -> excludeIds.add(a.getToUserId()));
 
-            // Exclude already followed users
+            // 排除已关注的
             List<UserFollow> follows = followMapper.selectList(
                     new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId));
             follows.forEach(f -> excludeIds.add(f.getFolloweeId()));
         }
 
-        // Build query — prioritize verified + active users
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
                 .eq(User::getStatus, 1);
         if (!excludeIds.isEmpty()) {
             wrapper.notIn(User::getId, excludeIds);
         }
-
-        // Sorting: prioritize verified users, then by last login
+        // 基础排序：已认证优先 → 最近活跃
         wrapper.orderByDesc(User::getRealNameVerified)
                .orderByDesc(User::getLastLoginAt);
 
-        Page<User> pg = new Page<>(page, size);
+        // 取 3 倍数据，内存打分后再取 top-N
+        Page<User> pg = new Page<>(page, Math.min(size * 3, 100));
         Page<User> result = userMapper.selectPage(pg, wrapper);
 
-        // If user has school, sort same-school users to the top (in-memory reorder)
-        final String currentUserSchool;
-        final String currentUserCity;
-        if (userId != null) {
-            User currentUser = userMapper.selectById(userId);
-            if (currentUser != null) {
-                currentUserSchool = currentUser.getSchool();
-                currentUserCity = currentUser.getCity();
-            } else {
-                currentUserSchool = null;
-                currentUserCity = null;
-            }
-        } else {
-            currentUserSchool = null;
-            currentUserCity = null;
-        }
+        // ── 相亲评分算法 ──
+        final User me = currentUser;
+        List<User> scoredRecords = new ArrayList<>(result.getRecords());
+        scoredRecords.sort((a, b) -> Integer.compare(
+                matchScore(b, me), matchScore(a, me))); // 降序
 
-        List<User> sortedRecords = new ArrayList<>(result.getRecords());
-        if (currentUserSchool != null || currentUserCity != null) {
-            final String school = currentUserSchool;
-            final String city = currentUserCity;
-            sortedRecords.sort((a, b) -> {
-                int scoreA = getPriorityScore(a, school, city);
-                int scoreB = getPriorityScore(b, school, city);
-                return Integer.compare(scoreB, scoreA); // higher score first
-            });
-        }
+        // 截取当前页
+        int from = Math.min((page - 1) * size, scoredRecords.size());
+        int to = Math.min(from + size, scoredRecords.size());
+        List<User> paged = scoredRecords.subList(from, to);
 
-        List<HomeFeedVO> records = sortedRecords.stream()
+        List<HomeFeedVO> records = paged.stream()
                 .map(u -> toFeedVO(u, lat, lng, userId))
                 .collect(Collectors.toList());
-        return PageVO.of(records, result.getTotal(), page, size);
+        return PageVO.of(records, (long) scoredRecords.size(), page, size);
+    }
+
+    /**
+     * 相亲匹配评分：异性 +20、同校 +15、同城 +8、已认证 +5、
+     * 最近活跃 +3、兴趣关键词匹配 +2/词、有头像 +2。
+     */
+    private int matchScore(User candidate, User me) {
+        int score = 0;
+        if (me == null) return score;
+
+        // 异性优先（相亲核心）
+        if (me.getGender() != null && candidate.getGender() != null
+                && me.getGender() > 0 && candidate.getGender() > 0
+                && !me.getGender().equals(candidate.getGender())) {
+            score += 20;
+        }
+
+        // 同校（大学生相亲最重要）
+        if (me.getSchool() != null && me.getSchool().equals(candidate.getSchool())) {
+            score += 15;
+        }
+
+        // 同城
+        if (me.getCity() != null && me.getCity().equals(candidate.getCity())) {
+            score += 3;
+        }
+
+        // 已认证
+        if (candidate.getRealNameVerified() != null && candidate.getRealNameVerified() == 2) {
+            score += 5;
+        }
+
+        // 最近 24h 活跃
+        if (candidate.getLastLoginAt() != null
+                && candidate.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24))) {
+            score += 3;
+        }
+
+        // 有头像（更真诚）
+        if (candidate.getAvatar() != null && !candidate.getAvatar().isEmpty()) {
+            score += 2;
+        }
+
+        // 兴趣标签 / 个性签名关键词匹配
+        if (me.getSignature() != null && candidate.getSignature() != null) {
+            String[] myWords = me.getSignature().split("[，。！？,.!?\\s]+");
+            String theirSig = candidate.getSignature();
+            for (String w : myWords) {
+                if (w.length() >= 2 && theirSig.contains(w)) {
+                    score += 2;
+                }
+            }
+        }
+
+        return score;
     }
 
     @Override
@@ -244,6 +282,7 @@ public class BridgeServiceImpl implements BridgeService {
                 updateContact(apply.getFromUserId(), roomId, systemMsg.getId());
             } catch (Exception e) {
                 log.error("Failed to create conversation for applyId={}", applyId, e);
+                throw new BusinessException(ResultCode.INTERNAL_ERROR, "创建会话失败，请重试");
             }
         }
 
@@ -280,22 +319,6 @@ public class BridgeServiceImpl implements BridgeService {
         }
     }
 
-    /** Priority score for sorting: same school=10, same city=5, recently active=1 */
-    private int getPriorityScore(User user, String currentSchool, String currentCity) {
-        int score = 0;
-        if (currentSchool != null && currentSchool.equals(user.getSchool())) {
-            score += 10;
-        }
-        if (currentCity != null && currentCity.equals(user.getCity())) {
-            score += 5;
-        }
-        // Recent activity bonus (within 24h)
-        if (user.getLastLoginAt() != null &&
-                user.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24))) {
-            score += 1;
-        }
-        return score;
-    }
 
     private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId) {
         HomeFeedVO vo = new HomeFeedVO();

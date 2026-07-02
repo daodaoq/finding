@@ -1,18 +1,55 @@
+# ============================================================
+# 生产环境配置（Linux 云服务器部署）
+# 所有敏感信息通过环境变量注入
+# ============================================================
+
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/finding?useUnicode=true&characterEncoding=UTF-8&serverTimezone=GMT%2B8&useSSL=true
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:finding}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=GMT%2B8&useSSL=true&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 300000
+      max-lifetime: 1200000
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: 6379
-      password: ${REDIS_PASSWORD}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 16
+          min-idle: 4
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 3000ms
+          max-attempts: 3
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:admin}
+  secret-key: ${MINIO_SECRET_KEY:admin123456}
+  bucket: ${MINIO_BUCKET:finding}
 
 logging:
   level:
     com.finding: info
     org.springframework.security: warn
+  file:
+    path: /var/log/finding
+    name: /var/log/finding/app.log

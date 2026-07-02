@@ -14,4 +14,5 @@ public class MateQueryDTO extends PageQueryDTO {
     private BigDecimal latitude;
     private BigDecimal longitude;
     private Double radiusKm;
+    private Integer status; // 可选: null=全部, 1=进行中, 2=已结束
 }

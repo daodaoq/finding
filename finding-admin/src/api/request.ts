@@ -24,7 +24,7 @@ request.interceptors.response.use(
     if (res && typeof res.code !== 'undefined' && res.code !== 200) {
       if (res.code === 1001 || res.code === 1003) {
         localStorage.removeItem('adminToken');
-        window.location.href = '/login';
+        window.location.href = '/admin/login';
         return Promise.reject(new Error(res.message));
       }
       message.error(res.message || '请求失败');
@@ -37,7 +37,7 @@ request.interceptors.response.use(
     if (status === 401 || status === 403) {
       localStorage.removeItem('adminToken');
       message.error('登录已过期，请重新登录');
-      window.location.href = '/login';
+      window.location.href = '/admin/login';
       return Promise.reject(error);
     }
     message.error('网络错误，请稍后重试');

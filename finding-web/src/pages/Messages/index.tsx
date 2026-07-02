@@ -154,7 +154,7 @@ export default function MessagesPage() {
                     </span>
                   </div>
                   <div className="conv-bottom">
-                    <span className="conv-preview">{conv.lastMessage || '暂无消息'}</span>
+                    <span className="conv-preview">{previewText(conv.lastMessage)}</span>
                     {conv.unreadCount > 0 && <span className="conv-badge">{conv.unreadCount}</span>}
                   </div>
                 </div>
@@ -187,7 +187,7 @@ export default function MessagesPage() {
                       </span>
                     </div>
                     <div className="conv-bottom">
-                      <span className="conv-preview">{g.lastMessage || '暂无消息'}</span>
+                      <span className="conv-preview">{previewText(g.lastMessage)}</span>
                     </div>
                   </div>
                 </div>
@@ -202,6 +202,12 @@ export default function MessagesPage() {
         onSuccess={() => { setShowLogin(false); window.location.reload(); }} />
     </div>
   );
+}
+
+function previewText(msg: string | null | undefined): string {
+  if (!msg) return '暂无消息';
+  if (msg.startsWith('/uploads/') || msg.startsWith('http')) return '[图片]';
+  return msg;
 }
 
 function formatConvTime(dateStr: string): string {

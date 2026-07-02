@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { authApi } from '../../../api/auth';
 import { uploadApi } from '../../../api/upload';
 import { showToast } from '../../../components/Toast';
+import { APP_CONFIG } from '../../../utils/config';
 import './index.css';
 
 const GENDER_OPTIONS = [
@@ -151,7 +152,7 @@ export default function ProfileEditPage() {
           <input
             className="pe-field-input"
             type="text"
-            placeholder="山东理工大学"
+            placeholder={APP_CONFIG.SCHOOL_NAME}
             value={school}
             onChange={(e) => setSchool(e.target.value)}
             maxLength={50}

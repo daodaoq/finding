@@ -13,7 +13,7 @@ import Login from './pages/Login';
 export default function App() {
   return (
     <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#ff6b81' } }}>
-      <BrowserRouter>
+      <BrowserRouter basename="/admin">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<AdminLayout />}>

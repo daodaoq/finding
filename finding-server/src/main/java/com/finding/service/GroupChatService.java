@@ -67,7 +67,7 @@ public class GroupChatService {
             GroupChatVO vo = toVO(g, userId);
             GroupMessage last = lastMsgMap.get(g.getId());
             if (last != null) {
-                vo.setLastMessage(last.getContent());
+                vo.setLastMessage("image".equals(last.getMessageType()) ? "[图片]" : last.getContent());
                 vo.setLastMessageAt(last.getCreatedAt());
             }
             return vo;

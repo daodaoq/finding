@@ -1,11 +1,10 @@
 package com.finding.websocket;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
-/**
- * WebSocket 消息体 —— 客户端和服务端之间的统一消息格式。
- */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class WsMessage {
 
     /** 消息类型: chat / heartbeat / pong / system */

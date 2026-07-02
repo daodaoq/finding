@@ -80,6 +80,15 @@ public class PostController {
         return Result.ok();
     }
 
+    /** 我发布的动态 */
+    @GetMapping("/my")
+    public Result<PageVO<PostVO>> myPosts(@RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(postService.getMyPosts(userId, page, size));
+    }
+
     /** 我点赞过的动态 */
     @GetMapping("/my-likes")
     public Result<PageVO<PostVO>> myLikes(@RequestParam(defaultValue = "1") int page,

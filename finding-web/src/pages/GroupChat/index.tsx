@@ -16,6 +16,7 @@ export default function GroupChatPage() {
 
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const msgListRef = useRef<HTMLDivElement>(null);
@@ -25,14 +26,24 @@ export default function GroupChatPage() {
     if (el) el.scrollTop = el.scrollHeight;
   };
 
-  useEffect(() => { loadMessages(); }, [groupId]);
+  useEffect(() => {
+    if (groupId && !isNaN(groupId)) {
+      loadMessages();
+    } else {
+      setLoading(false);
+      setLoadError(true);
+    }
+  }, [groupId]);
 
   const loadMessages = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res = await groupChatApi.getMessageHistory(groupId);
       setMessages(res.data.data.records || []);
-    } catch { /**/ }
+    } catch (e) {
+      setLoadError(true);
+    }
     finally { setLoading(false); }
   };
 
@@ -85,13 +96,26 @@ export default function GroupChatPage() {
     <div className="chat-page">
       <div className="chat-header">
         <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-        <span className="chat-header-name" style={{ cursor: 'pointer' }}
+        <span className="chat-header-name">{groupName}</span>
+        <button className="chat-info-btn" style={{
+          marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: '0 4px',
+        }}
           onClick={() => navigate(`/messages/group-chat/${groupId}/info?name=${encodeURIComponent(groupName)}`)}>
-          {groupName}
-        </span>
+          ℹ️
+        </button>
       </div>
 
       <div className="chat-messages" ref={msgListRef}>
+        {loadError && (
+          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+            ⚠️ 加载失败，请确认已加入该群聊
+          </div>
+        )}
+        {!loadError && messages.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 40, color: '#ccc' }}>
+            暂无消息，发送第一条消息吧
+          </div>
+        )}
         {messages.map((msg, i) => {
           const prevMsg = i > 0 ? messages[i - 1] : null;
           const showTimeSep = !prevMsg ||

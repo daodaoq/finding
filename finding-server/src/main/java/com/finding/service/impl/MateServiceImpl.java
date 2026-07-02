@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -211,26 +214,60 @@ public class MateServiceImpl implements MateService {
 
     @Override
     public PageVO<MateVO> getMyJoinedInvitations(Long userId, MateQueryDTO query) {
-        Page<MateParticipant> page = new Page<>(query.getPage(), query.getSize());
-        Page<MateParticipant> participants = participantMapper.selectPage(page,
+        // 查到所有加入的搭子
+        List<MateParticipant> allParticipants = participantMapper.selectList(
                 new LambdaQueryWrapper<MateParticipant>()
                         .eq(MateParticipant::getUserId, userId)
-                        .eq(MateParticipant::getStatus, 1)
-                        .orderByDesc(MateParticipant::getCreatedAt));
+                        .eq(MateParticipant::getStatus, 1));
 
-        List<Long> invitationIds = participants.getRecords().stream()
-                .map(MateParticipant::getInvitationId).collect(Collectors.toList());
-        if (invitationIds.isEmpty()) {
+        if (allParticipants.isEmpty()) {
             return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
         }
 
-        List<MateInvitation> invitations = invitationMapper.selectBatchIds(invitationIds);
+        List<Long> invitationIds = allParticipants.stream()
+                .map(MateParticipant::getInvitationId).distinct().toList();
+
+        // 查搭子详情
+        List<MateInvitation> allInvitations = invitationMapper.selectBatchIds(invitationIds);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 按状态过滤
+        List<MateInvitation> filtered;
+        if (query.getStatus() == null) {
+            // 全部
+            filtered = new ArrayList<>(allInvitations);
+        } else if (query.getStatus() == 1) {
+            // 进行中：status=1 且 activityTime 未过
+            filtered = allInvitations.stream()
+                    .filter(m -> m.getStatus() == 1 &&
+                            (m.getActivityTime() == null || m.getActivityTime().isAfter(now)))
+                    .collect(Collectors.toList());
+        } else {
+            // 已结束：status=2 或 activityTime 已过
+            filtered = allInvitations.stream()
+                    .filter(m -> m.getStatus() == 2 ||
+                            (m.getActivityTime() != null && !m.getActivityTime().isAfter(now)))
+                    .collect(Collectors.toList());
+        }
+
+        // 按活动时间排序（最近的在前）
+        filtered.sort((a, b) -> {
+            LocalDateTime ta = a.getActivityTime() != null ? a.getActivityTime() : a.getCreatedAt();
+            LocalDateTime tb = b.getActivityTime() != null ? b.getActivityTime() : b.getCreatedAt();
+            return tb.compareTo(ta); // 降序
+        });
+
+        long total = filtered.size();
+        int from = Math.min((query.getPage() - 1) * query.getSize(), filtered.size());
+        int to = Math.min(from + query.getSize(), filtered.size());
+        List<MateInvitation> paged = filtered.subList(from, to);
+
         Double lat = query.getLatitude() != null ? query.getLatitude().doubleValue() : null;
         Double lng = query.getLongitude() != null ? query.getLongitude().doubleValue() : null;
-        List<MateVO> records = invitations.stream()
+        List<MateVO> records = paged.stream()
                 .map(m -> toVO(m, userId, lat, lng))
                 .collect(Collectors.toList());
-        return PageVO.of(records, participants.getTotal(), query.getPage(), query.getSize());
+        return PageVO.of(records, total, query.getPage(), query.getSize());
     }
 
     private MateVO toVO(MateInvitation m, Long currentUserId, Double userLat, Double userLng) {

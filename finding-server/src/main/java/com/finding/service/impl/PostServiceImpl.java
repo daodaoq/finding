@@ -289,6 +289,19 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public PageVO<PostVO> getMyPosts(Long userId, int page, int size) {
+        Page<Post> pg = new Page<>(page, size);
+        Page<Post> result = postMapper.selectPage(pg,
+                new LambdaQueryWrapper<Post>()
+                        .eq(Post::getUserId, userId)
+                        .orderByDesc(Post::getCreatedAt));
+        List<PostVO> records = result.getRecords().stream()
+                .map(p -> toVO(p, userId))
+                .collect(Collectors.toList());
+        return PageVO.of(records, result.getTotal(), page, size);
+    }
+
+    @Override
     public PageVO<PostVO> getMyLikedPosts(Long userId, int page, int size) {
         Page<PostLike> likePage = new Page<>(page, size);
         Page<PostLike> likes = likeMapper.selectPage(likePage,

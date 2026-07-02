@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api/auth';
 import { showToast } from '../../components/Toast';
+import { APP_CONFIG } from '../../utils/config';
 import type { User } from '../../types/user';
 import './index.css';
 
@@ -55,7 +56,7 @@ export default function MinePage() {
       case 'my-joined': navigate('/mine/joined'); break;
       case 'messages': navigate('/messages'); break;
       case 'about':
-        showToast('Finding 大学生社交平台 v1.0\n山东理工大学');
+        showToast(`Finding ${APP_CONFIG.DESCRIPTION} ${APP_CONFIG.VERSION}\n${APP_CONFIG.SCHOOL_NAME}`);
         break;
     }
   };
@@ -72,7 +73,7 @@ export default function MinePage() {
         <div className="mine-top-guest">
           <div className="guest-avatar-lg">👤</div>
           <h2 className="guest-title">登录 Finding</h2>
-          <p className="guest-sub">山东理工大学学生专属社交平台</p>
+          <p className="guest-sub">{APP_CONFIG.SCHOOL_NAME}学生专属社交平台</p>
           <button className="guest-login-btn" onClick={() => navigate('/login')}>
             手机号登录 / 注册
           </button>
@@ -96,7 +97,7 @@ export default function MinePage() {
         <div className="mine-header-info">
           <span className="mine-nickname">{displayUser?.nickname || '未设置昵称'}</span>
           <span className="mine-school">
-            {displayUser?.school || '山东理工大学'}
+            {displayUser?.school || APP_CONFIG.SCHOOL_NAME}
             {displayUser?.realNameVerified === 2 && <span className="verified-badge">✓ 已认证</span>}
           </span>
           {displayUser?.realNameVerified !== 2 && (
@@ -159,7 +160,7 @@ export default function MinePage() {
         退出登录
       </button>
 
-      <div className="mine-version">Finding v1.0 · 山东理工大学</div>
+      <div className="mine-version">Finding {APP_CONFIG.VERSION} · {APP_CONFIG.SCHOOL_NAME}</div>
     </div>
   );
 }

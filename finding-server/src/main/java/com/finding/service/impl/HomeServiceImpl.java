@@ -2,12 +2,8 @@ package com.finding.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.finding.entity.Banner;
-import com.finding.entity.User;
-import com.finding.entity.UserFollow;
-import com.finding.mapper.BannerMapper;
-import com.finding.mapper.UserFollowMapper;
-import com.finding.mapper.UserMapper;
+import com.finding.entity.*;
+import com.finding.mapper.*;
 import com.finding.service.HomeService;
 import com.finding.utils.GeoUtils;
 import com.finding.vo.HomeFeedVO;
@@ -15,6 +11,7 @@ import com.finding.vo.PageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,6 +22,7 @@ public class HomeServiceImpl implements HomeService {
     private final UserMapper userMapper;
     private final UserFollowMapper followMapper;
     private final BannerMapper bannerMapper;
+    private final MessageMapper messageMapper;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -52,9 +50,25 @@ public class HomeServiceImpl implements HomeService {
 
     @Override
     public void likeUser(Long userId, Long targetUserId) {
-        // Create a follow-like relationship
-        // This is the "heart" action that sends a chat request
-        // TODO: implement actual like/chat request logic
+        // 创建关注关系
+        if (followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, userId)
+                .eq(UserFollow::getFolloweeId, targetUserId)) == 0) {
+            UserFollow follow = new UserFollow();
+            follow.setFollowerId(userId);
+            follow.setFolloweeId(targetUserId);
+            followMapper.insert(follow);
+        }
+
+        // 发送"喜欢"通知
+        User fromUser = userMapper.selectById(userId);
+        Message msg = new Message();
+        msg.setFromUserId(userId);
+        msg.setToUserId(targetUserId);
+        msg.setType("like");
+        msg.setContent((fromUser != null ? fromUser.getNickname() : "有人") + "对你表示了喜欢");
+        msg.setCreatedAt(LocalDateTime.now());
+        messageMapper.insert(msg);
     }
 
     @Override

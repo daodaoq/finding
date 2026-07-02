@@ -81,6 +81,23 @@ public class WebSocketServer extends TextWebSocketHandler {
         }
     }
 
+    // ── 传输错误 ──
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        log.error("WebSocket 传输错误: sessionId={}", session.getId(), exception);
+        // 清理死连接
+        Long userId = ONLINE_MAP.remove(session);
+        if (userId != null) {
+            CopyOnWriteArraySet<WebSocketSession> channels = USER_CHANNELS.get(userId);
+            if (channels != null) {
+                channels.remove(session);
+                if (channels.isEmpty()) USER_CHANNELS.remove(userId);
+            }
+        }
+        try { session.close(); } catch (IOException ignored) {}
+    }
+
     // ── 连接断开 ──
 
     @Override

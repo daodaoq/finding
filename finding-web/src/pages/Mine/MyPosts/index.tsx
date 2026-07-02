@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postApi } from '../../../api/post';
-import { useAuthStore } from '../../../store/authStore';
 import PostCard from '../../../components/PostCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
@@ -11,16 +10,21 @@ import '../subpage.css';
 export default function MyPostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
-  const user = useAuthStore(s => s.user);
 
-  useEffect(() => { loadPosts(); }, []);
+  useEffect(() => { loadPosts(1); }, []);
 
-  const loadPosts = async () => {
+  const loadPosts = async (p: number) => {
+    setLoading(true);
     try {
-      const res = await postApi.list({ tab: 'latest', page: 1, size: 50 } as any);
-      const mine = res.data.data.records.filter(p => p.userId === user?.id);
-      setPosts(mine);
+      const res = await postApi.myPosts(p, 10);
+      const data = res.data.data;
+      if (p === 1) setPosts(data.records);
+      else setPosts((prev) => [...prev, ...data.records]);
+      setHasMore(data.hasMore);
+      setPage(p);
     } catch { /* */ }
     finally { setLoading(false); }
   };
@@ -41,6 +45,11 @@ export default function MyPostsPage() {
         {loading && <LoadingSkeleton />}
         {!loading && posts.map(p => <PostCard key={p.id} post={p} onLike={handleLike} onClick={id => navigate(`/square/post/${id}`)} />)}
         {!loading && posts.length === 0 && <EmptyState message="还没有发布过动态" />}
+        {hasMore && posts.length > 0 && (
+          <button className="load-more-btn" onClick={() => loadPosts(page + 1)} disabled={loading}>
+            {loading ? '加载中...' : '加载更多'}
+          </button>
+        )}
       </div>
     </div>
   );

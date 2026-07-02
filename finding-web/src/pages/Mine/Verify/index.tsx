@@ -4,6 +4,7 @@ import { authApi } from '../../../api/auth';
 import { uploadApi } from '../../../api/upload';
 import { useAuthStore } from '../../../store/authStore';
 import { showToast } from '../../../components/Toast';
+import { APP_CONFIG } from '../../../utils/config';
 import './index.css';
 
 export default function VerifyPage() {
@@ -14,7 +15,7 @@ export default function VerifyPage() {
 
   const [realName, setRealName] = useState('');
   const [studentId, setStudentId] = useState('');
-  const [school, setSchool] = useState(user?.school || '山东理工大学');
+  const [school, setSchool] = useState(user?.school || APP_CONFIG.SCHOOL_NAME);
   const [studentCard, setStudentCard] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +48,7 @@ export default function VerifyPage() {
       await authApi.submitVerification({
         realName: realName.trim(),
         studentId: studentId.trim(),
-        school: school.trim() || '山东理工大学',
+        school: school.trim() || APP_CONFIG.SCHOOL_NAME,
         studentCard: studentCard || undefined,
       } as any);
       // 更新本地状态为"审核中"
@@ -71,7 +72,7 @@ export default function VerifyPage() {
         <div className="ver-status-card approved">
           <div className="ver-status-icon">✅</div>
           <div className="ver-status-title">认证已通过</div>
-          <div className="ver-status-desc">你是山东理工大学已认证学生，可使用全部功能</div>
+          <div className="ver-status-desc">你是{APP_CONFIG.SCHOOL_NAME}已认证学生，可使用全部功能</div>
         </div>
       </div>
     );
@@ -145,7 +146,7 @@ export default function VerifyPage() {
           <input
             className="ver-field-input"
             type="text"
-            placeholder="山东理工大学"
+            placeholder={APP_CONFIG.SCHOOL_NAME}
             value={school}
             onChange={(e) => setSchool(e.target.value)}
             maxLength={50}

@@ -11,12 +11,15 @@ interface Props {
 export default function MateCard({ mate, onJoin, onClick }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id);
   const isOwner = currentUserId != null && mate.userId === currentUserId;
+  const isEnded = mate.status === 2 || (mate.activityTime != null && new Date(mate.activityTime).getTime() < Date.now());
+  const statusClass = isEnded ? 'ended' : `status-${mate.status}`;
+  const statusText = isEnded ? '已结束' : mate.isFull ? '已满' : '招募中';
   return (
     <div className="mate-card" onClick={() => onClick(mate.id)}>
       <div className="mate-card-top">
         <span className="mate-category">{mate.categoryDesc || mate.category}</span>
-        <span className={`mate-status status-${mate.status}`}>
-          {mate.status === 2 ? '已关闭' : mate.isFull ? '已满' : '招募中'}
+        <span className={`mate-status ${statusClass}`}>
+          {statusText}
         </span>
       </div>
       <h4 className="mate-title">{mate.title}</h4>

@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `post` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL,
     `content` TEXT,
-    `images` JSON DEFAULT NULL,
+    `images` VARCHAR(2000) DEFAULT NULL COMMENT 'comma-separated image URLs',
     `location` VARCHAR(100) DEFAULT NULL,
     `city` VARCHAR(50) DEFAULT NULL,
     `latitude` DECIMAL(10,7) DEFAULT NULL,
@@ -220,6 +220,100 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     PRIMARY KEY (`id`),
     KEY `idx_chat_conv` (`conversation_id`, `created_at`),
     KEY `idx_chat_room` (`room_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11a. room (MallChat 聊天容器)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `room` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `type` INT DEFAULT 1 COMMENT '1=单聊, 2=群聊',
+    `hot_flag` INT DEFAULT 0,
+    `active_time` DATETIME DEFAULT NULL,
+    `last_msg_id` BIGINT DEFAULT NULL,
+    `ext_json` TEXT DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11b. room_friend (单聊房间关联)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `room_friend` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `room_id` BIGINT NOT NULL,
+    `uid1` BIGINT NOT NULL,
+    `uid2` BIGINT NOT NULL,
+    `room_key` VARCHAR(64) NOT NULL,
+    `status` INT DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_room_key` (`room_key`),
+    KEY `idx_room_id` (`room_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11c. contact (用户-会话关联)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `contact` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `uid` BIGINT NOT NULL,
+    `room_id` BIGINT NOT NULL,
+    `read_time` DATETIME DEFAULT NULL,
+    `active_time` DATETIME DEFAULT NULL,
+    `last_msg_id` BIGINT DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_uid_room` (`uid`, `room_id`),
+    KEY `idx_room_id` (`room_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11d. room_group (群聊房间关联)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `room_group` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `room_id` BIGINT NOT NULL,
+    `name` VARCHAR(100) NOT NULL,
+    `avatar` VARCHAR(500) DEFAULT NULL,
+    `owner_uid` BIGINT NOT NULL,
+    `announcement` VARCHAR(500) DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_room_id` (`room_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11e. group_member (群成员)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `group_member` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `group_id` BIGINT NOT NULL,
+    `uid` BIGINT NOT NULL,
+    `role` TINYINT DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_group_id` (`group_id`),
+    KEY `idx_uid` (`uid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11f. message_mark (消息标记)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `message_mark` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `msg_id` BIGINT NOT NULL,
+    `uid` BIGINT NOT NULL,
+    `mark_type` TINYINT NOT NULL,
+    `act_type` TINYINT NOT NULL,
+    `status` TINYINT DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_msg_id` (`msg_id`),
+    KEY `idx_uid` (`uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

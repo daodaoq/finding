@@ -9,6 +9,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { MATE_CATEGORIES } from '../../utils/constants';
+import { APP_CONFIG } from '../../utils/config';
 import type { Post } from '../../types/post';
 import type { Mate } from '../../types/mate';
 import './index.css';
@@ -154,7 +155,7 @@ export default function HomePage() {
     <div className="home-page" onScroll={handleScroll}>
       {/* 顶部：学校名 + 搜索框 */}
       <div className="home-top">
-        <span className="home-school">山东理工大学</span>
+        <span className="home-school">{APP_CONFIG.SCHOOL_NAME}</span>
         <div className="home-search-wrapper" onClick={() => navigate('/search')}>
           <span className="home-search-icon">🔍</span>
           <input className="home-search-input" type="text" placeholder="搜索用户、动态、搭子..." readOnly />

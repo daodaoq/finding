@@ -17,6 +17,9 @@ public interface PostService {
     CommentVO addComment(Long userId, Long postId, Long parentId, String content);
     void deleteComment(Long userId, Long commentId);
 
+    /** 获取当前用户发布的动态列表 */
+    PageVO<PostVO> getMyPosts(Long userId, int page, int size);
+
     /** 获取当前用户点赞过的动态列表 */
     PageVO<PostVO> getMyLikedPosts(Long userId, int page, int size);
 }

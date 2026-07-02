@@ -7,16 +7,25 @@ import EmptyState from '../../../components/EmptyState';
 import type { Mate } from '../../../types/mate';
 import '../subpage.css';
 
+const TABS = [
+  { key: 'all', label: '全部' },
+  { key: 'active', label: '进行中' },
+  { key: 'ended', label: '已结束' },
+] as const;
+
 export default function MyJoinedPage() {
   const [mates, setMates] = useState<Mate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
   const navigate = useNavigate();
 
-  useEffect(() => { loadJoined(); }, []);
+  useEffect(() => { loadJoined(); }, [activeTab]);
 
   const loadJoined = async () => {
+    setLoading(true);
     try {
-      const res = await mateApi.myJoined(1, 50);
+      const status = activeTab === 'active' ? 1 : activeTab === 'ended' ? 2 : undefined;
+      const res = await mateApi.myJoined(1, 50, status);
       setMates(res.data.data.records);
     } catch { /* */ }
     finally { setLoading(false); }
@@ -28,12 +37,28 @@ export default function MyJoinedPage() {
         <button className="back-btn" onClick={() => navigate('/mine')}>←</button>
         <h2>我加入的搭子</h2>
       </div>
+      <div className="subpage-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            className={`tab ${activeTab === t.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
         {!loading && mates.map(m => (
           <MateCard key={m.id} mate={m} onJoin={() => {}} onClick={id => navigate(`/mate/${id}`)} />
         ))}
-        {!loading && mates.length === 0 && <EmptyState message="还没有加入任何搭子" />}
+        {!loading && mates.length === 0 && (
+          <EmptyState message={
+            activeTab === 'all' ? '还没有加入任何搭子' :
+            activeTab === 'active' ? '没有进行中的搭子' : '没有已结束的搭子'
+          } />
+        )}
       </div>
     </div>
   );

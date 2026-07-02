@@ -22,9 +22,9 @@ export const mateApi = {
   myInvitations: (page = 1, size = 20) =>
     request.get<ApiResponse<PageResult<Mate>>>('/mates/my', { params: { page, size } }),
 
-  /** 我加入的搭子 */
-  myJoined: (page = 1, size = 20) =>
-    request.get<ApiResponse<PageResult<Mate>>>('/mates/my-joined', { params: { page, size } }),
+  /** 我加入的搭子，status: 空=全部, 1=进行中, 2=已结束 */
+  myJoined: (page = 1, size = 20, status?: number) =>
+    request.get<ApiResponse<PageResult<Mate>>>('/mates/my-joined', { params: { page, size, status } }),
 
   /** 退出搭子 */
   leave: (id: number) =>

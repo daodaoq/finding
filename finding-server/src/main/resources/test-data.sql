@@ -10,11 +10,11 @@ USE finding;
 -- 测试用户 (5个)
 -- ============================================================
 INSERT INTO `user` (`id`, `username`, `password`, `phone`, `nickname`, `avatar`, `gender`, `school`, `student_id`, `signature`, `city`, `real_name_verified`, `status`, `role`, `last_login_at`) VALUES
-(1, '13800000001', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000001', '小明同学', NULL, 1, '山东理工大学', '2024001', '热爱运动，喜欢跑步和篮球 🏀', '淄博', 2, 1, 'user', NOW()),
+(1, '13800000001', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000001', '小明同学', NULL, 1, '山东理工大学', '2026001', '热爱运动，喜欢跑步和篮球 🏀', '淄博', 2, 1, 'user', NOW()),
 (2, '13800000002', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000002', '小美学姐', NULL, 2, '山东理工大学', '2023002', '大三在读，喜欢看电影和旅游 ✈️', '淄博', 2, 1, 'user', NOW()),
-(3, '13800000003', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000003', '程序员小刚', NULL, 1, '山东理工大学', '2024003', '计算机系，找一起刷题的学习搭子 📚', '淄博', 1, 1, 'user', NOW()),
+(3, '13800000003', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000003', '程序员小刚', NULL, 1, '山东理工大学', '2026003', '计算机系，找一起刷题的学习搭子 📚', '淄博', 1, 1, 'user', NOW()),
 (4, '13800000004', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000004', '考研人小王', NULL, 1, '山东理工大学', '2021004', '24考研，找个备考搭子互相监督 💪', '淄博', 2, 1, 'user', NOW()),
-(5, '13800000005', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000005', '游戏少女', NULL, 2, '山东理工大学', '2024005', '又菜又爱玩，找游戏搭子 🎮', '淄博', 0, 1, 'user', NOW());
+(5, '13800000005', '$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW', '13800000005', '游戏少女', NULL, 2, '山东理工大学', '2026005', '又菜又爱玩，找游戏搭子 🎮', '淄博', 0, 1, 'user', NOW());
 
 -- 管理员账号
 INSERT INTO `user` (`id`, `username`, `password`, `phone`, `nickname`, `avatar`, `gender`, `school`, `real_name_verified`, `status`, `role`, `last_login_at`) VALUES

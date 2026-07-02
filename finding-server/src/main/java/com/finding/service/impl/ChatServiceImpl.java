@@ -140,7 +140,9 @@ public class ChatServiceImpl implements ChatService {
             vo.setLastMessageAt(contact.getActiveTime());
 
             PrivateChat lastMsg = lastMsgMap.get(contact.getRoomId());
-            vo.setLastMessage(lastMsg != null ? lastMsg.getContent() : null);
+            if (lastMsg != null) {
+                vo.setLastMessage("image".equals(lastMsg.getMessageType()) ? "[图片]" : lastMsg.getContent());
+            }
 
             // 计算未读数
             int unread = 0;
@@ -287,8 +289,9 @@ public class ChatServiceImpl implements ChatService {
                         .orderByDesc(PrivateChat::getCreatedAt)
                         .last("LIMIT 1"));
         if (!lastMsgs.isEmpty()) {
-            vo.setLastMessage(lastMsgs.get(0).getContent());
-            vo.setLastMessageAt(lastMsgs.get(0).getCreatedAt());
+            PrivateChat last = lastMsgs.get(0);
+            vo.setLastMessage("image".equals(last.getMessageType()) ? "[图片]" : last.getContent());
+            vo.setLastMessageAt(last.getCreatedAt());
         }
 
         return vo;

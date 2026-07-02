@@ -56,6 +56,7 @@ public enum ResultCode {
     CHAT_APPLY_ALREADY_HANDLED(6003, "申请已处理，不能重复操作"),
 
     // Common errors (9xxx)
+    FORBIDDEN(9004, "无权限访问"),
     PARAM_ERROR(9001, "参数错误"),
     PARAM_VALIDATION_FAILED(9002, "参数校验失败"),
     INTERNAL_ERROR(9999, "服务器内部错误");

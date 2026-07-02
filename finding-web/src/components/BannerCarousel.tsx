@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Banner } from '../types/message';
 import './BannerCarousel.css';
 
@@ -12,10 +13,9 @@ export default function BannerCarousel({ banners }: Props) {
   const startX = useRef(0);
   const offsetX = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const navigate = useNavigate();
 
   const len = banners.length;
-  const prev = (len + current - 1) % len;
-  const next = (current + 1) % len;
 
   const startTimer = useCallback(() => {
     stopTimer();
@@ -83,6 +83,7 @@ export default function BannerCarousel({ banners }: Props) {
             key={b.id || i}
             className="banner-slide"
             style={{ backgroundImage: `url(${b.imageUrl})` }}
+            onClick={() => { if (b.linkUrl) navigate(b.linkUrl); }}
           >
             <span className="banner-title">{b.title}</span>
           </div>
