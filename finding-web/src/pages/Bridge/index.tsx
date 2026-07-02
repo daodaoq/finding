@@ -7,6 +7,7 @@ import UserCard from '../../components/UserCard';
 import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useAuthStore } from '../../store/authStore';
 import { QUICK_ACTIONS } from '../../utils/constants';
@@ -33,7 +34,7 @@ export default function BridgePage() {
     try {
       const res = await homeApi.banners();
       setBanners(res.data.data);
-    } catch { /* ignore */ }
+    } catch { showToast('加载Banner失败'); }
   };
 
   const loadUsers = async (p: number) => {
@@ -45,7 +46,7 @@ export default function BridgePage() {
       else setUsers((prev) => [...prev, ...data.records]);
       setHasMore(data.hasMore);
       setPage(p);
-    } catch { /* ignore */ }
+    } catch { showToast('加载推荐用户失败'); }
     finally { setLoading(false); }
   };
 
@@ -56,7 +57,7 @@ export default function BridgePage() {
         setUsers((prev) =>
           prev.map((u) => (u.userId === userId ? { ...u, isLiked: true } : u))
         );
-      } catch { /* error handled by interceptor */ }
+      } catch { showToast('发送申请失败'); }
     });
   };
 

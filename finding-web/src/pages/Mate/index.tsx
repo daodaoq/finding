@@ -6,6 +6,7 @@ import CategoryGrid from '../../components/CategoryGrid';
 import MateCard from '../../components/MateCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import { showToast } from '../../components/Toast';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate, MateCategory } from '../../types/mate';
 import './index.css';
@@ -36,7 +37,7 @@ export default function MatePage() {
       else setMates((prev) => [...prev, ...data.records]);
       setHasMore(data.hasMore);
       setPage(p);
-    } catch { /* ignore */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -45,7 +46,7 @@ export default function MatePage() {
       await mateApi.join(id);
       setMates((prev) => prev.map((m) =>
         m.id === id ? { ...m, hasJoined: true, currentParticipants: m.currentParticipants + 1 } : m));
-    } catch { /* ignore */ }
+    } catch { showToast('操作失败'); }
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {

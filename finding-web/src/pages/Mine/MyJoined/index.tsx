@@ -4,6 +4,7 @@ import { mateApi } from '../../../api/mate';
 import MateCard from '../../../components/MateCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import { showToast } from '../../../components/Toast';
 import type { Mate } from '../../../types/mate';
 import '../subpage.css';
 
@@ -27,7 +28,7 @@ export default function MyJoinedPage() {
       const status = activeTab === 'active' ? 1 : activeTab === 'ended' ? 2 : undefined;
       const res = await mateApi.myJoined(1, 50, status);
       setMates(res.data.data.records);
-    } catch { /* */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 

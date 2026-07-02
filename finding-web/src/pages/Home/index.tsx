@@ -8,6 +8,7 @@ import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
+import { showToast } from '../../components/Toast';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import { APP_CONFIG } from '../../utils/config';
 import type { Post } from '../../types/post';
@@ -85,7 +86,7 @@ export default function HomePage() {
       else setPosts((prev) => [...prev, ...data.records]);
       setHasMore(data.hasMore);
       setPage(p);
-    } catch { /* ignore */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -103,7 +104,7 @@ export default function HomePage() {
       else setMates((prev) => [...prev, ...data.records]);
       setHasMore(data.hasMore);
       setPage(p);
-    } catch { /* ignore */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -113,7 +114,7 @@ export default function HomePage() {
         await postApi.like(id);
         setPosts((prev) => prev.map((p) =>
           p.id === id ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
-      } catch { /* ignore */ }
+      } catch { showToast('操作失败'); }
     });
   };
 
@@ -123,7 +124,7 @@ export default function HomePage() {
         await mateApi.join(id);
         setMates((prev) => prev.map((m) =>
           m.id === id ? { ...m, hasJoined: true, currentParticipants: m.currentParticipants + 1 } : m));
-      } catch { /* ignore */ }
+      } catch { showToast('操作失败'); }
     });
   };
 

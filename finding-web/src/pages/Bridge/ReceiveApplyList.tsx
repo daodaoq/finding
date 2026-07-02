@@ -23,7 +23,7 @@ export default function ReceiveApplyList() {
     try {
       const res = await bridgeApi.receivedApplies(1, 50);
       setApplies(res.data.data.records);
-    } catch { /* ignore */ }
+    } catch { showToast('加载申请列表失败'); }
     finally { setLoading(false); }
   };
 
@@ -38,7 +38,7 @@ export default function ReceiveApplyList() {
       showToast('已通过申请，可以开始聊天了');
       // 立即跳转到私聊页面
       navigate(`/messages/chat?userId=${apply.fromUserId}&name=${encodeURIComponent(apply.fromUserNickname || '')}&avatar=${encodeURIComponent(apply.fromUserAvatar || '')}`);
-    } catch { /* error handled by interceptor */ }
+    } catch { showToast('操作失败'); }
   };
 
   const handleReject = async () => {
@@ -52,7 +52,7 @@ export default function ReceiveApplyList() {
       );
       setRejectTarget(null);
       showToast('已拒绝申请');
-    } catch { /* error handled by interceptor */ }
+    } catch { showToast('操作失败'); }
   };
 
   const formatTime = (dateStr: string): string => {

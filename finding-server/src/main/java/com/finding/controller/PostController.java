@@ -72,6 +72,14 @@ public class PostController {
         return Result.ok(postService.addComment(userId, id, parentId, content));
     }
 
+    @PostMapping("/{id}/comments/{commentId}/like")
+    public Result<Void> likeComment(@PathVariable Long id, @PathVariable Long commentId) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        postService.toggleCommentLike(userId, commentId);
+        return Result.ok();
+    }
+
     @DeleteMapping("/{id}/comments/{commentId}")
     public Result<Void> deleteComment(@PathVariable Long id, @PathVariable Long commentId) {
         Long userId = JwtInterceptor.getCurrentUserId();

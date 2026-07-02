@@ -30,7 +30,7 @@ export default function CreateGroupPage() {
         avatar: u.avatar,
       }));
       setUsers(list);
-    } catch { /**/ }
+    } catch { showToast('加载关注列表失败'); }
     finally { setLoading(false); }
   };
 

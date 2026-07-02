@@ -4,6 +4,7 @@ import { postApi } from '../../../api/post';
 import PostCard from '../../../components/PostCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import { showToast } from '../../../components/Toast';
 import type { Post } from '../../../types/post';
 import '../subpage.css';
 
@@ -18,7 +19,7 @@ export default function MyLikesPage() {
     try {
       const res = await postApi.myLikes(1, 50);
       setPosts(res.data.data.records);
-    } catch { /* */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -32,7 +33,7 @@ export default function MyLikesPage() {
         }
         return prev.map(p => p.id === id ? { ...p, isLiked: true, likeCount: p.likeCount + 1 } : p);
       });
-    } catch { /* */ }
+    } catch { showToast('操作失败'); }
   };
 
   return (

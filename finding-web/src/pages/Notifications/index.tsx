@@ -4,6 +4,7 @@ import { messageApi } from '../../api/message';
 import MessageItem from '../../components/MessageItem';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import { showToast } from '../../components/Toast';
 import { useMessageStore } from '../../store/messageStore';
 import type { Message } from '../../types/message';
 import './index.css';
@@ -27,7 +28,7 @@ export default function NotificationsPage() {
       ]);
       setMessages(msgRes.data.data.records);
       setUnreadCount(0);
-    } catch { /* ignore */ }
+    } catch { showToast('加载通知失败'); }
     finally { setLoading(false); }
   };
 

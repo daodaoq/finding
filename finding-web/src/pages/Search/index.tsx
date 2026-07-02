@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import request from '../../api/request';
+import { showToast } from '../../components/Toast';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import './index.css';
@@ -32,7 +33,7 @@ export default function SearchPage() {
     try {
       const res = await request.get('/search', { params: { keyword: q.trim() } });
       setResults(res.data.data);
-    } catch { /**/ }
+    } catch { showToast('搜索失败'); }
     finally { setLoading(false); }
   };
 

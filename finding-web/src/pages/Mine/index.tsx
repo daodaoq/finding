@@ -40,7 +40,7 @@ export default function MinePage() {
       const res = await authApi.getMe();
       setProfile(res.data.data);
       setUser(res.data.data);
-    } catch { /* ignore */ }
+    } catch { showToast('加载个人信息失败'); }
   };
 
   const handleMenuClick = (key: string) => {

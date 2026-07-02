@@ -30,6 +30,7 @@ public class PostServiceImpl implements PostService {
 
     private final PostMapper postMapper;
     private final PostLikeMapper likeMapper;
+    private final PostCommentLikeMapper commentLikeMapper;
     private final PostCommentMapper commentMapper;
     private final MessageMapper messageMapper;
     private final UserMapper userMapper;
@@ -254,8 +255,12 @@ public class PostServiceImpl implements PostService {
             vo.setAvatar(author.getAvatar());
         }
 
-        // 是否点过赞（评论点赞暂用 post_like 表逻辑，后续可扩展）
-        vo.setIsLiked(false);
+        // 评论点赞状态
+        if (currentUserId != null) {
+            vo.setIsLiked(commentLikeMapper.selectCount(new LambdaQueryWrapper<PostCommentLike>()
+                    .eq(PostCommentLike::getCommentId, comment.getId())
+                    .eq(PostCommentLike::getUserId, currentUserId)) > 0);
+        }
 
         // 加载子回复（最多3条）
         List<PostComment> children = commentMapper.selectList(
@@ -286,6 +291,45 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "只能删除自己的评论");
         }
         commentMapper.deleteById(commentId);
+    }
+
+    @Override
+    @Transactional
+    public void toggleCommentLike(Long userId, Long commentId) {
+        PostComment comment = commentMapper.selectById(commentId);
+        if (comment == null) {
+            throw new BusinessException(ResultCode.COMMENT_NOT_FOUND);
+        }
+
+        PostCommentLike existing = commentLikeMapper.selectOne(new LambdaQueryWrapper<PostCommentLike>()
+                .eq(PostCommentLike::getCommentId, commentId)
+                .eq(PostCommentLike::getUserId, userId));
+
+        if (existing != null) {
+            // 取消点赞
+            commentLikeMapper.deleteById(existing.getId());
+            comment.setLikeCount(Math.max(0, (comment.getLikeCount() != null ? comment.getLikeCount() : 0) - 1));
+            commentMapper.updateById(comment);
+        } else {
+            // 点赞
+            PostCommentLike like = new PostCommentLike();
+            like.setCommentId(commentId);
+            like.setUserId(userId);
+            commentLikeMapper.insert(like);
+            comment.setLikeCount((comment.getLikeCount() != null ? comment.getLikeCount() : 0) + 1);
+            commentMapper.updateById(comment);
+
+            // 通知评论作者（非自己）
+            if (!comment.getUserId().equals(userId)) {
+                Message msg = new Message();
+                msg.setFromUserId(userId);
+                msg.setToUserId(comment.getUserId());
+                msg.setType("like");
+                msg.setContent("赞了你的评论");
+                msg.setRelatedId(comment.getPostId());
+                messageMapper.insert(msg);
+            }
+        }
     }
 
     @Override

@@ -4,6 +4,7 @@ import { userApi } from '../../../api/user';
 import { useAuthStore } from '../../../store/authStore';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import { showToast } from '../../../components/Toast';
 import type { User } from '../../../types/user';
 import '../subpage.css';
 
@@ -24,7 +25,7 @@ export default function MyMatesPage() {
       const api = activeTab === 'following' ? userApi.getFollowing : userApi.getFollowers;
       const res = await api(currentUser!.id);
       setUsers(res.data.data.records);
-    } catch { /* */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -40,7 +41,7 @@ export default function MyMatesPage() {
           u.id === user.id ? { ...u, isFollowed: !u.isFollowed } : u
         ));
       }
-    } catch { /* */ }
+    } catch { showToast('操作失败'); }
   };
 
   const getFollowLabel = (u: User) => {

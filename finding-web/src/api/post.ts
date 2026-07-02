@@ -35,4 +35,7 @@ export const postApi = {
 
   deleteComment: (postId: number, commentId: number) =>
     request.delete<ApiResponse<null>>(`/posts/${postId}/comments/${commentId}`),
+
+  likeComment: (postId: number, commentId: number) =>
+    request.post<ApiResponse<null>>(`/posts/${postId}/comments/${commentId}/like`),
 };

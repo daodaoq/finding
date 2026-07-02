@@ -4,6 +4,7 @@ import { postApi } from '../../../api/post';
 import PostCard from '../../../components/PostCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import { showToast } from '../../../components/Toast';
 import type { Post } from '../../../types/post';
 import '../subpage.css';
 
@@ -25,14 +26,14 @@ export default function MyPostsPage() {
       else setPosts((prev) => [...prev, ...data.records]);
       setHasMore(data.hasMore);
       setPage(p);
-    } catch { /* */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
   const handleLike = async (id: number) => {
     try { await postApi.like(id);
       setPosts(prev => prev.map(p => p.id === id ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
-    } catch { /* */ }
+    } catch { showToast('操作失败'); }
   };
 
   return (

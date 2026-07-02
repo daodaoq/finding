@@ -26,7 +26,7 @@ export default function GroupInfoPage() {
       const data = res.data.data;
       setGroup(data);
       setMembers(data.members || []);
-    } catch { /**/ }
+    } catch { showToast('加载群信息失败'); }
     finally { setLoading(false); }
   };
 

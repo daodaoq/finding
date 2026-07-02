@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { bridgeApi } from '../../api/bridge';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import { showToast } from '../../components/Toast';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
 
@@ -28,7 +29,7 @@ export default function SendApplyList() {
     try {
       const res = await bridgeApi.sentApplies(1, 50);
       setApplies(res.data.data.records);
-    } catch { /* ignore */ }
+    } catch { showToast('加载申请列表失败'); }
     finally { setLoading(false); }
   };
 

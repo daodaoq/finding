@@ -7,6 +7,7 @@ import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
+import { showToast } from '../../components/Toast';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate } from '../../types/mate';
 import './index.css';
@@ -49,7 +50,7 @@ export default function SquarePage() {
       else setMates((prev) => [...prev, ...data.records]);
       setHasMore(data.hasMore);
       setPage(p);
-    } catch { /* ignore */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -59,7 +60,7 @@ export default function SquarePage() {
         await mateApi.join(id);
         setMates((prev) => prev.map((m) =>
           m.id === id ? { ...m, hasJoined: true, currentParticipants: m.currentParticipants + 1 } : m));
-      } catch { /* ignore */ }
+      } catch { showToast('操作失败'); }
     });
   };
 

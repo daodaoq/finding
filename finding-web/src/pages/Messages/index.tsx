@@ -6,6 +6,7 @@ import { groupChatApi } from '../../api/groupChat';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import LoginModal from '../../components/LoginModal';
+import { showToast } from '../../components/Toast';
 import { useMessageStore } from '../../store/messageStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
@@ -46,7 +47,7 @@ export default function MessagesPage() {
     try {
       const res = await groupChatApi.listMyGroups();
       setGroups(res.data.data || []);
-    } catch { /**/ }
+    } catch { showToast('加载群聊列表失败'); }
   };
 
   const loadConversations = async (silent = false) => {
@@ -55,7 +56,7 @@ export default function MessagesPage() {
     try {
       const res = await chatApi.listConversations();
       setConversations(res.data.data || []);
-    } catch { /* ignore */ }
+    } catch { showToast('加载会话列表失败'); }
     finally {
       setLoading(false);
       setRefreshing(false);
@@ -66,7 +67,7 @@ export default function MessagesPage() {
     try {
       const res = await messageApi.unreadCount();
       setUnreadCount(res.data.data.count);
-    } catch { /* ignore */ }
+    } catch { /* 后台静默更新，失败不影响使用 */ }
   };
 
   // 点击通知行 → 跳转通知详情

@@ -63,7 +63,7 @@ export default function PostDetailPage() {
     try {
       const res = await postApi.getComments(postId);
       setComments(res.data.data.records);
-    } catch { /* */ }
+    } catch { showToast('加载评论失败'); }
   };
 
   const handleLike = () => {
@@ -72,7 +72,7 @@ export default function PostDetailPage() {
       try {
         await postApi.like(post.id);
         setPost(prev => prev ? { ...prev, isLiked: !prev.isLiked, likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1 } : null);
-      } catch { /* */ }
+      } catch { showToast('操作失败'); }
     });
   };
 
@@ -111,7 +111,26 @@ export default function PostDetailPage() {
 
   const handleCommentLike = (commentId: number) => {
     requireLogin(async () => {
-      showToast('评论点赞功能开发中');
+      try {
+        await postApi.likeComment(postId, commentId);
+        // 更新评论列表中的点赞状态（支持一级评论和子回复）
+        setComments(prev => prev.map(c => {
+          if (c.id === commentId) {
+            return { ...c, isLiked: !c.isLiked, likeCount: c.isLiked ? c.likeCount - 1 : c.likeCount + 1 };
+          }
+          if (c.replies) {
+            return {
+              ...c,
+              replies: c.replies.map(r =>
+                r.id === commentId
+                  ? { ...r, isLiked: !r.isLiked, likeCount: r.isLiked ? r.likeCount - 1 : r.likeCount + 1 }
+                  : r
+              )
+            };
+          }
+          return c;
+        }));
+      } catch { showToast('操作失败'); }
     });
   };
 

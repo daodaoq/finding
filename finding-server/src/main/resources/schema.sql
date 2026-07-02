@@ -102,6 +102,19 @@ CREATE TABLE IF NOT EXISTS `post_like` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- 4a. post_comment_like
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `post_comment_like` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `comment_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_comment_user` (`comment_id`, `user_id`),
+    KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- 5. post_comment
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `post_comment` (

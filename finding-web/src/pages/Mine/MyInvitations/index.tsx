@@ -4,6 +4,7 @@ import { mateApi } from '../../../api/mate';
 import MateCard from '../../../components/MateCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import { showToast } from '../../../components/Toast';
 import type { Mate } from '../../../types/mate';
 import '../subpage.css';
 
@@ -18,7 +19,7 @@ export default function MyInvitationsPage() {
     try {
       const res = await mateApi.myInvitations(1, 50);
       setMates(res.data.data.records);
-    } catch { /* */ }
+    } catch { showToast('加载失败'); }
     finally { setLoading(false); }
   };
 
