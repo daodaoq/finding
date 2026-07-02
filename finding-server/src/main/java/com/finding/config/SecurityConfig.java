@@ -84,6 +84,7 @@ public class SecurityConfig {
                     "/api/v1/mates/{id}",
                     "/api/v1/mates/categories",
                     "/api/v1/home/banners",
+                    "/api/v1/search",
                     "/api/v1/users/{id}",
                     "/api/v1/users/search"
                 ).permitAll()

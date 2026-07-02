@@ -1,0 +1,54 @@
+.gi-page {
+  min-height: 100vh;
+  background: #f8f8f8;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.gi-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; background: #fff; border-bottom: 1px solid #f0f0f0;
+  font-size: 16px; font-weight: 600;
+}
+.gi-loading { text-align: center; color: #ccc; padding: 60px 0; }
+.gi-basic {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px; background: #fff; margin-bottom: 12px;
+}
+.gi-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #f0f0f0; display: flex; align-items: center; justify-content: center;
+  font-size: 32px; overflow: hidden; margin-bottom: 12px;
+}
+.gi-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.gi-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.gi-count { font-size: 13px; color: #999; }
+.gi-section-title {
+  padding: 12px 16px; font-size: 13px; color: #999; background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.gi-member-list { background: #fff; }
+.gi-member-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid #f8f8f8;
+}
+.gi-member-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #f0f0f0; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; overflow: hidden; flex-shrink: 0; cursor: pointer;
+}
+.gi-member-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.gi-member-info { flex: 1; display: flex; align-items: center; gap: 8px; }
+.gi-member-name { font-size: 15px; }
+.gi-role-tag {
+  font-size: 10px; color: #ff6b81; background: rgba(255,107,129,0.1);
+  padding: 2px 6px; border-radius: 8px;
+}
+.gi-remove-btn {
+  background: none; border: 1px solid #ff4d4f; color: #ff4d4f;
+  padding: 4px 12px; border-radius: 12px; font-size: 12px; cursor: pointer;
+}
+.gi-actions { padding: 24px 16px; }
+.gi-leave-btn {
+  width: 100%; padding: 12px; border: 1px solid #ff4d4f; color: #ff4d4f;
+  background: #fff; border-radius: 8px; font-size: 15px; cursor: pointer;
+}

@@ -65,7 +65,7 @@ export default function Announcements() {
   };
 
   const columns: ColumnsType<AnnouncementRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '标题', dataIndex: 'title' },
     { title: '内容', dataIndex: 'content', ellipsis: true },
     { title: '发布时间', dataIndex: 'createdAt', render: (v: string) => v?.replace('T', ' ') },

@@ -20,6 +20,11 @@ import VerifyPage from '../pages/Mine/Verify';
 import PostDetailPage from '../pages/PostDetail';
 import MateDetailPage from '../pages/MateDetail';
 import ChatDetailPage from '../pages/Chat';
+import GroupChatPage from '../pages/GroupChat';
+import GroupInfoPage from '../pages/GroupInfo';
+import CreateGroupPage from '../pages/CreateGroup';
+import UserProfilePage from '../pages/UserProfile';
+import SearchPage from '../pages/Search';
 import CreatePostPage from '../pages/CreatePost';
 import CreateMatePage from '../pages/CreateMate';
 import LoginPage from '../pages/Login';
@@ -41,6 +46,11 @@ const router = createBrowserRouter([
       { path: 'messages', element: <MessagesPage /> },
       { path: 'messages/notifications', element: <NotificationsPage /> },
       { path: 'messages/chat', element: <ChatDetailPage /> },
+      { path: 'messages/group-chat/:id', element: <GroupChatPage /> },
+      { path: 'messages/group-chat/:id/info', element: <GroupInfoPage /> },
+      { path: 'messages/create-group', element: <CreateGroupPage /> },
+      { path: 'user/:id', element: <UserProfilePage /> },
+      { path: 'search', element: <SearchPage /> },
       { path: 'mine', element: <MinePage /> },
       { path: 'mine/posts', element: <MyPostsPage /> },
       { path: 'mine/likes', element: <MyLikesPage /> },

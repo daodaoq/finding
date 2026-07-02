@@ -19,6 +19,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -169,6 +172,7 @@ public class ChatServiceImpl implements ChatService {
 
         // 保存消息（使用 room_id）
         PrivateChat chat = new PrivateChat();
+        chat.setConversationId(convVO.getRoomId()); // 兼容旧字段
         chat.setRoomId(convVO.getRoomId());
         chat.setFromUserId(userId);
         chat.setToUserId(dto.getToUserId());
@@ -177,9 +181,15 @@ public class ChatServiceImpl implements ChatService {
         chat.setIsRead(0);
         privateChatMapper.insert(chat);
 
-        // 发送到 RabbitMQ → MsgSendConsumer 异步处理（更新联系人 + WebSocket 推送）
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.RK_SEND_MSG,
-                new MsgSendMessageDTO(chat.getId()));
+        // 事务提交后再发送 MQ，确保消费者能读到消息
+        final Long msgId = chat.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.RK_SEND_MSG,
+                        new MsgSendMessageDTO(msgId));
+            }
+        });
 
         return convVO;
     }

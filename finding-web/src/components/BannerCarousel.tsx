@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import type { Banner } from '../types/message';
 import './BannerCarousel.css';
 
@@ -8,22 +8,75 @@ interface Props {
 
 export default function BannerCarousel({ banners }: Props) {
   const [current, setCurrent] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const offsetX = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
+
+  const len = banners.length;
+  const prev = (len + current - 1) % len;
+  const next = (current + 1) % len;
+
+  const startTimer = useCallback(() => {
+    stopTimer();
+    if (len <= 1) return;
+    timerRef.current = setInterval(() => setCurrent((c) => (c + 1) % len), 3000);
+  }, [len]);
+
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
 
   useEffect(() => {
-    if (banners.length <= 1) return;
-    const timer = setInterval(() => {
-      setCurrent((c) => (c + 1) % banners.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [banners.length]);
+    startTimer();
+    return stopTimer;
+  }, [startTimer]);
 
-  if (!banners.length) return null;
+  const onStart = (clientX: number) => {
+    stopTimer();
+    startX.current = clientX;
+    offsetX.current = 0;
+    setDragging(true);
+  };
+
+  const onMove = (clientX: number) => {
+    if (!dragging) return;
+    offsetX.current = clientX - startX.current;
+  };
+
+  const onEnd = () => {
+    setDragging(false);
+    const threshold = 50;
+    if (offsetX.current > threshold) {
+      setCurrent((c) => (c - 1 + len) % len);
+    } else if (offsetX.current < -threshold) {
+      setCurrent((c) => (c + 1) % len);
+    }
+    offsetX.current = 0;
+    startTimer();
+  };
+
+  if (!len) return null;
+
+  // 单张不显示指示器
+  const translateX = dragging
+    ? `calc(-${current * 100}% + ${offsetX.current}px)`
+    : `-${current * 100}%`;
 
   return (
-    <div className="banner-carousel">
+    <div
+      className="banner-carousel"
+      onTouchStart={(e) => onStart(e.touches[0].clientX)}
+      onTouchMove={(e) => onMove(e.touches[0].clientX)}
+      onTouchEnd={onEnd}
+      onMouseDown={(e) => { e.preventDefault(); onStart(e.clientX); }}
+      onMouseMove={(e) => dragging && onMove(e.clientX)}
+      onMouseUp={onEnd}
+      onMouseLeave={() => dragging && onEnd()}
+    >
       <div
         className="banner-track"
-        style={{ transform: `translateX(-${current * 100}%)` }}
+        style={{ transform: `translateX(${translateX})`, transition: dragging ? 'none' : 'transform 0.4s ease' }}
       >
         {banners.map((b, i) => (
           <div
@@ -35,11 +88,15 @@ export default function BannerCarousel({ banners }: Props) {
           </div>
         ))}
       </div>
-      <div className="banner-dots">
-        {banners.map((_, i) => (
-          <span key={i} className={`dot ${i === current ? 'active' : ''}`} />
-        ))}
-      </div>
+
+      {len > 1 && (
+        <div className="banner-dots">
+          {banners.map((_, i) => (
+            <span key={i} className={`dot ${i === current ? 'active' : ''}`}
+              onClick={() => { setCurrent(i); startTimer(); }} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

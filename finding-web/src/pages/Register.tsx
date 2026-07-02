@@ -20,7 +20,7 @@ export default function RegisterPage() {
       showToast('验证码已发送');
       setCountdown(60);
       const t = setInterval(() => setCountdown((c) => { if (c <= 1) { clearInterval(t); return 0; } return c - 1; }), 1000);
-    } catch { showToast('发送失败'); }
+    } catch (e: any) { showToast(e?.message || '发送失败'); }
   };
 
   const handleRegister = async () => {
@@ -31,7 +31,7 @@ export default function RegisterPage() {
       await authApi.register({ phone, smsCode, password, nickname, school });
       showToast('注册成功，请登录');
       navigate('/login');
-    } catch { showToast('注册失败'); }
+    } catch (e: any) { showToast(e?.message || '注册失败'); }
   };
 
   return (

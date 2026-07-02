@@ -222,6 +222,7 @@ public class BridgeServiceImpl implements BridgeService {
 
                 // Insert system message via room_id
                 PrivateChat systemMsg = new PrivateChat();
+                systemMsg.setConversationId(roomId); // 兼容旧字段
                 systemMsg.setRoomId(roomId);
                 systemMsg.setFromUserId(userId);
                 systemMsg.setToUserId(apply.getFromUserId());

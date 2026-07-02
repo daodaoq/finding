@@ -97,7 +97,7 @@ export default function Verification() {
   };
 
   const columns: ColumnsType<VerifyRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '手机号', dataIndex: 'phone', width: 130 },
     { title: '真实姓名', dataIndex: 'realName', width: 100 },
     { title: '学号', dataIndex: 'studentId', width: 120 },

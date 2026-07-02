@@ -25,8 +25,6 @@ export const MATE_CATEGORIES = [
 ] as const;
 
 export const QUICK_ACTIONS = [
-  { key: 'watch', label: '一起看', icon: '👀' },
-  { key: 'game', label: '游戏', icon: '🎮' },
   { key: 'like', label: '喜欢', icon: '❤️' },
   { key: 'letter', label: '情书', icon: '💌' },
 ] as const;

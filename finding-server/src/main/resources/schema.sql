@@ -209,7 +209,8 @@ CREATE TABLE IF NOT EXISTS `conversation` (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `private_chat` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `conversation_id` BIGINT NOT NULL,
+    `conversation_id` BIGINT NOT NULL DEFAULT 0 COMMENT 'deprecated, use room_id',
+    `room_id` BIGINT DEFAULT NULL COMMENT 'FK to room.id',
     `from_user_id` BIGINT NOT NULL,
     `to_user_id` BIGINT NOT NULL,
     `content` TEXT,
@@ -217,7 +218,8 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `is_read` TINYINT DEFAULT 0,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_chat_conv` (`conversation_id`, `created_at`)
+    KEY `idx_chat_conv` (`conversation_id`, `created_at`),
+    KEY `idx_chat_room` (`room_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -247,6 +249,20 @@ CREATE TABLE IF NOT EXISTS `group_chat_member` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
     KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 13a. group_message
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `group_message` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `group_id` BIGINT NOT NULL,
+    `from_user_id` BIGINT NOT NULL,
+    `content` TEXT,
+    `message_type` VARCHAR(10) DEFAULT 'text',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_group_msg` (`group_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

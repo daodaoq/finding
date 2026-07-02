@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ChatBubble.css';
 
 interface ChatMessage {
@@ -16,24 +18,47 @@ interface Props {
 }
 
 export default function ChatBubble({ message, isMine, avatar, nickname }: Props) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleAvatarClick = () => {
+    if (message.fromUserId) {
+      navigate(`/user/${message.fromUserId}`);
+    }
+  };
+
   return (
-    <div className={`chat-bubble-row ${isMine ? 'mine' : 'other'}`}>
-      {/* 对方的头像在最左，我的头像在最右 */}
-      <div className="chat-avatar">
-        {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
-      </div>
-      <div className="chat-bubble-wrapper">
-        {!isMine && <span className="chat-sender">{nickname}</span>}
-        <div className={`chat-bubble ${isMine ? 'bubble-mine' : 'bubble-other'}`}>
-          {message.messageType === 'image' ? (
-            <img src={message.content} alt="" className="chat-image" />
-          ) : (
-            <span>{message.content}</span>
-          )}
+    <>
+      <div className={`chat-bubble-row ${isMine ? 'mine' : 'other'}`}>
+        <div className="chat-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
+          {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
         </div>
-        <span className="chat-time">{formatTime(message.createdAt)}</span>
+        <div className="chat-bubble-wrapper">
+          {!isMine && <span className="chat-sender">{nickname}</span>}
+          <div className={`chat-bubble ${isMine ? 'bubble-mine' : 'bubble-other'}`}>
+            {message.messageType === 'image' ? (
+              <img
+                src={message.content}
+                alt=""
+                className="chat-image"
+                onClick={() => setPreview(message.content)}
+              />
+            ) : (
+              <span>{message.content}</span>
+            )}
+          </div>
+          <span className="chat-time">{formatTime(message.createdAt)}</span>
+        </div>
       </div>
-    </div>
+
+      {/* 图片预览遮罩 */}
+      {preview && (
+        <div className="image-preview-overlay" onClick={() => setPreview(null)}>
+          <img src={preview} alt="" className="image-preview-img" onClick={(e) => e.stopPropagation()} />
+          <button className="image-preview-close" onClick={() => setPreview(null)}>✕</button>
+        </div>
+      )}
+    </>
   );
 }
 

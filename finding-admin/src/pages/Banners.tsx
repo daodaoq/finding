@@ -61,7 +61,7 @@ export default function Banners() {
   };
 
   const columns: ColumnsType<BannerRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '序号', width: 60, render: (_, __, i) => i + 1 },
     { title: '标题', dataIndex: 'title' },
     { title: '图片', dataIndex: 'imageUrl', render: (url: string) => (
       <img src={url} alt="" style={{ width: 120, height: 50, objectFit: 'cover', borderRadius: 4 }} />

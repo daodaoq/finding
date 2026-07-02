@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Layout, Menu, Button, theme, Breadcrumb } from 'antd';
 import {
   DashboardOutlined, UserOutlined, SafetyOutlined,
@@ -27,11 +27,45 @@ const breadcrumbMap: Record<string, string> = {
   '/announcements': '系统公告',
 };
 
+function getToken() {
+  return localStorage.getItem('adminToken');
+}
+
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = theme.useToken();
+
+  // 路由鉴权守卫：没有 token 直接重定向到登录页
+  useEffect(() => {
+    const t = getToken();
+    if (!t) {
+      navigate('/login', { replace: true });
+    } else {
+      setReady(true);
+    }
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    navigate('/login', { replace: true });
+  };
+
+  // token 检查完成前不渲染内容
+  if (!ready) {
+    return (
+      <Layout style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: '#999' }}>加载中...</span>
+      </Layout>
+    );
+  }
+
+  // 登录页不需要 sidebar（由 App.tsx 的路由结构控制，这里只是兜底）
+  if (location.pathname === '/login') {
+    return <Outlet />;
+  }
 
   const pathSnippets = location.pathname.split('/').filter((i) => i);
   const breadcrumbItems = [
@@ -55,7 +89,6 @@ export default function AdminLayout() {
           boxShadow: collapsed ? 'none' : '2px 0 8px rgba(0,0,0,0.04)',
         }}
       >
-        {/* Logo area */}
         <div
           style={{
             height: 56,
@@ -72,7 +105,6 @@ export default function AdminLayout() {
           {collapsed ? 'F' : 'Finding'}
         </div>
 
-        {/* Navigation menu */}
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
@@ -83,7 +115,6 @@ export default function AdminLayout() {
       </Sider>
 
       <Layout>
-        {/* Top header bar */}
         <Header
           style={{
             background: '#fff',
@@ -124,7 +155,7 @@ export default function AdminLayout() {
             <Button
               type="text"
               icon={<LogoutOutlined />}
-              onClick={() => navigate('/login')}
+              onClick={handleLogout}
               danger
             >
               退出登录
@@ -132,7 +163,6 @@ export default function AdminLayout() {
           </div>
         </Header>
 
-        {/* Main content area */}
         <Content
           style={{
             margin: 20,
@@ -147,7 +177,6 @@ export default function AdminLayout() {
           <Outlet />
         </Content>
 
-        {/* Footer */}
         <Footer style={{ textAlign: 'center', color: token.colorTextSecondary, fontSize: 13, padding: '12px 0' }}>
           Finding Admin ©2026 — 山东理工大学
         </Footer>

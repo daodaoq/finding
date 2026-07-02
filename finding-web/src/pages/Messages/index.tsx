@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { messageApi } from '../../api/message';
 import { chatApi } from '../../api/chat';
+import { groupChatApi } from '../../api/groupChat';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import LoginModal from '../../components/LoginModal';
@@ -9,10 +10,12 @@ import { useMessageStore } from '../../store/messageStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
 import type { Conversation } from '../../types/message';
+import type { GroupChat } from '../../types/groupChat';
 import './index.css';
 
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [groups, setGroups] = useState<GroupChat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -32,11 +35,19 @@ export default function MessagesPage() {
   useEffect(() => {
     if (isLoggedIn) {
       loadConversations();
+      loadGroups();
       loadUnreadCount();
     } else {
       setLoading(false);
     }
   }, [isLoggedIn]);
+
+  const loadGroups = async () => {
+    try {
+      const res = await groupChatApi.listMyGroups();
+      setGroups(res.data.data || []);
+    } catch { /**/ }
+  };
 
   const loadConversations = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -83,6 +94,9 @@ export default function MessagesPage() {
       <div className="msg-header">
         <h2 className="msg-header-title">互动消息</h2>
         <div className="msg-header-actions">
+          <button className="header-create-group-btn" onClick={() => navigate('/messages/create-group')}>
+            建群
+          </button>
           <button className="header-action-btn" onClick={handleRefresh}>
             {refreshing ? '⏳' : '🔄'}
           </button>
@@ -148,6 +162,38 @@ export default function MessagesPage() {
             ))}
             {!loading && conversations.length === 0 && <EmptyState icon="💬" message="暂无会话" />}
           </div>
+
+          {/* 群聊分隔线 */}
+          {groups.length > 0 && (
+            <div className="section-divider">
+              <span className="divider-text">群 聊</span>
+            </div>
+          )}
+
+          {/* 群聊列表 */}
+          {groups.length > 0 && (
+            <div className="chat-conv-list">
+              {groups.map((g) => (
+                <div key={g.id} className="chat-conv-item" onClick={() =>
+                  navigate(`/messages/group-chat/${g.id}?name=${encodeURIComponent(g.name)}`)}>
+                  <div className="conv-avatar">
+                    {g.avatar ? <img src={g.avatar} alt="" /> : <span>👥</span>}
+                  </div>
+                  <div className="conv-info">
+                    <div className="conv-top">
+                      <span className="conv-name">{g.name}</span>
+                      <span className="conv-time">
+                        {g.lastMessageAt ? formatConvTime(g.lastMessageAt) : ''}
+                      </span>
+                    </div>
+                    <div className="conv-bottom">
+                      <span className="conv-preview">{g.lastMessage || '暂无消息'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 

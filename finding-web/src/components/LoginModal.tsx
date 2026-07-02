@@ -28,7 +28,7 @@ export default function LoginModal({ visible, onClose, onSuccess }: Props) {
       showToast('验证码已发送');
       setCountdown(60);
       const t = setInterval(() => setCountdown((c) => { if (c <= 1) { clearInterval(t); return 0; } return c - 1; }), 1000);
-    } catch { showToast('发送失败'); }
+    } catch (e: any) { showToast(e?.message || '发送失败'); }
   };
 
   const handleLogin = async () => {
@@ -46,7 +46,7 @@ export default function LoginModal({ visible, onClose, onSuccess }: Props) {
       showToast('登录成功');
       onClose();
       onSuccess?.();
-    } catch { showToast('登录失败，请检查信息'); }
+    } catch (e: any) { showToast(e?.message || '登录失败，请检查信息'); }
   };
 
   if (!visible) return null;

@@ -43,7 +43,7 @@ export default function LoginPage() {
       setAuth(meRes.data.data, accessToken);
       showToast('登录成功');
       navigate('/');
-    } catch { showToast('登录失败，请检查信息'); }
+    } catch (e: any) { showToast(e?.message || '登录失败，请检查信息'); }
   };
 
   return (

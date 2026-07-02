@@ -155,9 +155,9 @@ export default function HomePage() {
       {/* 顶部：学校名 + 搜索框 */}
       <div className="home-top">
         <span className="home-school">山东理工大学</span>
-        <div className="home-search-wrapper">
+        <div className="home-search-wrapper" onClick={() => navigate('/search')}>
           <span className="home-search-icon">🔍</span>
-          <input className="home-search-input" type="text" placeholder="搜搭子..." />
+          <input className="home-search-input" type="text" placeholder="搜索用户、动态、搭子..." readOnly />
         </div>
       </div>
 

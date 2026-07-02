@@ -52,7 +52,7 @@ export default function Posts() {
   };
 
   const columns: ColumnsType<PostRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '内容', dataIndex: 'content', ellipsis: true },
     { title: '发布者', dataIndex: 'userNickname', width: 100 },
     { title: '点赞', dataIndex: 'likeCount', width: 60 },

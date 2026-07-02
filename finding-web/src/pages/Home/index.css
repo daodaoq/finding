@@ -33,6 +33,7 @@
   border-radius: 20px;
   padding: 0 14px;
   height: 38px;
+  cursor: pointer;
 }
 
 .home-search-icon {
