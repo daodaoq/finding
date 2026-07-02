@@ -1,6 +1,7 @@
 package com.finding.controller;
 
 import com.finding.common.Result;
+import com.finding.common.VerificationGuard;
 import com.finding.dto.MessageSendDTO;
 import com.finding.interceptor.JwtInterceptor;
 import com.finding.service.ChatService;
@@ -21,6 +22,7 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
+    private final VerificationGuard verificationGuard;
 
     /** 获取当前用户的会话列表 */
     @GetMapping("/conversations")
@@ -38,7 +40,9 @@ public class ChatController {
     /** 发送消息（REST 方式，也支持 WebSocket 发送） */
     @PostMapping("/send")
     public Result<ConversationVO> sendMessage(@Valid @RequestBody MessageSendDTO dto) {
-        return Result.ok(chatService.sendMessage(JwtInterceptor.getCurrentUserId(), dto));
+        Long userId = JwtInterceptor.getCurrentUserId();
+        verificationGuard.checkVerified(userId); // 未认证用户不可发私信
+        return Result.ok(chatService.sendMessage(userId, dto));
     }
 
     /** 获取会话消息历史（游标分页） */

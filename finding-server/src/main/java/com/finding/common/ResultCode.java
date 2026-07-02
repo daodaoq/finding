@@ -23,9 +23,9 @@ public enum ResultCode {
     // User errors (2xxx)
     USER_NOT_FOUND(2001, "用户不存在"),
     USER_ALREADY_EXISTS(2002, "用户名或手机号已注册"),
-    REAL_NAME_NOT_VERIFIED(2003, "请先完成学生实名认证"),
-    VERIFICATION_PENDING(2004, "实名认证审核中"),
-    VERIFICATION_REJECTED(2005, "实名认证未通过"),
+    VERIFICATION_REQUIRED(2003, "请先完成学生认证，认证后即可使用全部功能"),
+    VERIFICATION_PENDING(2004, "学生认证审核中，请耐心等待"),
+    VERIFICATION_REJECTED(2005, "学生认证未通过，请重新提交"),
     ALREADY_FOLLOWED(2006, "已关注该用户"),
     NOT_FOLLOWED(2007, "未关注该用户"),
     CANNOT_FOLLOW_SELF(2008, "不能关注自己"),

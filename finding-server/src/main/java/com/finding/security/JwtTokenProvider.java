@@ -1,7 +1,7 @@
 package com.finding.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,6 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,8 +36,13 @@ public class JwtTokenProvider {
             @Value("${jwt.refresh-secret}") String refreshSecret,
             @Value("${jwt.access-expiration}") long accessExpiration,
             @Value("${jwt.refresh-expiration}") long refreshExpiration) {
-        this.accessKey = Keys.hmacShaKeyFor(accessSecret.getBytes(StandardCharsets.UTF_8));
-        this.refreshKey = Keys.hmacShaKeyFor(refreshSecret.getBytes(StandardCharsets.UTF_8));
+        byte[] accessBytes = accessSecret.getBytes(StandardCharsets.UTF_8);
+        byte[] refreshBytes = refreshSecret.getBytes(StandardCharsets.UTF_8);
+        // 确保密钥长度 ≥ 256 bits (HS256 最低要求)
+        if (accessBytes.length * 8 < 256) throw new IllegalArgumentException("JWT access 密钥过短，需 ≥ 256 bits");
+        if (refreshBytes.length * 8 < 256) throw new IllegalArgumentException("JWT refresh 密钥过短，需 ≥ 256 bits");
+        this.accessKey = new SecretKeySpec(accessBytes, "HmacSHA256");
+        this.refreshKey = new SecretKeySpec(refreshBytes, "HmacSHA256");
         this.accessExpiration = accessExpiration;
         this.refreshExpiration = refreshExpiration;
     }

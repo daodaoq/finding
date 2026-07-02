@@ -1,0 +1,158 @@
+.pe-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* ── 头部 ── */
+.pe-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.pe-back {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  color: #333;
+}
+.pe-title {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+
+/* ── 头像区 ── */
+.pe-avatar-section {
+  background: #fff;
+  padding: 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.pe-avatar-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+}
+.pe-avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pe-avatar-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px 0;
+}
+.pe-avatar-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #999;
+}
+
+/* ── 表单区 ── */
+.pe-form {
+  background: #fff;
+}
+.pe-field {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f5f5f5;
+  gap: 12px;
+}
+.pe-field:last-child {
+  border-bottom: none;
+}
+.pe-field-label {
+  font-size: 14px;
+  color: #333;
+  width: 56px;
+  flex-shrink: 0;
+}
+.pe-field-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  text-align: right;
+  color: #333;
+  background: transparent;
+}
+.pe-field-input::placeholder {
+  color: #ccc;
+}
+
+/* 性别选择 */
+.pe-gender-group {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+}
+.pe-gender-chip {
+  padding: 6px 16px;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  background: #fafafa;
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pe-gender-chip.active {
+  background: #fff0f3;
+  border-color: #ff6b81;
+  color: #ff6b81;
+}
+
+/* ── 保存按钮 ── */
+.pe-save-btn {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 24px 16px;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pe-save-btn:active {
+  opacity: 0.9;
+}
+.pe-save-btn:disabled {
+  background: #eee;
+  color: #ccc;
+}

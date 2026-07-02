@@ -1,6 +1,7 @@
 package com.finding.controller;
 
 import com.finding.common.Result;
+import com.finding.common.VerificationGuard;
 import com.finding.dto.PostCreateDTO;
 import com.finding.dto.PostQueryDTO;
 import com.finding.interceptor.JwtInterceptor;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class PostController {
 
     private final PostService postService;
+    private final VerificationGuard verificationGuard;
 
     @GetMapping
     public Result<PageVO<PostVO>> list(@Valid PostQueryDTO query) {
@@ -33,6 +35,7 @@ public class PostController {
     public Result<PostVO> create(@Valid @RequestBody PostCreateDTO dto) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        verificationGuard.checkVerified(userId); // 未认证用户不可发帖
         return Result.ok(postService.createPost(userId, dto));
     }
 
@@ -65,6 +68,7 @@ public class PostController {
                                       @RequestParam String content) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        verificationGuard.checkVerified(userId); // 未认证用户不可评论
         return Result.ok(postService.addComment(userId, id, parentId, content));
     }
 

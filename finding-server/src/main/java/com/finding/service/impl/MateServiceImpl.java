@@ -35,7 +35,8 @@ public class MateServiceImpl implements MateService {
     @Override
     public PageVO<MateVO> listInvitations(MateQueryDTO query, Long currentUserId) {
         LambdaQueryWrapper<MateInvitation> wrapper = new LambdaQueryWrapper<MateInvitation>()
-                .eq(MateInvitation::getStatus, 1);
+                .eq(MateInvitation::getStatus, 1)
+                .ge(MateInvitation::getActivityTime, java.time.LocalDateTime.now()); // 只显示未过期的
 
         if (StringUtils.hasText(query.getCategory())) {
             wrapper.eq(MateInvitation::getCategory, query.getCategory());
@@ -44,7 +45,7 @@ public class MateServiceImpl implements MateService {
             wrapper.and(w -> w.like(MateInvitation::getTitle, query.getKeyword())
                     .or().like(MateInvitation::getDescription, query.getKeyword()));
         }
-        wrapper.orderByDesc(MateInvitation::getActivityTime);
+        wrapper.orderByAsc(MateInvitation::getActivityTime); // 时间最近优先（升序）
 
         Page<MateInvitation> page = new Page<>(query.getPage(), query.getSize());
         Page<MateInvitation> result = invitationMapper.selectPage(page, wrapper);

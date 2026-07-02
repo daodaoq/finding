@@ -94,8 +94,9 @@ public class SecurityConfig {
                     "/swagger-resources/**", "/swagger-ui/**"
                 ).permitAll()
 
-                // Static uploads
+                // Static uploads & image proxy
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/v1/images/**").permitAll()
 
                 // WebSocket
                 .requestMatchers("/ws/**", "/ws/info").permitAll()

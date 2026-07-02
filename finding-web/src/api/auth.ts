@@ -18,6 +18,14 @@ export const authApi = {
   updateProfile: (data: Partial<User>) =>
     request.put<ApiResponse<null>>('/auth/profile', data),
 
-  submitVerification: (data: FormData) =>
-    request.post<ApiResponse<null>>('/auth/verify', data),
+  submitVerification: (data: { realName: string; studentId: string; school: string; studentCard?: string }) => {
+    const params = new URLSearchParams();
+    params.append('realName', data.realName);
+    params.append('studentId', data.studentId);
+    params.append('school', data.school);
+    if (data.studentCard) params.append('studentCard', data.studentCard);
+    return request.post<ApiResponse<null>>('/auth/verify', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+  },
 };

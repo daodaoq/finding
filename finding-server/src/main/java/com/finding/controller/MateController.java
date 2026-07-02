@@ -1,6 +1,7 @@
 package com.finding.controller;
 
 import com.finding.common.Result;
+import com.finding.common.VerificationGuard;
 import com.finding.dto.MateCreateDTO;
 import com.finding.dto.MateQueryDTO;
 import com.finding.interceptor.JwtInterceptor;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class MateController {
 
     private final MateService mateService;
+    private final VerificationGuard verificationGuard;
 
     @GetMapping
     public Result<PageVO<MateVO>> list(@Valid MateQueryDTO query) {
@@ -35,6 +37,7 @@ public class MateController {
     public Result<MateVO> create(@Valid @RequestBody MateCreateDTO dto) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        verificationGuard.checkVerified(userId); // 未认证用户不可创建搭子
         return Result.ok(mateService.createInvitation(userId, dto));
     }
 
@@ -58,6 +61,7 @@ public class MateController {
     public Result<Void> join(@PathVariable Long id, @RequestParam(required = false) String message) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        verificationGuard.checkVerified(userId); // 未认证用户不可加入搭子
         mateService.joinInvitation(userId, id, message);
         return Result.ok();
     }

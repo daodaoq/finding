@@ -72,8 +72,8 @@ public class UploadServiceImpl implements UploadService {
                     .contentType(contentType)
                     .build());
 
-            // 返回访问路径（通过后端代理或直接 MinIO URL）
-            String url = minioConfig.getEndpoint() + "/" + minioConfig.getBucket() + "/" + objectName;
+            // 返回后端代理 URL（浏览器不直接访问 MinIO，避免 403）
+            String url = "/api/v1/images/" + objectName;
             log.info("图片已上传至 MinIO: {} -> {}", originalFilename, url);
             return url;
         } catch (Exception e) {

@@ -12,6 +12,8 @@ import MyLikesPage from '../pages/Mine/MyLikes';
 import MyMatesPage from '../pages/Mine/MyMates';
 import MyInvitationsPage from '../pages/Mine/MyInvitations';
 import MyJoinedPage from '../pages/Mine/MyJoined';
+import ProfileEditPage from '../pages/Mine/ProfileEdit';
+import VerifyPage from '../pages/Mine/Verify';
 import PostDetailPage from '../pages/PostDetail';
 import MateDetailPage from '../pages/MateDetail';
 import ChatDetailPage from '../pages/Chat';
@@ -39,6 +41,8 @@ const router = createBrowserRouter([
       { path: 'mine/mates', element: <MyMatesPage /> },
       { path: 'mine/invitations', element: <MyInvitationsPage /> },
       { path: 'mine/joined', element: <MyJoinedPage /> },
+      { path: 'mine/profile', element: <ProfileEditPage /> },
+      { path: 'mine/verify', element: <VerifyPage /> },
       { path: 'create-post', element: <CreatePostPage /> },
       { path: 'create-mate', element: <CreateMatePage /> },
     ],
