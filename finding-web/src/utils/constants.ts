@@ -1,6 +1,6 @@
 export const BOTTOM_NAV_ITEMS = [
   { key: 'home', label: '首页', icon: '🏠', path: '/', isCenter: false },
-  { key: 'square', label: '广场', icon: '📋', path: '/square', isCenter: false },
+  { key: 'bridge', label: '鹊桥', icon: '💕', path: '/bridge', isCenter: false },
   { key: 'create', label: '', icon: '＋', path: '', isCenter: true },
   { key: 'messages', label: '消息', icon: '💬', path: '/messages', isCenter: false },
   { key: 'mine', label: '我的', icon: '👤', path: '/mine', isCenter: false },

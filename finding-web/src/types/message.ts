@@ -14,6 +14,7 @@ export interface Message {
 
 export interface Conversation {
   id: number;
+  roomId: number;
   targetUserId: number;
   targetNickname: string;
   targetAvatar: string;

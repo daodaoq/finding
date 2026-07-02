@@ -36,6 +36,7 @@ export default function RegisterPage() {
 
   return (
     <div className="login-card">
+      <button className="login-back-btn" onClick={() => navigate(-1)}>← 返回</button>
       <h2 style={{ textAlign: 'center', marginBottom: 20, color: '#333' }}>注册账号</h2>
       <input className="input" type="tel" placeholder="手机号 *" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={11} />
       <div className="sms-row">

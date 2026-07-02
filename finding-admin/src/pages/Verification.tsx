@@ -13,7 +13,7 @@ interface VerifyRecord {
   idCardFront?: string;
   idCardBack?: string;
   studentCard?: string;
-  status: number;      // 0=pending, 1=approved, 2=rejected
+  status: number;
   reviewComment?: string;
   createdAt: string;
 }
@@ -23,6 +23,8 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: '已通过', color: 'success' },
   2: { label: '已拒绝', color: 'error' },
 };
+
+const FALLBACK_IMG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNjY2MiIGZvbnQtc2l6ZT0iMTYiPuWbvueJh+WKoOi9veWksei0pTwvdGV4dD48L3N2Zz4=';
 
 export default function Verification() {
   const [data, setData] = useState<VerifyRecord[]>([]);
@@ -47,11 +49,13 @@ export default function Verification() {
         },
       });
       const body = res.data;
-      setData(body.data.records);
-      setTotal(body.data.total);
-      setPage(p);
+      if (body?.data) {
+        setData(body.data.records ?? []);
+        setTotal(body.data.total ?? 0);
+        setPage(p);
+      }
     } catch {
-      /* ignore */
+      message.error('获取认证列表失败，请确认已使用管理员账号登录');
     } finally {
       setLoading(false);
     }
@@ -176,7 +180,11 @@ export default function Verification() {
             {materials.studentCard && (
               <div style={{ marginTop: 12 }}>
                 <p><b>学生证：</b></p>
-                <Image src={materials.studentCard} style={{ maxWidth: 400 }} fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" />
+                <Image
+                  src={materials.studentCard}
+                  style={{ maxWidth: 400 }}
+                  fallback={FALLBACK_IMG}
+                />
               </div>
             )}
             {materials.reviewComment && (

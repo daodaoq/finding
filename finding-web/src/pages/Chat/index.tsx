@@ -57,10 +57,21 @@ export default function ChatDetailPage() {
       setLoading(true);
       // 创建或获取会话
       const convRes = await chatApi.getOrCreateConversation(targetUserId);
-      setConversation(convRes.data.data);
-      // 加载消息历史
-      const msgRes = await chatApi.getMessageHistory(convRes.data.data.id);
-      setMessages(msgRes.data.data.records || []);
+      const conv = convRes.data.data;
+      setConversation(conv);
+      // 使用 roomId 加载消息历史
+      const roomId = conv.roomId || conv.id;
+      const msgRes = await chatApi.getMessageHistory(roomId);
+      const records = (msgRes.data.data.records || []).map((r: any) => ({
+        id: r.id,
+        fromUserId: r.fromUserId,
+        toUserId: r.toUserId,
+        content: r.content,
+        messageType: r.messageType || 'text',
+        isRead: r.isRead,
+        createdAt: r.createdAt,
+      }));
+      setMessages(records);
     } catch (e) {
       console.error('初始化会话失败', e);
     } finally {
@@ -75,10 +86,10 @@ export default function ChatDetailPage() {
 
   // 发送消息
   const handleSend = async (content: string) => {
-    if (!conversation) return;
+    if (!user || !conversation) return;
     const newMsg: ChatMessage = {
       id: Date.now(), // 临时 ID
-      fromUserId: user?.id || 0,
+      fromUserId: user.id,
       toUserId: targetUserId,
       content,
       messageType: 'text',

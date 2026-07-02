@@ -17,9 +17,9 @@ export const chatApi = {
   sendMessage: (data: { toUserId: number; content: string; messageType?: string }) =>
     request.post<ApiResponse<Conversation>>('/chat/send', data),
 
-  /** 消息历史（游标分页） */
-  getMessageHistory: (conversationId: number, lastId?: number, size = 20) =>
-    request.get<ApiResponse<PageResult<any>>>(`/chat/conversations/${conversationId}/messages`, {
+  /** 消息历史（id=room_id） */
+  getMessageHistory: (roomId: number, lastId?: number, size = 50) =>
+    request.get<ApiResponse<PageResult<any>>>(`/chat/conversations/${roomId}/messages`, {
       params: { lastId, size }
     }),
 

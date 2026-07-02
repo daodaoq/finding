@@ -4,7 +4,9 @@
   gap: 8px;
   padding: 8px 16px;
 }
-.chat-bubble-row.mine { flex-direction: row-reverse; }
+.chat-bubble-row.mine {
+  flex-direction: row-reverse;
+}
 .chat-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;

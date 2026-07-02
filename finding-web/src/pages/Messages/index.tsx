@@ -63,11 +63,12 @@ export default function MessagesPage() {
     navigate('/messages/notifications');
   };
 
-  // 点击会话 → 进入聊天
+  // 点击会话 → 进入聊天（传 roomId 给聊天页）
   const handleChatClick = (conv: Conversation) => {
     const name = encodeURIComponent(conv.targetNickname || `用户${conv.targetUserId}`);
     const avatar = encodeURIComponent(conv.targetAvatar || '');
-    navigate(`/messages/chat?userId=${conv.targetUserId}&name=${name}&avatar=${avatar}`);
+    const roomId = conv.roomId || conv.id;
+    navigate(`/messages/chat?userId=${conv.targetUserId}&name=${name}&avatar=${avatar}&roomId=${roomId}`);
   };
 
   // 下拉刷新

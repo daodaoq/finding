@@ -5,6 +5,7 @@ import com.finding.common.VerificationGuard;
 import com.finding.dto.MessageSendDTO;
 import com.finding.interceptor.JwtInterceptor;
 import com.finding.service.ChatService;
+import com.finding.vo.ChatMessageVO;
 import com.finding.vo.ConversationVO;
 import com.finding.vo.PageVO;
 import jakarta.validation.Valid;
@@ -45,17 +46,17 @@ public class ChatController {
         return Result.ok(chatService.sendMessage(userId, dto));
     }
 
-    /** 获取会话消息历史（游标分页） */
+    /** 获取会话消息历史（id=room_id） */
     @GetMapping("/conversations/{id}/messages")
-    public Result<PageVO<ConversationVO>> getMessageHistory(
+    public Result<PageVO<ChatMessageVO>> getMessageHistory(
             @PathVariable Long id,
             @RequestParam(required = false) Long lastId,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "50") int size) {
         return Result.ok(chatService.getMessageHistory(
                 JwtInterceptor.getCurrentUserId(), id, lastId, size));
     }
 
-    /** 标记会话已读 */
+    /** 标记会话已读（id=room_id） */
     @PutMapping("/conversations/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
         chatService.markConversationRead(JwtInterceptor.getCurrentUserId(), id);

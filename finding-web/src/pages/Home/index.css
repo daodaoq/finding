@@ -138,3 +138,73 @@
 .guest-limit-title { font-size: 14px; font-weight: 600; color: #ff6b81; margin: 0; }
 .guest-limit-sub { font-size: 12px; color: #999; margin: 2px 0 0; }
 .guest-limit-arrow { font-size: 22px; color: #ff6b81; flex-shrink: 0; }
+
+/* ── 搭子 Tab 样式（合并原广场页） ── */
+
+/* 分类网格 */
+.square-categories {
+  background: #fff;
+  padding: 4px 12px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.category-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 8px;
+  background: #f8f8f8;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-cell.active {
+  background: #fff0f3;
+  border-color: #ff6b81;
+}
+
+.category-cell-icon { font-size: 18px; flex-shrink: 0; }
+.category-cell-name { font-size: 13px; color: #444; font-weight: 500; }
+.category-cell.active .category-cell-name { color: #ff6b81; font-weight: 600; }
+
+/* 排序栏 */
+.square-sort-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.sort-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+.sort-options { display: flex; gap: 6px; }
+.sort-chip {
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  background: #fff;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+}
+.sort-chip.active {
+  background: #fff0f3;
+  color: #ff6b81;
+  border-color: #ff6b81;
+}
+
+/* 搭子列表 */
+.square-mate-list { background: #fff; }

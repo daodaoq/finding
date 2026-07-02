@@ -308,3 +308,20 @@ CREATE TABLE IF NOT EXISTS `recharge_record` (
     PRIMARY KEY (`id`),
     KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 18. chat_apply - Chat application requests (鹊桥心动申请)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `chat_apply` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `from_user_id` BIGINT NOT NULL COMMENT '申请人',
+    `to_user_id` BIGINT NOT NULL COMMENT '接收人',
+    `status` TINYINT DEFAULT 0 COMMENT '0=pending, 1=approved, 2=rejected',
+    `remark` VARCHAR(200) DEFAULT NULL COMMENT '申请备注',
+    `apply_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `handle_time` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_from_to` (`from_user_id`, `to_user_id`),
+    KEY `idx_to_user_status` (`to_user_id`, `status`),
+    KEY `idx_from_user` (`from_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

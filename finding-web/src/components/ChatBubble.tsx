@@ -18,11 +18,10 @@ interface Props {
 export default function ChatBubble({ message, isMine, avatar, nickname }: Props) {
   return (
     <div className={`chat-bubble-row ${isMine ? 'mine' : 'other'}`}>
-      {!isMine && (
-        <div className="chat-avatar">
-          {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
-        </div>
-      )}
+      {/* 对方的头像在最左，我的头像在最右 */}
+      <div className="chat-avatar">
+        {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
+      </div>
       <div className="chat-bubble-wrapper">
         {!isMine && <span className="chat-sender">{nickname}</span>}
         <div className={`chat-bubble ${isMine ? 'bubble-mine' : 'bubble-other'}`}>
@@ -34,11 +33,6 @@ export default function ChatBubble({ message, isMine, avatar, nickname }: Props)
         </div>
         <span className="chat-time">{formatTime(message.createdAt)}</span>
       </div>
-      {isMine && (
-        <div className="chat-avatar">
-          {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
-        </div>
-      )}
     </div>
   );
 }

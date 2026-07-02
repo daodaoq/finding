@@ -2,6 +2,9 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import AuthLayout from '../layouts/AuthLayout';
 import HomePage from '../pages/Home';
+import BridgePage from '../pages/Bridge';
+import SendApplyList from '../pages/Bridge/SendApplyList';
+import ReceiveApplyList from '../pages/Bridge/ReceiveApplyList';
 import SquarePage from '../pages/Square';
 import MatePage from '../pages/Mate';
 import MessagesPage from '../pages/Messages';
@@ -28,6 +31,9 @@ const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'bridge', element: <BridgePage /> },
+      { path: 'bridge/send-apply', element: <SendApplyList /> },
+      { path: 'bridge/receive-apply', element: <ReceiveApplyList /> },
       { path: 'square', element: <SquarePage /> },
       { path: 'square/post/:id', element: <PostDetailPage /> },
       { path: 'mate', element: <MatePage /> },

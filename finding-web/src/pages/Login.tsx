@@ -48,6 +48,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-card">
+      <button className="login-back-btn" onClick={() => navigate(-1)}>← 返回</button>
       <div className="login-tabs">
         <button className={mode === 'password' ? 'active' : ''} onClick={() => setMode('password')}>密码登录</button>
         <button className={mode === 'sms' ? 'active' : ''} onClick={() => setMode('sms')}>验证码登录</button>

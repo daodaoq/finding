@@ -50,6 +50,11 @@ public enum ResultCode {
     CONVERSATION_NOT_FOUND(5002, "会话不存在"),
     CHAT_LIMIT_EXCEEDED(5003, "今日私信次数已达上限，请完成实名认证"),
 
+    // Bridge/Chat-apply errors (6xxx)
+    CHAT_APPLY_ALREADY_SENT(6001, "已经发送过申请了"),
+    CHAT_APPLY_NOT_FOUND(6002, "申请记录不存在"),
+    CHAT_APPLY_ALREADY_HANDLED(6003, "申请已处理，不能重复操作"),
+
     // Common errors (9xxx)
     PARAM_ERROR(9001, "参数错误"),
     PARAM_VALIDATION_FAILED(9002, "参数校验失败"),

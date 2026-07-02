@@ -1,49 +1,53 @@
 package com.finding.event;
 
-import com.finding.entity.*;
-import com.finding.mapper.*;
+import com.finding.config.RabbitMQConfig;
+import com.finding.entity.Contact;
+import com.finding.entity.PrivateChat;
+import com.finding.entity.Room;
+import com.finding.mapper.ContactMapper;
+import com.finding.mapper.PrivateChatMapper;
+import com.finding.mapper.RoomMapper;
 import com.finding.websocket.WebSocketServer;
 import com.finding.websocket.WsMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
 /**
- * 消息发送异步监听器（已废弃，保留作为参考）。
- * 现由 RabbitMQ 的 MsgSendConsumer 替代。
- *
- * @deprecated 使用 {@link MsgSendConsumer}（RabbitMQ 消费者）。
- * @see MsgSendConsumer
+ * 消息发送消费者 —— 参考 MallChat MsgSendConsumer。
+ * 从 RabbitMQ 消费 chat.send.msg，负责：
+ * 1. 更新 Room 活跃时间
+ * 2. 更新双方 Contact（会话列表）
+ * 3. WebSocket 推送给接收方
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@Deprecated
-public class MessageSendListener {
+public class MsgSendConsumer {
 
     private final PrivateChatMapper privateChatMapper;
     private final RoomMapper roomMapper;
-    private final RoomFriendMapper roomFriendMapper;
     private final ContactMapper contactMapper;
     private final WebSocketServer webSocketServer;
 
-    // @Async
-    // @EventListener  // 已禁用，由 MsgSendConsumer 替代
-    public void handleMessageSend(MessageSendEvent event) {
-        PrivateChat chat = privateChatMapper.selectById(event.getMsgId());
-        if (chat == null) return;
-
-        Long roomId = chat.getRoomId();
-        if (roomId == null) {
-            log.warn("消息缺少 room_id, msgId={}", chat.getId());
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_SEND_MSG)
+    public void handleMsgSend(MsgSendMessageDTO dto) {
+        PrivateChat chat = privateChatMapper.selectById(dto.getMsgId());
+        if (chat == null) {
+            log.warn("MsgSendConsumer: 消息不存在, msgId={}", dto.getMsgId());
             return;
         }
 
-        // 1. 更新房间活跃时间
+        Long roomId = chat.getRoomId();
+        if (roomId == null) {
+            log.warn("MsgSendConsumer: room_id 为空, msgId={}", chat.getId());
+            return;
+        }
+
+        // 1. 更新 Room 活跃时间
         Room room = roomMapper.selectById(roomId);
         if (room != null) {
             room.setActiveTime(LocalDateTime.now());
@@ -51,11 +55,11 @@ public class MessageSendListener {
             roomMapper.updateById(room);
         }
 
-        // 2. 更新双方的会话（contact）
+        // 2. 更新双方 Contact（会话列表）
         updateContact(chat.getFromUserId(), roomId, chat.getId());
         updateContact(chat.getToUserId(), roomId, chat.getId());
 
-        // 3. WebSocket 实时推送给接收者
+        // 3. WebSocket 实时推送给接收方
         if (webSocketServer.isOnline(chat.getToUserId())) {
             WsMessage wsMsg = new WsMessage();
             wsMsg.setType("chat");
@@ -69,7 +73,8 @@ public class MessageSendListener {
             webSocketServer.sendToUser(chat.getToUserId(), wsMsg);
         }
 
-        log.debug("消息推送完成: msgId={}, roomId={}, from={}, to={}", chat.getId(), roomId, chat.getFromUserId(), chat.getToUserId());
+        log.debug("MQ 消息处理完成: msgId={}, roomId={}, from={}, to={}",
+                chat.getId(), roomId, chat.getFromUserId(), chat.getToUserId());
     }
 
     private void updateContact(Long uid, Long roomId, Long msgId) {

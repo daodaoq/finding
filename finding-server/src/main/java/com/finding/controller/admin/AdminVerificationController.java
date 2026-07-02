@@ -1,4 +1,4 @@
-package com.finding.controller;
+package com.finding.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -13,21 +13,19 @@ import com.finding.vo.PageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * 管理员接口 —— 用户管理、认证审核等。
+ * 管理员 - 学生认证审核。
  */
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
-public class AdminController {
+public class AdminVerificationController {
 
     private final UserVerificationMapper verificationMapper;
     private final UserMapper userMapper;
 
-    /** 认证审核列表（按状态筛选，默认待审核） */
     @GetMapping("/verifications")
     public Result<PageVO<Map<String, Object>>> listVerifications(
             @RequestParam(defaultValue = "1") int page,
@@ -42,7 +40,6 @@ public class AdminController {
 
         Page<UserVerification> result = verificationMapper.selectPage(new Page<>(page, size), wrapper);
 
-        // 附加用户手机号
         List<Long> userIds = result.getRecords().stream()
                 .map(UserVerification::getUserId).distinct().toList();
         Map<Long, String> phoneMap = new HashMap<>();
@@ -70,7 +67,6 @@ public class AdminController {
         return Result.ok(PageVO.of(records, result.getTotal(), page, size));
     }
 
-    /** 通过认证 */
     @PutMapping("/verifications/{id}/approve")
     public Result<Void> approve(@PathVariable Long id,
                                  @RequestParam(required = false, defaultValue = "0") Long reviewerId) {
@@ -82,10 +78,9 @@ public class AdminController {
         v.setReviewerId(reviewerId);
         verificationMapper.updateById(v);
 
-        // 更新用户认证状态
         User user = userMapper.selectById(v.getUserId());
         if (user != null) {
-            user.setRealNameVerified(2);   // approved
+            user.setRealNameVerified(2);
             user.setStudentId(v.getStudentId());
             userMapper.updateById(user);
         }
@@ -93,7 +88,6 @@ public class AdminController {
         return Result.ok();
     }
 
-    /** 拒绝认证 */
     @PutMapping("/verifications/{id}/reject")
     public Result<Void> reject(@PathVariable Long id,
                                 @RequestParam(required = false, defaultValue = "0") Long reviewerId,
@@ -107,10 +101,9 @@ public class AdminController {
         v.setReviewComment(comment);
         verificationMapper.updateById(v);
 
-        // 更新用户认证状态
         User user = userMapper.selectById(v.getUserId());
         if (user != null) {
-            user.setRealNameVerified(3);   // rejected
+            user.setRealNameVerified(3);
             userMapper.updateById(user);
         }
 

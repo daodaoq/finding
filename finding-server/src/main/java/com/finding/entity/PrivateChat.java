@@ -11,7 +11,8 @@ public class PrivateChat {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long conversationId;
+    private Long conversationId;    // deprecated, use roomId
+    private Long roomId;            // FK to room.id (MallChat model)
     private Long fromUserId;
     private Long toUserId;
     private String content;

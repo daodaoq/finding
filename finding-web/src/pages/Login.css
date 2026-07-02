@@ -2,7 +2,23 @@
   background: #fff;
   border-radius: 16px;
   padding: 24px;
+  position: relative;
 }
+
+.login-back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.15s;
+}
+.login-back-btn:hover { color: #ff6b81; }
+.login-back-btn:active { color: #e55a6f; }
 .login-tabs {
   display: flex;
   margin-bottom: 24px;
