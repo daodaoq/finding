@@ -95,7 +95,7 @@ if $NEED_BACKEND; then
 
     cd "$DEPLOY_DIR"
     JAR_FILE=$(ls "$PROJECT_DIR/finding-server/target/finding-server-"*.jar 2>/dev/null | head -1)
-    nohup java -jar "$JAR_FILE" \
+    nohup java -Xmx256m -jar "$JAR_FILE" \
         --spring.profiles.active=prod \
         --server.port=8080 \
         > "$DEPLOY_DIR/app.log" 2>&1 &

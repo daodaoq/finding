@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# Finding 一站式部署脚本 (Linux 云服务器)
-# 用法: chmod +x deploy.sh && ./deploy.sh
+# Finding 测试环境部署脚本 (2C2GB 低配服务器)
+# 用法: chmod +x deploy-test.sh && ./deploy-test.sh
 # ============================================================
 set -e
 
@@ -21,8 +21,8 @@ cd "$(dirname "$0")"
 DEPLOY_DIR=$(pwd)
 PROJECT_DIR=$(dirname "$DEPLOY_DIR")
 
+info "测试环境部署 (docker-compose.test.yml)"
 info "部署目录: ${DEPLOY_DIR}"
-info "项目根目录: ${PROJECT_DIR}"
 
 # ==================== 1. 检查必需工具 ====================
 echo ""
@@ -33,7 +33,6 @@ command -v node  >/dev/null 2>&1 || { err "未安装 Node.js 18+，请先安装"
 command -v npm   >/dev/null 2>&1 || { err "未安装 npm，请先安装 Node.js"; exit 1; }
 command -v docker >/dev/null 2>&1 || { err "未安装 Docker，请先安装: curl -fsSL https://get.docker.com | sh"; exit 1; }
 
-# 检测 docker compose 子命令格式
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 elif command -v docker-compose >/dev/null 2>&1; then
@@ -43,7 +42,6 @@ else
     exit 1
 fi
 
-# 检测 Maven
 if command -v mvn >/dev/null 2>&1; then
     MVN="mvn"
 elif [ -f "$PROJECT_DIR/finding-server/mvnw" ]; then
@@ -83,11 +81,8 @@ echo ""
 info "=== 第 3 步：构建前端 ==="
 
 cd "$PROJECT_DIR/finding-web"
-
-# 更新 Vite 配置为生产环境 API 地址
 info "安装前端依赖..."
 npm ci --silent 2>&1 | tail -1
-
 info "构建前端 (Vite)..."
 npm run build 2>&1 | tail -5
 
@@ -102,10 +97,8 @@ echo ""
 info "=== 第 3.5 步：构建管理端 ==="
 
 cd "$PROJECT_DIR/finding-admin"
-
 info "安装管理端依赖..."
 npm ci --silent 2>&1 | tail -1
-
 info "构建管理端 (Vite + Ant Design)..."
 npx vite build --base=/admin/ 2>&1 | tail -5
 
@@ -130,17 +123,17 @@ if [ -z "$JAR_FILE" ]; then
 fi
 ok "后端构建完成 → $JAR_FILE"
 
-# ==================== 5. 启动 Docker 中间件 ====================
+# ==================== 5. 启动 Docker 中间件 (测试版) ====================
 echo ""
-info "=== 第 5 步：启动 Docker 中间件 ==="
+info "=== 第 5 步：启动 Docker 中间件（低配测试版） ==="
 
 cd "$DEPLOY_DIR"
 
 info "拉取镜像..."
-$DOCKER_COMPOSE pull -q 2>&1 | tail -3
+$DOCKER_COMPOSE -f docker-compose.test.yml pull -q 2>&1 | tail -3
 
 info "启动容器..."
-$DOCKER_COMPOSE up -d
+$DOCKER_COMPOSE -f docker-compose.test.yml up -d
 
 ok "容器启动中，等待健康检查..."
 
@@ -175,7 +168,6 @@ ok "所有中间件已启动"
 echo ""
 info "=== 第 6 步：初始化 MinIO ==="
 
-# 等待 MinIO
 sleep 3
 if command -v mc >/dev/null 2>&1; then
     mc alias set finding-minio http://localhost:9000 "${MINIO_ACCESS_KEY}" "${MINIO_SECRET_KEY}" 2>/dev/null || true
@@ -189,9 +181,8 @@ fi
 
 # ==================== 7. 启动后端 ====================
 echo ""
-info "=== 第 7 步：启动后端服务 ==="
+info "=== 第 7 步：启动后端服务（低配 JVM） ==="
 
-# 先停掉旧进程
 if [ -f "$DEPLOY_DIR/app.pid" ]; then
     OLD_PID=$(cat "$DEPLOY_DIR/app.pid")
     if kill -0 "$OLD_PID" 2>/dev/null; then
@@ -201,7 +192,7 @@ if [ -f "$DEPLOY_DIR/app.pid" ]; then
     fi
 fi
 
-# 使用环境变量启动 Spring Boot
+# 测试环境用 256MB 堆
 nohup java -Xmx256m -jar "$JAR_FILE" \
     --spring.profiles.active=prod \
     --server.port=8080 \
@@ -209,7 +200,7 @@ nohup java -Xmx256m -jar "$JAR_FILE" \
 
 APP_PID=$!
 echo $APP_PID > "$DEPLOY_DIR/app.pid"
-ok "后端已启动 (PID: $APP_PID)"
+ok "后端已启动 (PID: $APP_PID, -Xmx256m)"
 info "日志文件: $DEPLOY_DIR/app.log"
 
 # 等待后端启动
@@ -238,7 +229,7 @@ ok "Nginx 已重载"
 # ==================== 9. 完成 ====================
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║       🎉 Finding 部署成功！              ║${NC}"
+echo -e "${GREEN}║    🧪 Finding 测试环境部署成功！          ║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}  学生端:     http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost')       ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  管理端:     http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost')/admin ${GREEN}║${NC}"
@@ -247,6 +238,6 @@ echo -e "${GREEN}║${NC}  MinIO:      http://localhost:9001       ${GREEN}║${
 echo -e "${GREEN}║${NC}  RabbitMQ:   http://localhost:15672      ${GREEN}║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}  后端日志:   tail -f $DEPLOY_DIR/app.log ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  Docker 状态: $DOCKER_COMPOSE ps          ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  停止服务:   $DOCKER_COMPOSE down        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  容器状态:   $DOCKER_COMPOSE -f docker-compose.test.yml ps ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  停止服务:   $DOCKER_COMPOSE -f docker-compose.test.yml down ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
