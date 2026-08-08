@@ -18,6 +18,10 @@ public class PrivateChat {
     private String content;
     private String messageType;     // text / image
     private Integer isRead;
+    /** uid1(较小者)是否已单侧清空该消息 */
+    private Integer uid1Hidden;
+    /** uid2(较大者)是否已单侧清空该消息 */
+    private Integer uid2Hidden;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

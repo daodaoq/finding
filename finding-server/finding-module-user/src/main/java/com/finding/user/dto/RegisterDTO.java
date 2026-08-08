@@ -12,8 +12,11 @@ public class RegisterDTO {
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
     private String phone;
 
+    @NotBlank(message = "验证码标识不能为空")
+    private String captchaKey;
+
     @NotBlank(message = "验证码不能为空")
-    private String smsCode;
+    private String captchaCode;
 
     @NotBlank(message = "密码不能为空")
     @Size(min = 8, max = 32, message = "密码长度8-32位")

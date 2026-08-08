@@ -38,3 +38,4 @@ dist/
 .claude/downloads/
 .claude/history.jsonl
 .claude/.last-*
+*.tsbuildinfo

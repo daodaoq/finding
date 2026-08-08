@@ -1,12 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { chatApi } from '../../api/chat';
+import { bridgeApi } from '../../api/bridge';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
+import { useInfoShareStore } from '../../store/infoShareStore';
 import { showToast } from '../../components/Toast';
 import ChatBubble from '../../components/ChatBubble';
 import ChatInputBar from '../../components/ChatInputBar';
-import type { Conversation } from '../../types/message';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import type { Conversation, ChatSettings } from '../../types/message';
+import type { InfoShareStatus } from '../../types/resume';
+import { resolveChatBg } from '../../utils/chatBackgrounds';
 import './index.css';
 
 interface ChatMessage {
@@ -29,8 +34,15 @@ export default function ChatDetailPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  // 信息互换按钮状态
+  const [shareStatus, setShareStatus] = useState<InfoShareStatus['status']>('none');
+  const [shareId, setShareId] = useState<number | null>(null);
+  const [showShareConfirm, setShowShareConfirm] = useState(false);
+  // 会话设置(聊天背景)
+  const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const shareVersion = useInfoShareStore((s) => s.version);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const msgListRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +112,47 @@ export default function ChatDetailPage() {
     return () => clearTimeout(t);
   }, [messages]);
 
+  // 拉取与对方的「信息互换」状态(header 按钮);互换事件后通过全局 version 自动刷新
+  useEffect(() => {
+    if (!targetUserId || !user) return;
+    bridgeApi.infoShareStatus(targetUserId)
+      .then((res) => {
+        setShareStatus(res.data.data.status);
+        setShareId(res.data.data.shareId);
+      })
+      .catch(() => {});
+  }, [targetUserId, user, shareVersion]);
+
+  // 拉取会话设置(聊天背景)
+  useEffect(() => {
+    const roomId = conversation?.roomId || conversation?.id;
+    if (!roomId) return;
+    chatApi.getSettings(roomId).then((res) => setChatSettings(res.data.data)).catch(() => {});
+  }, [conversation]);
+
+  // 发起互换申请
+  const handleRequestShare = async () => {
+    try {
+      await bridgeApi.infoShareRequest(targetUserId);
+      setShareStatus('pendingSent');
+      showToast('已发送互换申请，等待对方同意');
+    } catch (e: any) {
+      showToast(e?.message || '发送失败，请重试');
+    }
+  };
+
+  // 同意/拒绝互换(对方申请的状态下)
+  const handleShareDecision = async (approve: boolean) => {
+    if (!shareId) return;
+    try {
+      await bridgeApi.infoShareHandle(shareId, approve ? 1 : 2);
+      setShareStatus(approve ? 'approved' : 'none');
+      showToast(approve ? '已同意互换详细信息' : '已拒绝互换申请');
+    } catch (e: any) {
+      showToast(e?.message || '操作失败，请重试');
+    }
+  };
+
   // 发送消息
   const handleSend = async (content: string, messageType = 'text') => {
     if (!user || !conversation) return;
@@ -144,10 +197,44 @@ export default function ChatDetailPage() {
           {targetAvatar ? <img src={targetAvatar} alt="" /> : <span>👤</span>}
         </div>
         <span className="chat-header-name">{targetNickname}</span>
+        {shareStatus === 'approved' ? (
+          <button
+            className="share-tag approved"
+            onClick={() => navigate(`/user/${targetUserId}`)}
+            title="查看TA的情感简历"
+          >
+            已互换信息
+          </button>
+        ) : shareStatus === 'pendingSent' ? (
+          <span className="share-tag pending">已发送申请</span>
+        ) : shareStatus === 'pendingReceived' ? (
+          <button className="share-tag warn" onClick={() => setShowShareConfirm(true)}>
+            对方申请互换信息
+          </button>
+        ) : (
+          <button className="share-tag active" onClick={handleRequestShare}>
+            互换信息
+          </button>
+        )}
+        <button
+          className="chat-settings-btn"
+          title="聊天信息"
+          onClick={() => {
+            const roomId = conversation?.roomId || conversation?.id;
+            navigate(
+              `/messages/chat-settings?userId=${targetUserId}` +
+              `&name=${encodeURIComponent(targetNickname)}` +
+              `&avatar=${encodeURIComponent(targetAvatar)}` +
+              `&roomId=${roomId ?? ''}`
+            );
+          }}
+        >
+          ⚙️
+        </button>
       </div>
 
       {/* 消息列表 */}
-      <div className="chat-messages" ref={msgListRef}>
+      <div className="chat-messages" style={resolveChatBg(chatSettings?.background)} ref={msgListRef}>
         {messages.map((msg, i) => {
           const prevMsg = i > 0 ? messages[i - 1] : null;
           const showTimeSep = !prevMsg ||
@@ -173,6 +260,17 @@ export default function ChatDetailPage() {
 
       {/* 输入栏 */}
       <ChatInputBar onSend={handleSend} onUploading={setUploading} />
+
+      {/* 对方申请互换信息确认弹窗 */}
+      <ConfirmDialog
+        visible={showShareConfirm}
+        title="互换信息请求"
+        message="对方想要互换详细信息，是否同意？"
+        confirmText="同意"
+        cancelText="拒绝"
+        onConfirm={() => { setShowShareConfirm(false); handleShareDecision(true); }}
+        onCancel={() => { setShowShareConfirm(false); handleShareDecision(false); }}
+      />
     </div>
   );
 }

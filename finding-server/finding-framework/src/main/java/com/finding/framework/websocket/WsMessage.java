@@ -7,8 +7,11 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WsMessage {
 
-    /** 消息类型: chat / heartbeat / pong / system */
+    /** 消息类型: chat / heartbeat / pong / system / info_share */
     private String type;
+
+    /** 业务动作(如 info_share: request / approved / rejected) */
+    private String action;
 
     /** 发送者ID（服务端填充） */
     private Long fromUserId;

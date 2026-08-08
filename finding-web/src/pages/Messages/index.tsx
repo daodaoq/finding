@@ -149,7 +149,11 @@ export default function MessagesPage() {
                 </div>
                 <div className="conv-info">
                   <div className="conv-top">
-                    <span className="conv-name">{conv.targetNickname || `用户${conv.targetUserId}`}</span>
+                    <span className="conv-name">
+                      {conv.pinned && <span className="conv-mark" title="已置顶">📌</span>}
+                      {conv.muted && <span className="conv-mark" title="已免打扰">🔕</span>}
+                      {conv.targetNickname || `用户${conv.targetUserId}`}
+                    </span>
                     <span className="conv-time">
                       {conv.lastMessageAt ? formatConvTime(conv.lastMessageAt) : ''}
                     </span>

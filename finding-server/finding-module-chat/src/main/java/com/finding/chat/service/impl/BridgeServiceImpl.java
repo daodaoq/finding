@@ -224,6 +224,13 @@ public class BridgeServiceImpl implements BridgeService {
     }
 
     @Override
+    public long countPendingReceived(Long userId) {
+        return chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
+                .eq(ChatApply::getToUserId, userId)
+                .eq(ChatApply::getStatus, 0));
+    }
+
+    @Override
     @Transactional
     public void handleApply(Long userId, Long applyId, Integer status) {
         ChatApply apply = chatApplyMapper.selectById(applyId);

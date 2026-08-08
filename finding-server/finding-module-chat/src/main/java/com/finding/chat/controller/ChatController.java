@@ -2,10 +2,13 @@ package com.finding.chat.controller;
 
 import com.finding.common.Result;
 import com.finding.user.common.VerificationGuard;
+import com.finding.chat.dto.ConversationSettingsDTO;
 import com.finding.chat.dto.MessageSendDTO;
+import com.finding.chat.dto.ReportDTO;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.chat.service.ChatService;
 import com.finding.chat.vo.ChatMessageVO;
+import com.finding.chat.vo.ConversationSettingsVO;
 import com.finding.message.vo.ConversationVO;
 import com.finding.common.PageVO;
 import jakarta.validation.Valid;
@@ -60,6 +63,42 @@ public class ChatController {
     @PutMapping("/conversations/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
         chatService.markConversationRead(JwtInterceptor.getCurrentUserId(), id);
+        return Result.ok();
+    }
+
+    /** 获取会话设置(置顶/免打扰/聊天背景) */
+    @GetMapping("/conversations/{id}/settings")
+    public Result<ConversationSettingsVO> getSettings(@PathVariable Long id) {
+        return Result.ok(chatService.getConversationSettings(JwtInterceptor.getCurrentUserId(), id));
+    }
+
+    /** 更新会话设置(置顶/免打扰/聊天背景) */
+    @PutMapping("/conversations/{id}/settings")
+    public Result<Void> updateSettings(@PathVariable Long id, @RequestBody ConversationSettingsDTO dto) {
+        chatService.updateConversationSettings(JwtInterceptor.getCurrentUserId(), id,
+                dto.getPinned(), dto.getMuted(), dto.getBackground());
+        return Result.ok();
+    }
+
+    /** 搜索会话内的聊天记录 */
+    @GetMapping("/conversations/{id}/messages/search")
+    public Result<PageVO<ChatMessageVO>> searchMessages(@PathVariable Long id,
+                                                         @RequestParam String keyword,
+                                                         @RequestParam(defaultValue = "50") int size) {
+        return Result.ok(chatService.searchMessages(JwtInterceptor.getCurrentUserId(), id, keyword, size));
+    }
+
+    /** 清空会话聊天记录 */
+    @DeleteMapping("/conversations/{id}/messages")
+    public Result<Void> clearMessages(@PathVariable Long id) {
+        chatService.clearMessages(JwtInterceptor.getCurrentUserId(), id);
+        return Result.ok();
+    }
+
+    /** 投诉用户 */
+    @PostMapping("/report")
+    public Result<Void> report(@Valid @RequestBody ReportDTO dto) {
+        chatService.reportUser(JwtInterceptor.getCurrentUserId(), dto.getTargetUserId(), dto.getRoomId(), dto.getReason());
         return Result.ok();
     }
 }

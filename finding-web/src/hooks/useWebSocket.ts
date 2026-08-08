@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 
 interface WsMessage {
   type: string;
+  action?: string;
   fromUserId: number;
   toUserId: number;
   conversationId: number;
@@ -14,8 +15,9 @@ interface WsMessage {
 /**
  * WebSocket 连接 Hook —— 稳定连接、心跳保活。
  * 用 ref 存储回调避免因回调变化导致反复重连。
+ * @param enabled 为 false 时不建立连接(登录后才连接时传入)。
  */
-export function useWebSocket(onMessage: (msg: WsMessage) => void) {
+export function useWebSocket(onMessage: (msg: WsMessage) => void, enabled = true) {
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
   const onMsgRef = useRef(onMessage);
@@ -68,13 +70,14 @@ export function useWebSocket(onMessage: (msg: WsMessage) => void) {
   }, []); // 空依赖，只创建一次
 
   useEffect(() => {
+    if (!enabled) return;
     connect();
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [connect]);
+  }, [connect, enabled]);
 
   /** 通过 WebSocket 发送消息 */
   const sendMessage = useCallback((msg: Partial<WsMessage>) => {

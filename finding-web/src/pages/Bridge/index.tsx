@@ -10,6 +10,7 @@ import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useAuthStore } from '../../store/authStore';
+import { useBridgeStore } from '../../store/bridgeStore';
 import { QUICK_ACTIONS } from '../../utils/constants';
 import type { BridgeRecommendUser } from '../../types/bridge';
 import type { Banner } from '../../types/message';
@@ -23,12 +24,23 @@ export default function BridgePage() {
   const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
+  const bridgePending = useBridgeStore((s) => s.pendingCount);
+  const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
 
   useEffect(() => {
     loadBanners();
     loadUsers(1);
   }, []);
+
+  // 拉取收到的待处理申请数，用于「情书」「底部鹊桥」角标
+  useEffect(() => {
+    if (isLoggedIn) {
+      bridgeApi.receivedPendingCount()
+        .then((res) => setBridgePending(res.data.data?.count ?? 0))
+        .catch(() => setBridgePending(0));
+    }
+  }, [isLoggedIn, setBridgePending]);
 
   const loadBanners = async () => {
     try {
@@ -140,7 +152,14 @@ export default function BridgePage() {
               className="bridge-quick-item"
               onClick={() => handleQuickAction(action.key)}
             >
-              <span className="bridge-quick-icon">{action.icon}</span>
+              <span className="bridge-quick-icon">
+                {action.icon}
+                {action.key === 'letter' && bridgePending > 0 && (
+                  <span className="bridge-quick-badge">
+                    {bridgePending > 99 ? '99+' : bridgePending}
+                  </span>
+                )}
+              </span>
               <span className="bridge-quick-label">{action.label}</span>
             </button>
           ))}

@@ -17,9 +17,11 @@ import MyInvitationsPage from '../pages/Mine/MyInvitations';
 import MyJoinedPage from '../pages/Mine/MyJoined';
 import ProfileEditPage from '../pages/Mine/ProfileEdit';
 import VerifyPage from '../pages/Mine/Verify';
+import ResumeEditPage from '../pages/Resume';
 import PostDetailPage from '../pages/PostDetail';
 import MateDetailPage from '../pages/MateDetail';
 import ChatDetailPage from '../pages/Chat';
+import ChatSettingsPage from '../pages/ChatSettings';
 import GroupChatPage from '../pages/GroupChat';
 import GroupInfoPage from '../pages/GroupInfo';
 import CreateGroupPage from '../pages/CreateGroup';
@@ -46,6 +48,7 @@ const router = createBrowserRouter([
       { path: 'messages', element: <MessagesPage /> },
       { path: 'messages/notifications', element: <NotificationsPage /> },
       { path: 'messages/chat', element: <ChatDetailPage /> },
+      { path: 'messages/chat-settings', element: <ChatSettingsPage /> },
       { path: 'messages/group-chat/:id', element: <GroupChatPage /> },
       { path: 'messages/group-chat/:id/info', element: <GroupInfoPage /> },
       { path: 'messages/create-group', element: <CreateGroupPage /> },
@@ -59,6 +62,7 @@ const router = createBrowserRouter([
       { path: 'mine/joined', element: <MyJoinedPage /> },
       { path: 'mine/profile', element: <ProfileEditPage /> },
       { path: 'mine/verify', element: <VerifyPage /> },
+      { path: 'mine/resume', element: <ResumeEditPage /> },
       { path: 'create-post', element: <CreatePostPage /> },
       { path: 'create-mate', element: <CreateMatePage /> },
     ],

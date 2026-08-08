@@ -1,0 +1,229 @@
+.cs-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.cs-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 16px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 对方名片 */
+.cs-contact-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  cursor: pointer;
+}
+.cs-contact-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  overflow: hidden;
+}
+.cs-contact-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cs-contact-info { display: flex; flex-direction: column; gap: 4px; }
+.cs-contact-name { font-size: 16px; font-weight: 600; }
+.cs-contact-sub { font-size: 13px; color: #ff6b81; }
+
+/* 设置列表 */
+.cs-list {
+  margin-top: 8px;
+  background: #fff;
+}
+.cs-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  text-align: left;
+  font-size: 15px;
+  color: #333;
+}
+.cs-item:last-child { border-bottom: none; }
+.cs-item-icon { font-size: 18px; }
+.cs-item-label { flex: 1; }
+.cs-item-arrow { color: #ccc; font-size: 18px; }
+
+/* 开关 */
+.cs-switch {
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: #e0e0e0;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.cs-switch.on { background: #ff6b81; }
+.cs-switch-dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: left 0.2s;
+}
+.cs-switch.on .cs-switch-dot { left: 22px; }
+
+/* 查找聊天记录 */
+.cs-search-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.cs-search-input {
+  flex: 1;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+}
+.cs-search-input:focus { border-color: #ff6b81; }
+.cs-search-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0 16px;
+  background: #ff6b81;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+.cs-search-btn:disabled { opacity: 0.6; }
+.cs-search-results { padding: 8px 16px; }
+.cs-empty { text-align: center; color: #bbb; padding: 40px 0; font-size: 14px; }
+.cs-result-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+.cs-result-name { color: #999; font-size: 13px; flex-shrink: 0; width: 40px; }
+.cs-result-text { flex: 1; font-size: 14px; color: #333; word-break: break-all; }
+.cs-result-time { color: #ccc; font-size: 12px; flex-shrink: 0; }
+
+/* 聊天背景 */
+.cs-bg-body { padding: 16px; }
+.cs-bg-current {
+  height: 120px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #eee;
+  background-size: cover;
+}
+.cs-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.cs-bg-swatch {
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+.cs-bg-swatch.active { border-color: #ff6b81; }
+.cs-bg-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.cs-bg-action {
+  flex: 1;
+  padding: 11px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* 投诉弹窗 */
+.report-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.report-card {
+  width: 82%;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+}
+.report-title { font-size: 16px; margin: 0 0 14px; text-align: center; }
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.report-reason {
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+}
+.report-reason.active { background: #ff6b81; border-color: #ff6b81; color: #fff; }
+.report-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  resize: none;
+  margin-bottom: 14px;
+  outline: none;
+}
+.report-buttons { display: flex; gap: 10px; }
+.report-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.report-btn.cancel { background: #f0f0f0; color: #666; }
+.report-btn.submit { background: #ff6b81; color: #fff; }

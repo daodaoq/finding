@@ -1,0 +1,78 @@
+.resume-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resume-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.resume-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 10px;
+}
+
+.resume-row {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.resume-label {
+  flex-shrink: 0;
+  color: #999;
+  min-width: 92px;
+}
+
+.resume-value {
+  color: #333;
+  flex: 1;
+  word-break: break-all;
+}
+
+/* 板块1 照片位 */
+.resume-avatar-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.resume-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  overflow: hidden;
+}
+.resume-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.resume-avatar-label {
+  font-size: 12px;
+  color: #bbb;
+}
+
+/* 板块8 生活相册 */
+.resume-album {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.resume-album-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f5f5f5;
+}

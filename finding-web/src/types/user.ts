@@ -24,7 +24,8 @@ export interface LoginParams {
 
 export interface RegisterParams {
   phone: string;
-  smsCode: string;
+  captchaKey: string;
+  captchaCode: string;
   password: string;
   nickname: string;
   school?: string;

@@ -9,6 +9,7 @@ import './index.css';
 
 /** 功能菜单项 */
 const MENU_ITEMS = [
+  { key: 'my-resume', icon: '💘', label: '情感简历', desc: '填写我的情感简历' },
   { key: 'my-posts', icon: '📝', label: '我的动态', desc: '我发布的所有动态' },
   { key: 'my-likes', icon: '❤️', label: '我的点赞', desc: '我点赞过的动态' },
   { key: 'my-mates', icon: '👫', label: '我的搭子', desc: '关注和粉丝' },
@@ -49,6 +50,7 @@ export default function MinePage() {
       return;
     }
     switch (key) {
+      case 'my-resume': navigate('/mine/resume'); break;
       case 'my-posts': navigate('/mine/posts'); break;
       case 'my-likes': navigate('/mine/likes'); break;
       case 'my-mates': navigate('/mine/mates'); break;

@@ -59,8 +59,8 @@ public class MsgSendConsumer {
         updateContact(chat.getFromUserId(), roomId, chat.getId());
         updateContact(chat.getToUserId(), roomId, chat.getId());
 
-        // 3. WebSocket 实时推送给接收方
-        if (webSocketServer.isOnline(chat.getToUserId())) {
+        // 3. WebSocket 实时推送给接收方(对方开启免打扰则不推送)
+        if (webSocketServer.isOnline(chat.getToUserId()) && !isMuted(chat.getToUserId(), roomId)) {
             WsMessage wsMsg = new WsMessage();
             wsMsg.setType("chat");
             wsMsg.setFromUserId(chat.getFromUserId());
@@ -75,6 +75,15 @@ public class MsgSendConsumer {
 
         log.debug("MQ 消息处理完成: msgId={}, roomId={}, from={}, to={}",
                 chat.getId(), roomId, chat.getFromUserId(), chat.getToUserId());
+    }
+
+    /** 判断接收方是否对该会话开启了免打扰 */
+    private boolean isMuted(Long uid, Long roomId) {
+        Contact contact = contactMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Contact>()
+                        .eq(Contact::getUid, uid)
+                        .eq(Contact::getRoomId, roomId));
+        return contact != null && contact.getMuted() != null && contact.getMuted() == 1;
     }
 
     private void updateContact(Long uid, Long roomId, Long msgId) {

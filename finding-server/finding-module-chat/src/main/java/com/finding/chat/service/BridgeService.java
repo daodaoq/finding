@@ -21,6 +21,9 @@ public interface BridgeService {
     /** 我收到的申请列表 */
     PageVO<ChatApplyVO> getReceivedApplies(Long userId, int page, int size);
 
+    /** 我收到的待处理(未处理)申请数量 —— 用于「情书」入口角标 */
+    long countPendingReceived(Long userId);
+
     /** 处理聊天申请（通过/拒绝） */
     void handleApply(Long userId, Long applyId, Integer status);
 }

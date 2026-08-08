@@ -229,6 +229,8 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text' COMMENT 'text / image',
     `is_read` TINYINT DEFAULT 0,
+    `uid1_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid1(较小者)是否已单侧清空',
+    `uid2_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid2(较大者)是否已单侧清空',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `idx_chat_conv` (`conversation_id`, `created_at`),
@@ -276,6 +278,9 @@ CREATE TABLE IF NOT EXISTS `contact` (
     `read_time` DATETIME DEFAULT NULL,
     `active_time` DATETIME DEFAULT NULL,
     `last_msg_id` BIGINT DEFAULT NULL,
+    `pinned` TINYINT DEFAULT 0 COMMENT '0=否 1=置顶',
+    `muted` TINYINT DEFAULT 0 COMMENT '0=否 1=消息免打扰',
+    `background` VARCHAR(500) DEFAULT NULL COMMENT '聊天背景(preset key 或图片URL)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -447,4 +452,96 @@ CREATE TABLE IF NOT EXISTS `chat_apply` (
     UNIQUE KEY `uk_from_to` (`from_user_id`, `to_user_id`),
     KEY `idx_to_user_status` (`to_user_id`, `status`),
     KEY `idx_from_user` (`from_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 19. user_resume - 情感简历 (每个用户一份)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_resume` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    -- 板块1 基础信息
+    `gender` TINYINT DEFAULT NULL COMMENT '1=男 2=女',
+    `age` INT DEFAULT NULL,
+    `birthday` DATE DEFAULT NULL,
+    `constellation` VARCHAR(20) DEFAULT NULL,
+    `height_cm` INT DEFAULT NULL,
+    `weight_kg` INT DEFAULT NULL,
+    `campus` VARCHAR(100) DEFAULT NULL,
+    `major_grade` VARCHAR(100) DEFAULT NULL,
+    `hometown` VARCHAR(100) DEFAULT NULL,
+    `career` VARCHAR(100) DEFAULT NULL COMMENT '职业',
+    `daily_routine` VARCHAR(200) DEFAULT NULL COMMENT '日常作息',
+    `relationship_status` VARCHAR(200) DEFAULT NULL COMMENT '恋爱状态(单身时长/恋爱期待)',
+    `core_bottom_line` VARCHAR(500) DEFAULT NULL COMMENT '择偶核心底线',
+    -- 板块2 自我画像
+    `mbti` VARCHAR(10) DEFAULT NULL,
+    `personality_traits` VARCHAR(500) DEFAULT NULL,
+    `in_love_look` VARCHAR(500) DEFAULT NULL,
+    `flaws` VARCHAR(500) DEFAULT NULL,
+    `worldview` VARCHAR(500) DEFAULT NULL COMMENT '个人三观',
+    `personal_tags` VARCHAR(500) DEFAULT NULL COMMENT '个人标签',
+    -- 板块3 恋爱复盘
+    `relationship_count` VARCHAR(50) DEFAULT NULL,
+    `breakup_reason` VARCHAR(500) DEFAULT NULL,
+    `love_shortcoming` VARCHAR(500) DEFAULT NULL,
+    `love_insight` VARCHAR(500) DEFAULT NULL,
+    `love_growth` VARCHAR(500) DEFAULT NULL COMMENT '自己在感情里的成长/改掉的毛病',
+    -- 板块4 恋爱相处模式
+    `daily_company` VARCHAR(500) DEFAULT NULL,
+    `fight_mode` VARCHAR(500) DEFAULT NULL,
+    `love_expression` VARCHAR(500) DEFAULT NULL,
+    `opposite_boundary` VARCHAR(500) DEFAULT NULL,
+    -- 板块5 个人生活与规划
+    `daily_status` VARCHAR(500) DEFAULT NULL,
+    `life_habits` VARCHAR(500) DEFAULT NULL,
+    `short_term_plan` VARCHAR(500) DEFAULT NULL,
+    `long_term_plan` VARCHAR(500) DEFAULT NULL,
+    `hobbies` VARCHAR(500) DEFAULT NULL COMMENT '爱好与日常',
+    `marriage_plan` VARCHAR(500) DEFAULT NULL COMMENT '长期婚恋规划',
+    -- 板块6 理想的另一半
+    `hard_conditions` VARCHAR(500) DEFAULT NULL,
+    `soft_expectations` VARCHAR(500) DEFAULT NULL,
+    -- 板块7 加分项(我能为恋爱带来什么)
+    `bonus_points` VARCHAR(500) DEFAULT NULL COMMENT '情绪价值/实际付出/未来规划',
+    -- 板块8 走心宣言
+    `love_expectation` VARCHAR(500) DEFAULT NULL,
+    `love_attitude` VARCHAR(500) DEFAULT NULL,
+    -- 板块9 生活相册 (图片URL数组)
+    `photo_album` JSON DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 20. user_info_share - 信息互换申请
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_info_share` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `from_user_id` BIGINT NOT NULL COMMENT '发起方',
+    `to_user_id` BIGINT NOT NULL COMMENT '接收方',
+    `status` TINYINT DEFAULT 0 COMMENT '0=pending 1=approved 2=rejected',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `handled_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_from_to` (`from_user_id`, `to_user_id`),
+    KEY `idx_to_user` (`to_user_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 21. report - 用户投诉
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `report` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `from_user_id` BIGINT NOT NULL COMMENT '投诉人',
+    `target_user_id` BIGINT NOT NULL COMMENT '被投诉人',
+    `room_id` BIGINT DEFAULT NULL COMMENT '关联会话(可选)',
+    `reason` VARCHAR(500) DEFAULT NULL COMMENT '投诉原因',
+    `status` TINYINT DEFAULT 0 COMMENT '0=待处理 1=已处理 2=驳回',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_target` (`target_user_id`),
+    KEY `idx_from` (`from_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

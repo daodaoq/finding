@@ -1,6 +1,6 @@
 import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
-import type { Conversation } from '../types/message';
+import type { Conversation, ChatSettings } from '../types/message';
 
 export const chatApi = {
   /** 会话列表 */
@@ -26,4 +26,26 @@ export const chatApi = {
   /** 标记已读 */
   markRead: (conversationId: number) =>
     request.put<ApiResponse<null>>(`/chat/conversations/${conversationId}/read`),
+
+  /** 获取会话设置(置顶/免打扰/聊天背景) */
+  getSettings: (roomId: number) =>
+    request.get<ApiResponse<ChatSettings>>(`/chat/conversations/${roomId}/settings`),
+
+  /** 更新会话设置 */
+  updateSettings: (roomId: number, data: { pinned?: boolean; muted?: boolean; background?: string }) =>
+    request.put<ApiResponse<null>>(`/chat/conversations/${roomId}/settings`, data),
+
+  /** 搜索会话内聊天记录 */
+  searchMessages: (roomId: number, keyword: string, size = 50) =>
+    request.get<ApiResponse<PageResult<any>>>(`/chat/conversations/${roomId}/messages/search`, {
+      params: { keyword, size },
+    }),
+
+  /** 清空会话聊天记录 */
+  clearMessages: (roomId: number) =>
+    request.delete<ApiResponse<null>>(`/chat/conversations/${roomId}/messages`),
+
+  /** 投诉用户 */
+  reportUser: (data: { targetUserId: number; roomId?: number; reason: string }) =>
+    request.post<ApiResponse<null>>('/chat/report', data),
 };

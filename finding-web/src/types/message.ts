@@ -21,6 +21,16 @@ export interface Conversation {
   lastMessage: string;
   lastMessageAt: string;
   unreadCount: number;
+  pinned?: boolean;
+  muted?: boolean;
+}
+
+/** 会话设置(聊天信息页) */
+export interface ChatSettings {
+  roomId: number;
+  pinned: boolean;
+  muted: boolean;
+  background: string | null;
 }
 
 export interface HomeFeedUser {

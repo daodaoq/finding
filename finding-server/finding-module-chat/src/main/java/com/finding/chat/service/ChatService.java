@@ -2,6 +2,7 @@ package com.finding.chat.service;
 
 import com.finding.chat.dto.MessageSendDTO;
 import com.finding.chat.vo.ChatMessageVO;
+import com.finding.chat.vo.ConversationSettingsVO;
 import com.finding.message.vo.ConversationVO;
 import com.finding.common.PageVO;
 
@@ -27,4 +28,19 @@ public interface ChatService {
 
     /** 标记会话消息为已读（id=room_id） */
     void markConversationRead(Long userId, Long roomId);
+
+    /** 获取会话设置(置顶/免打扰/聊天背景) */
+    ConversationSettingsVO getConversationSettings(Long userId, Long roomId);
+
+    /** 更新会话设置(置顶/免打扰/聊天背景) */
+    void updateConversationSettings(Long userId, Long roomId, Boolean pinned, Boolean muted, String background);
+
+    /** 搜索会话内的聊天记录(按内容模糊匹配) */
+    PageVO<ChatMessageVO> searchMessages(Long userId, Long roomId, String keyword, int size);
+
+    /** 清空会话聊天记录(双方) */
+    void clearMessages(Long userId, Long roomId);
+
+    /** 投诉用户 */
+    void reportUser(Long fromUserId, Long toUserId, Long roomId, String reason);
 }

@@ -16,6 +16,7 @@ import com.finding.user.security.JwtTokenProvider;
 import com.finding.user.service.AuthService;
 import com.finding.user.service.UserPostStatsQuery;
 import com.finding.common.RedisUtils;
+import com.finding.user.util.CaptchaGenerator;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -52,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
     private static final String SMS_LIMIT_PREFIX = "sms:limit:";
+    private static final String CAPTCHA_PREFIX = "captcha:";
     private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String REFRESH_PREFIX = "token:refresh:";
 
@@ -105,7 +108,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void register(RegisterDTO dto) {
-        verifySmsCode(dto.getPhone(), dto.getSmsCode());
+        // 图片验证码校验(替代短信验证码)
+        verifyCaptcha(dto.getCaptchaKey(), dto.getCaptchaCode());
 
         if (userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone())) > 0) {
@@ -138,6 +142,25 @@ public class AuthServiceImpl implements AuthService {
         redisUtils.set(limitKey, "1", 60, TimeUnit.SECONDS);
 
         log.info("SMS验证码 phone={} type={} code={}", phone, type, code);
+    }
+
+    @Override
+    public Map<String, String> generateCaptcha() {
+        String key = UUID.randomUUID().toString().replace("-", "");
+        String code = CaptchaGenerator.randomCode(4);
+        redisUtils.set(CAPTCHA_PREFIX + key, code, 5, TimeUnit.MINUTES);
+
+        try {
+            String image = CaptchaGenerator.drawImage(code);
+            Map<String, String> result = new HashMap<>();
+            result.put("captchaKey", key);
+            result.put("captchaImage", image);
+            return result;
+        } catch (Exception e) {
+            redisUtils.delete(CAPTCHA_PREFIX + key);
+            log.error("生成图片验证码失败", e);
+            throw new BusinessException(ResultCode.INTERNAL_ERROR, "验证码生成失败，请重试");
+        }
     }
 
     @Override
@@ -230,6 +253,21 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ── 私有方法 ──
+
+    /** 校验图片验证码(一次性,校验后删除) */
+    private void verifyCaptcha(String key, String code) {
+        if (!StringUtils.hasText(key) || !StringUtils.hasText(code)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "请输入图片验证码");
+        }
+        String stored = redisUtils.get(CAPTCHA_PREFIX + key);
+        if (stored == null) {
+            throw new BusinessException(ResultCode.SMS_CODE_EXPIRED, "验证码已过期，请刷新");
+        }
+        if (!stored.equalsIgnoreCase(code)) {
+            throw new BusinessException(ResultCode.SMS_CODE_ERROR, "验证码错误");
+        }
+        redisUtils.delete(CAPTCHA_PREFIX + key);
+    }
 
     private void verifySmsCode(String phone, String code) {
         String stored = redisUtils.get(SMS_CODE_PREFIX + "login:" + phone);

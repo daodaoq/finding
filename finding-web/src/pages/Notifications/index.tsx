@@ -41,6 +41,9 @@ export default function NotificationsPage() {
     } else if (msg.type === 'follow') {
       // 跳转到对方主页
       navigate(`/mine`);
+    } else if (msg.type === 'info_share_request' || msg.type === 'info_share_approved' || msg.type === 'info_share_rejected') {
+      // 信息互换通知 → 跳到对方主页(互换后可见情感简历)
+      if (msg.fromUserId) navigate(`/user/${msg.fromUserId}`);
     }
     // system 类型不做跳转
   };

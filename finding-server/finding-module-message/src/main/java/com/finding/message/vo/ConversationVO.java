@@ -15,4 +15,6 @@ public class ConversationVO {
     private String lastMessage;
     private LocalDateTime lastMessageAt;
     private Integer unreadCount;
+    private Boolean pinned;         // 是否置顶
+    private Boolean muted;          // 是否消息免打扰
 }

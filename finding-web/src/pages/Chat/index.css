@@ -42,6 +42,31 @@
   font-weight: 600;
 }
 
+/* 信息互换按钮 */
+.share-tag {
+  margin-left: auto;
+  border: none;
+  border-radius: 14px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.share-tag.active { background: #ff6b81; color: #fff; }
+.share-tag.warn { background: #fff3e0; color: #ff9800; border: 1px solid #ffb74d; }
+.share-tag.pending { background: #f0f0f0; color: #999; cursor: default; }
+.share-tag.approved { background: #e8f5e9; color: #4caf50; border: 1px solid #a5d6a7; }
+
+/* 聊天信息设置键 */
+.chat-settings-btn {
+  border: none;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;

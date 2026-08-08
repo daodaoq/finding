@@ -14,6 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/bridge")
 @RequiredArgsConstructor
@@ -58,6 +60,14 @@ public class BridgeController {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         return Result.ok(bridgeService.getReceivedApplies(userId, page, size));
+    }
+
+    /** 我收到的待处理申请数（情书入口角标） */
+    @GetMapping("/apply/received/pending-count")
+    public Result<Map<String, Long>> receivedPendingCount() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(Map.of("count", bridgeService.countPendingReceived(userId)));
     }
 
     /** 处理聊天申请（通过/拒绝） */

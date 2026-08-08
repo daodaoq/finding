@@ -1,5 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BOTTOM_NAV_ITEMS } from '../utils/constants';
+import { useMessageStore } from '../store/messageStore';
+import { useBridgeStore } from '../store/bridgeStore';
 import './BottomNav.css';
 
 interface Props {
@@ -9,6 +11,8 @@ interface Props {
 export default function BottomNav({ onCenterClick }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
+  const unreadCount = useMessageStore((s) => s.unreadCount);
+  const bridgePending = useBridgeStore((s) => s.pendingCount);
 
   const isActive = (item: typeof BOTTOM_NAV_ITEMS[number]) => {
     if (item.isCenter) return false;
@@ -32,7 +36,15 @@ export default function BottomNav({ onCenterClick }: Props) {
             }
           }}
         >
-          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-icon">
+            {item.icon}
+            {item.key === 'messages' && unreadCount > 0 && (
+              <span className="nav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
+            {item.key === 'bridge' && bridgePending > 0 && (
+              <span className="nav-badge">{bridgePending > 99 ? '99+' : bridgePending}</span>
+            )}
+          </span>
           {!item.isCenter && <span className="nav-label">{item.label}</span>}
         </button>
       ))}

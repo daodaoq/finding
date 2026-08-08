@@ -37,6 +37,12 @@ public class AuthController {
         return Result.ok();
     }
 
+    /** 生成图片验证码(注册用),返回 captchaKey + captchaImage(base64 PNG) */
+    @GetMapping("/captcha")
+    public Result<Map<String, String>> captcha() {
+        return Result.ok(authService.generateCaptcha());
+    }
+
     @PostMapping("/refresh")
     public Result<String> refresh(@RequestParam String refreshToken) {
         return Result.ok(authService.refreshToken(refreshToken));
