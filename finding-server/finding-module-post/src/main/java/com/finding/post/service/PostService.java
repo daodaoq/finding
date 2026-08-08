@@ -1,0 +1,26 @@
+package com.finding.post.service;
+
+import com.finding.post.dto.PostCreateDTO;
+import com.finding.post.dto.PostQueryDTO;
+import com.finding.post.vo.CommentVO;
+import com.finding.common.PageVO;
+import com.finding.post.vo.PostVO;
+
+public interface PostService {
+
+    PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId);
+    PostVO getPostDetail(Long postId, Long currentUserId);
+    PostVO createPost(Long userId, PostCreateDTO dto);
+    void deletePost(Long userId, Long postId);
+    void toggleLike(Long userId, Long postId);
+    PageVO<CommentVO> listComments(Long postId, int page, int size, Long currentUserId);
+    CommentVO addComment(Long userId, Long postId, Long parentId, String content);
+    void deleteComment(Long userId, Long commentId);
+    void toggleCommentLike(Long userId, Long commentId);
+
+    /** 获取当前用户发布的动态列表 */
+    PageVO<PostVO> getMyPosts(Long userId, int page, int size);
+
+    /** 获取当前用户点赞过的动态列表 */
+    PageVO<PostVO> getMyLikedPosts(Long userId, int page, int size);
+}

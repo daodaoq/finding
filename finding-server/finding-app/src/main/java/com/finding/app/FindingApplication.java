@@ -1,0 +1,26 @@
+package com.finding.app;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableAsync;
+
+@SpringBootApplication(scanBasePackages = "com.finding")
+@MapperScan({
+        "com.finding.user.mapper",
+        "com.finding.message.mapper",
+        "com.finding.post.mapper",
+        "com.finding.mate.mapper",
+        "com.finding.chat.mapper",
+        "com.finding.group.mapper",
+        "com.finding.app.mapper"
+})
+@EnableCaching
+@EnableAsync
+public class FindingApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(FindingApplication.class, args);
+    }
+}
