@@ -8,6 +8,7 @@ import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import PostCard from '../../components/PostCard';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import ReportDialog from '../../components/ReportDialog';
 import { showToast } from '../../components/Toast';
 import type { Post } from '../../types/post';
 import type { Comment } from '../../types/comment';
@@ -29,6 +30,9 @@ export default function PostDetailPage() {
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{
+    targetType: string; targetId: number; roomId?: number; title: string;
+  } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 删除自己的动态
@@ -160,6 +164,12 @@ export default function PostDetailPage() {
       <div className="pd-header">
         <button className="back-btn" onClick={() => navigate(-1)}>←</button>
         <h3>动态详情</h3>
+        <button
+          className="pd-report-btn"
+          onClick={() => setReportTarget({ targetType: 'post', targetId: post.id, title: '该动态' })}
+        >
+          举报
+        </button>
       </div>
 
       {/* 动态内容 */}
@@ -178,6 +188,7 @@ export default function PostDetailPage() {
         commentCount={post.commentCount}
         onLike={handleCommentLike}
         onReply={handleReply}
+        onReport={(c) => setReportTarget({ targetType: 'comment', targetId: c.id, title: '该评论' })}
       />
 
       {/* 底部输入栏 — 移动端键盘适配 */}
@@ -202,6 +213,16 @@ export default function PostDetailPage() {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {reportTarget && (
+        <ReportDialog
+          targetType={reportTarget.targetType}
+          targetId={reportTarget.targetId}
+          roomId={reportTarget.roomId}
+          title={reportTarget.title}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
     </div>
   );
 }

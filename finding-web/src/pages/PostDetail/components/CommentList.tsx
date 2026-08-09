@@ -8,10 +8,11 @@ interface Props {
   commentCount?: number;
   onLike: (commentId: number) => void;
   onReply: (comment: Comment) => void;
+  onReport: (comment: Comment) => void;
 }
 
 /** 动态详情 - 评论列表（含子回复） */
-export default function CommentList({ comments, commentCount, onLike, onReply }: Props) {
+export default function CommentList({ comments, commentCount, onLike, onReply, onReport }: Props) {
   return (
     <>
       {/* 评论标题 */}
@@ -41,6 +42,7 @@ export default function CommentList({ comments, commentCount, onLike, onReply }:
                   {comment.isLiked ? '❤️' : '🤍'} {comment.likeCount || ''}
                 </button>
                 <button onClick={() => onReply(comment)}>回复</button>
+                <button className="comment-report" onClick={() => onReport(comment)}>举报</button>
               </div>
 
               {/* 子回复 */}
@@ -59,6 +61,9 @@ export default function CommentList({ comments, commentCount, onLike, onReply }:
                         <div className="comment-content">
                           <span className="reply-target">回复 {comment.nickname}: </span>
                           {reply.content}
+                        </div>
+                        <div className="reply-actions">
+                          <button className="comment-report" onClick={() => onReport(reply)}>举报</button>
                         </div>
                       </div>
                     </div>

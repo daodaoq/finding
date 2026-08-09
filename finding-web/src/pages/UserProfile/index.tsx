@@ -7,6 +7,7 @@ import { resumeApi } from '../../api/resume';
 import { useAuthStore } from '../../store/authStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import ResumeView from '../../components/ResumeView';
+import ReportDialog from '../../components/ReportDialog';
 import type { ResumeView as ResumeViewType } from '../../types/resume';
 import './index.css';
 
@@ -17,6 +18,7 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true);
   const [resumeView, setResumeView] = useState<ResumeViewType | null>(null);
   const [resumeLoading, setResumeLoading] = useState(true);
+  const [showReport, setShowReport] = useState(false);
   const navigate = useNavigate();
   const myId = useAuthStore((s) => s.user?.id);
   const shareVersion = useInfoShareStore((s) => s.version);
@@ -52,6 +54,9 @@ export default function UserProfilePage() {
       <div className="up-header">
         <button className="back-btn" onClick={() => navigate(-1)}>←</button>
         <span>用户信息</span>
+        {myId && userId !== myId && (
+          <button className="up-report-btn" onClick={() => setShowReport(true)}>举报</button>
+        )}
       </div>
 
       <div className="up-card">
@@ -98,6 +103,15 @@ export default function UserProfilePage() {
           </div>
         )}
       </div>
+
+      {showReport && (
+        <ReportDialog
+          targetType="resume"
+          targetId={userId}
+          title="该用户（情感简历/个人介绍）"
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }

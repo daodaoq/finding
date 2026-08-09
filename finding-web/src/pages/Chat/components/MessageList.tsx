@@ -26,6 +26,8 @@ interface Props {
   errorNode?: ReactNode;
   /** 空列表提示 */
   emptyNode?: ReactNode;
+  /** 长按消息投诉 */
+  onReportMessage?: (msg: MessageLike) => void;
 }
 
 /** 聊天消息列表：10 分钟间隔时间分隔线 + 消息气泡。私聊 / 群聊共用。 */
@@ -39,6 +41,7 @@ export default function MessageList({
   endRef,
   errorNode,
   emptyNode,
+  onReportMessage,
 }: Props) {
   return (
     <div className="chat-messages" style={background} ref={listRef}>
@@ -60,6 +63,7 @@ export default function MessageList({
               isMine={msg.fromUserId === currentUserId}
               avatar={avatarOf(msg)}
               nickname={nicknameOf(msg)}
+              onReport={onReportMessage}
             />
           </div>
         );

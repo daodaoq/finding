@@ -4,6 +4,7 @@ import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
+import ReportDialog from '../../components/ReportDialog';
 import ChatHeader from '../Chat/components/ChatHeader';
 import MessageList from '../Chat/components/MessageList';
 import type { GroupMessage } from '../../types/groupChat';
@@ -18,6 +19,9 @@ export default function GroupChatPage() {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{
+    targetType: string; targetId: number; roomId?: number; title: string;
+  } | null>(null);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const msgListRef = useRef<HTMLDivElement>(null);
@@ -128,9 +132,24 @@ export default function GroupChatPage() {
             暂无消息，发送第一条消息吧
           </div>
         ) : undefined}
+        onReportMessage={(msg) => setReportTarget({
+          targetType: 'message',
+          targetId: msg.id,
+          title: '这条消息',
+        })}
       />
 
       <ChatInputBar onSend={handleSend} />
+
+      {reportTarget && (
+        <ReportDialog
+          targetType={reportTarget.targetType}
+          targetId={reportTarget.targetId}
+          roomId={reportTarget.roomId}
+          title={reportTarget.title}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { chatApi } from '../../api/chat';
 import { uploadApi } from '../../api/upload';
 import { userApi } from '../../api/user';
+import { reportApi } from '../../api/report';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -90,7 +91,7 @@ export default function ChatSettingsPage() {
       return;
     }
     try {
-      await chatApi.reportUser({ targetUserId: userId, roomId, reason });
+      await reportApi.report({ targetType: 'user', targetId: userId, roomId, reason });
       setShowReport(false);
       setReportCustom('');
       setReportReason('');

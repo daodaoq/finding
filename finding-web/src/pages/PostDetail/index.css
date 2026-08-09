@@ -10,4 +10,7 @@
   border-bottom: 1px solid #f0f0f0;
   position: sticky; top: 0; z-index: 10;
 }
-.pd-header h3 { margin: 0; font-size: 16px; }
+.pd-header h3 { margin: 0; font-size: 16px; flex: 1; }
+.pd-report-btn {
+  background: none; border: none; font-size: 13px; color: #ff6b81; cursor: pointer; padding: 0;
+}

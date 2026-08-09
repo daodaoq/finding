@@ -1,0 +1,48 @@
+/* 通用投诉弹窗 */
+.report-card {
+  max-width: 320px;
+}
+
+.report-title {
+  text-align: center;
+}
+
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.report-reason {
+  border: 1px solid #eee;
+  background: #fff;
+  color: #666;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.report-reason.active {
+  border-color: #ff6b81;
+  color: #ff6b81;
+  background: #fff0f3;
+}
+
+.report-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 14px;
+}
+
+.report-input:focus {
+  border-color: #ff9a76;
+}

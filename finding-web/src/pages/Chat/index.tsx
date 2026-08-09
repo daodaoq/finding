@@ -8,6 +8,7 @@ import { useInfoShareStore } from '../../store/infoShareStore';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import ReportDialog from '../../components/ReportDialog';
 import ChatHeader from './components/ChatHeader';
 import ShareStatusTag from './components/ShareStatusTag';
 import MessageList, { type MessageLike } from './components/MessageList';
@@ -37,6 +38,10 @@ export default function ChatDetailPage() {
   const [showShareConfirm, setShowShareConfirm] = useState(false);
   // 会话设置(聊天背景)
   const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null);
+  // 长按消息投诉
+  const [reportTarget, setReportTarget] = useState<{
+    targetType: string; targetId: number; roomId?: number; title: string;
+  } | null>(null);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const shareVersion = useInfoShareStore((s) => s.version);
@@ -227,6 +232,12 @@ export default function ChatDetailPage() {
         background={resolveChatBg(chatSettings?.background)}
         listRef={msgListRef}
         endRef={messagesEndRef}
+        onReportMessage={(msg) => setReportTarget({
+          targetType: 'message',
+          targetId: msg.id,
+          roomId: conversation?.roomId || conversation?.id,
+          title: '这条消息',
+        })}
       />
 
       {/* 输入栏 */}
@@ -242,6 +253,16 @@ export default function ChatDetailPage() {
         onConfirm={() => { setShowShareConfirm(false); handleShareDecision(true); }}
         onCancel={() => { setShowShareConfirm(false); handleShareDecision(false); }}
       />
+
+      {reportTarget && (
+        <ReportDialog
+          targetType={reportTarget.targetType}
+          targetId={reportTarget.targetId}
+          roomId={reportTarget.roomId}
+          title={reportTarget.title}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
     </div>
   );
 }

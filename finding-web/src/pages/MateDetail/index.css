@@ -10,7 +10,10 @@
   border-bottom: 1px solid #f0f0f0;
   position: sticky; top: 0; z-index: 10;
 }
-.md-header h3 { margin: 0; font-size: 16px; }
+.md-header h3 { margin: 0; font-size: 16px; flex: 1; }
+.md-report-btn {
+  background: none; border: none; font-size: 13px; color: #ff6b81; cursor: pointer; padding: 0;
+}
 
 /* 活动头部 */
 .md-hero {

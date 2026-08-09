@@ -9,6 +9,10 @@
   padding: 12px 16px; background: #fff; border-bottom: 1px solid #f0f0f0;
   font-size: 16px; font-weight: 600;
 }
+.gi-header > span { flex: 1; }
+.gi-report-btn {
+  background: none; border: none; font-size: 13px; color: #ff6b81; cursor: pointer; padding: 0;
+}
 .gi-loading { text-align: center; color: #ccc; padding: 60px 0; }
 .gi-basic {
   display: flex; flex-direction: column; align-items: center;

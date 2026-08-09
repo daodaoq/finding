@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatClockTime } from '../utils/format';
 import './ChatBubble.css';
@@ -16,11 +16,14 @@ interface Props {
   isMine: boolean;
   avatar?: string;
   nickname?: string;
+  /** 长按消息触发投诉 */
+  onReport?: (message: ChatMessage) => void;
 }
 
-export default function ChatBubble({ message, isMine, avatar, nickname }: Props) {
+export default function ChatBubble({ message, isMine, avatar, nickname, onReport }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const navigate = useNavigate();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const handleAvatarClick = () => {
     if (message.fromUserId) {
@@ -28,9 +31,25 @@ export default function ChatBubble({ message, isMine, avatar, nickname }: Props)
     }
   };
 
+  // 长按 600ms 触发投诉
+  const startPress = () => {
+    longPressTimer.current = setTimeout(() => {
+      onReport?.(message);
+    }, 600);
+  };
+  const clearPress = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
   return (
     <>
-      <div className={`chat-bubble-row ${isMine ? 'mine' : 'other'}`}>
+      <div
+        className={`chat-bubble-row ${isMine ? 'mine' : 'other'}`}
+        onTouchStart={startPress}
+        onTouchEnd={clearPress}
+        onTouchMove={clearPress}
+        onContextMenu={(e) => { e.preventDefault(); onReport?.(message); }}
+      >
         <div className="chat-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
           {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
         </div>

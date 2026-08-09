@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
+import ReportDialog from '../../components/ReportDialog';
 import type { GroupChat, GroupMember } from '../../types/groupChat';
 import './index.css';
 
@@ -12,6 +13,7 @@ export default function GroupInfoPage() {
   const [group, setGroup] = useState<GroupChat | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showReport, setShowReport] = useState(false);
   const navigate = useNavigate();
   const myId = useAuthStore((s) => s.user?.id) || 0;
   const isOwner = group?.ownerId === myId;
@@ -59,6 +61,7 @@ export default function GroupInfoPage() {
       <div className="gi-header">
         <button className="back-btn" onClick={() => navigate(-1)}>←</button>
         <span>群聊信息</span>
+        <button className="gi-report-btn" onClick={() => setShowReport(true)}>举报</button>
       </div>
 
       {/* 群基本信息 */}
@@ -101,6 +104,15 @@ export default function GroupInfoPage() {
           {isOwner ? '解散群聊' : '退出群聊'}
         </button>
       </div>
+
+      {showReport && (
+        <ReportDialog
+          targetType="group"
+          targetId={groupId}
+          title="该群聊"
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }

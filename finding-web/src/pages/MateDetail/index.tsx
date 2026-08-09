@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { mateApi } from '../../api/mate';
 import { useAuthStore } from '../../store/authStore';
+import ReportDialog from '../../components/ReportDialog';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import LoginModal from '../../components/LoginModal';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -21,6 +22,7 @@ export default function MateDetailPage() {
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => { loadDetail(); }, [mateId]);
 
@@ -74,6 +76,9 @@ export default function MateDetailPage() {
       <div className="md-header">
         <button className="back-btn" onClick={() => navigate(-1)}>←</button>
         <h3>搭子详情</h3>
+        {!isOwner && (
+          <button className="md-report-btn" onClick={() => setShowReport(true)}>举报</button>
+        )}
       </div>
 
       {/* 活动头部 */}
@@ -176,6 +181,15 @@ export default function MateDetailPage() {
         onConfirm={confirmLeave}
         onCancel={() => setShowLeaveConfirm(false)}
       />
+
+      {showReport && (
+        <ReportDialog
+          targetType="mate"
+          targetId={mate.id}
+          title="该搭子邀约"
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }
