@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Popconfirm, message, Modal, Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import MDEditor from '@uiw/react-md-editor';
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
 import request from '../api/request';
 
 interface AnnouncementRecord {
@@ -102,6 +105,7 @@ export default function Announcements() {
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         okText={editing ? '保存' : '发布'}
+        width={760}
       >
         <Input
           placeholder="公告标题"
@@ -109,12 +113,17 @@ export default function Announcements() {
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
         />
-        <Input.TextArea
-          rows={4}
-          placeholder="公告内容"
-          value={form.content}
-          onChange={(e) => setForm({ ...form, content: e.target.value })}
-        />
+        <div data-color-mode="light" style={{ marginBottom: 8 }}>
+          <MDEditor
+            height={320}
+            value={form.content}
+            onChange={(v) => setForm({ ...form, content: v || '' })}
+            preview="live"
+          />
+        </div>
+        <div style={{ fontSize: 12, color: '#bbb' }}>
+          💡 标准 Markdown 编辑器：顶部工具栏可加粗/斜体/标题/列表/引用/代码/表格/图片等，支持实时预览。用户端会渲染为富文本。
+        </div>
       </Modal>
     </div>
   );

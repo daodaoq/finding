@@ -1,0 +1,116 @@
+/* 系统公告面板 —— 宽度略大、未读公告列表可滚动、分界线明显 */
+.ann-card {
+  max-width: 340px !important;
+  text-align: left !important;
+}
+
+.ann-title {
+  font-size: 16px !important;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 0;
+}
+
+.ann-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 0 0 16px;
+}
+
+.ann-item {
+  padding: 14px 0;
+  border-bottom: 1.5px solid #e8e8e8;
+}
+.ann-item:last-child {
+  border-bottom: none;
+}
+
+.ann-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.ann-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+.ann-item-time {
+  font-size: 11px;
+  color: #bbb;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Markdown 内容 */
+.ann-item-body {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.8;
+  word-break: break-word;
+}
+.ann-item-body h1,
+.ann-item-body h2,
+.ann-item-body h3,
+.ann-item-body h4 {
+  font-size: 15px;
+  margin: 8px 0 4px;
+  color: #333;
+}
+.ann-item-body p { margin: 4px 0; }
+.ann-item-body ul,
+.ann-item-body ol { padding-left: 18px; margin: 4px 0; }
+.ann-item-body li { margin: 2px 0; }
+.ann-item-body strong { color: #333; }
+.ann-item-body a { color: #ff6b81; text-decoration: underline; }
+.ann-item-body blockquote {
+  border-left: 3px solid #ff9a76;
+  margin: 6px 0;
+  padding: 2px 10px;
+  color: #888;
+  background: #fff7f5;
+  border-radius: 0 6px 6px 0;
+}
+.ann-item-body code {
+  background: #f5f5f5;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+}
+.ann-item-body pre {
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+.ann-item-body pre code { background: none; padding: 0; }
+.ann-item-body table {
+  border-collapse: collapse;
+  margin: 6px 0;
+  width: 100%;
+}
+.ann-item-body th,
+.ann-item-body td {
+  border: 1px solid #e5e5e5;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.ann-item-body img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+/* 封禁提示 */
+.ban-body {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.8;
+  margin: 0 0 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

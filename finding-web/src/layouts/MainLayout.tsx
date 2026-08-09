@@ -4,6 +4,9 @@ import BottomNav from '../components/BottomNav';
 import CreateActionSheet from '../components/CreateActionSheet';
 import ToastContainer, { showToast } from '../components/Toast';
 import InfoShareModal from '../components/InfoShareModal';
+import AnnouncementModal, { getLastSeenAnnouncementId } from '../components/AnnouncementModal';
+import type { AnnouncementData } from '../components/AnnouncementModal';
+import BanModal from '../components/BanModal';
 import { useAuthStore } from '../store/authStore';
 import { useMessageStore } from '../store/messageStore';
 import { useBridgeStore } from '../store/bridgeStore';
@@ -12,6 +15,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { authApi } from '../api/auth';
 import { messageApi } from '../api/message';
 import { bridgeApi } from '../api/bridge';
+import { homeApi } from '../api/home';
 import './MainLayout.css';
 
 export default function MainLayout() {
@@ -21,13 +25,42 @@ export default function MainLayout() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const logout = useAuthStore((s) => s.logout);
   const setUnreadCount = useMessageStore((s) => s.setUnreadCount);
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const setInfoSharePrompt = useInfoShareStore((s) => s.setPrompt);
   const bumpInfoShare = useInfoShareStore((s) => s.bump);
 
-  // 全局 WebSocket:实时接收「信息互换」请求/结果(登录后连接)
+  // 系统公告:全部未读公告(WS 推送 + 启动补拉),一次滚动展示
+  const [announcements, setAnnouncements] = useState<AnnouncementData[]>([]);
+  // 封禁提示(收到 ban 推送后弹出,关闭即强制退出)
+  const [banMessage, setBanMessage] = useState<string | null>(null);
+
+  const enqueueAnnouncement = (a: AnnouncementData) => {
+    setAnnouncements((prev) => prev.some((x) => x.id === a.id) ? prev : [...prev, a]);
+  };
+
+  const handleBanClose = () => {
+    setBanMessage(null);
+    logout();
+    navigate('/login');
+  };
+
+  // 全局 WebSocket:实时接收「信息互换」请求/结果 + 「系统公告」+ 「封禁」推送(登录后连接)
   useWebSocket((msg) => {
+    if (msg.type === 'ban') {
+      setBanMessage(msg.content || '你已被封禁');
+      return;
+    }
+    if (msg.type === 'system_announcement') {
+      enqueueAnnouncement({
+        id: msg.messageId,
+        title: msg.title || '系统公告',
+        content: msg.content || '',
+        createdAt: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
+      });
+      return;
+    }
     if (msg.type !== 'info_share') return;
     if (msg.action === 'request') {
       setInfoSharePrompt({
@@ -40,6 +73,17 @@ export default function MainLayout() {
       bumpInfoShare();
     }
   }, isLoggedIn);
+
+  // 启动时补拉「已读之后」的全部未读公告(覆盖离线期间发布的多条)
+  useEffect(() => {
+    homeApi.announcements(getLastSeenAnnouncementId())
+      .then((res) => {
+        (res.data.data || []).forEach((a) =>
+          enqueueAnnouncement({ id: a.id, title: a.title || '系统公告', content: a.content || '', createdAt: a.createdAt }));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 用户信息水合：登录态有效但 user 为空时，自动拉取
   useEffect(() => {
@@ -81,6 +125,8 @@ export default function MainLayout() {
       />
       <ToastContainer />
       <InfoShareModal />
+      <AnnouncementModal announcements={announcements} onClose={() => setAnnouncements([])} />
+      <BanModal message={banMessage} onClose={handleBanClose} />
     </div>
   );
 }

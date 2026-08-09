@@ -8,6 +8,8 @@ import com.finding.common.ResultCode;
 import com.finding.app.entity.SystemAnnouncement;
 import com.finding.app.mapper.SystemAnnouncementMapper;
 import com.finding.common.PageVO;
+import com.finding.framework.websocket.WebSocketServer;
+import com.finding.framework.websocket.WsMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminAnnouncementController {
 
     private final SystemAnnouncementMapper announcementMapper;
+    private final WebSocketServer webSocketServer;
 
     @GetMapping("/announcements")
     public Result<PageVO<SystemAnnouncement>> listAnnouncements(
@@ -34,6 +37,14 @@ public class AdminAnnouncementController {
     @PostMapping("/announcements")
     public Result<SystemAnnouncement> createAnnouncement(@RequestBody SystemAnnouncement announcement) {
         announcementMapper.insert(announcement);
+        // 主动推送系统公告给所有在线用户 → 用户端弹出公告面板
+        WsMessage ws = new WsMessage();
+        ws.setType("system_announcement");
+        ws.setTitle(announcement.getTitle());
+        ws.setContent(announcement.getContent());
+        ws.setMessageId(announcement.getId());
+        ws.setTimestamp(System.currentTimeMillis()); // 发布时刻,供用户端展示时间
+        webSocketServer.sendToAllOnline(ws);
         return Result.ok(announcement);
     }
 
