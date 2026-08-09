@@ -14,8 +14,21 @@ interface ReportRecord {
   reason: string;
   status: number;
   roomId?: number;
+  targetType?: string;
+  targetId?: number;
+  contentSnapshot?: string;
   createdAt: string;
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  message: '聊天消息',
+  post: '动态',
+  comment: '评论',
+  mate: '搭子邀约',
+  group: '群聊',
+  user: '用户资料',
+  resume: '情感简历/个人介绍',
+};
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
   0: { label: '待处理', color: 'processing' },
@@ -58,6 +71,9 @@ export default function Reports() {
     } catch { message.error('操作失败'); }
   };
 
+  // 详情弹窗
+  const [detailTarget, setDetailTarget] = useState<ReportRecord | null>(null);
+
   // 封禁弹窗(可选天数 + 原因)
   const [banTarget, setBanTarget] = useState<{ id: number; nickname: string } | null>(null);
   const [banDays, setBanDays] = useState(0);
@@ -97,14 +113,19 @@ export default function Reports() {
     { title: '被投诉人', render: (_, r) => userCell(r.targetNickname, r.targetAvatar) },
     { title: '投诉原因', dataIndex: 'reason', ellipsis: true },
     {
+      title: '投诉类型', dataIndex: 'targetType', width: 90,
+      render: (v?: string) => (v ? TYPE_LABEL[v] || v : '—'),
+    },
+    {
       title: '状态', dataIndex: 'status', width: 90,
       render: (v: number) => <Tag color={STATUS_MAP[v]?.color}>{STATUS_MAP[v]?.label}</Tag>,
     },
     { title: '时间', dataIndex: 'createdAt', width: 160, render: (v: string) => v?.replace('T', ' ') },
     {
-      title: '操作', width: 210,
+      title: '操作', width: 240,
       render: (_, record) => (
         <Space>
+          <a onClick={() => setDetailTarget(record)}>查看</a>
           {record.status === 0 && (
             <>
               <Popconfirm title="标记该投诉为已处理？" onConfirm={() => updateStatus(record.id, 1)}>
@@ -174,6 +195,34 @@ export default function Reports() {
         <p style={{ marginTop: 12, fontSize: 12, color: '#999' }}>
           0 表示永久封禁；按天封禁到期后账号自动解封。封禁立即生效，已登录也会被强制失效。
         </p>
+      </Modal>
+
+      {/* 投诉详情弹窗 */}
+      <Modal
+        title="投诉详情"
+        open={detailTarget != null}
+        onCancel={() => setDetailTarget(null)}
+        footer={null}
+        width={520}
+      >
+        {detailTarget && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div><b>投诉人：</b>{detailTarget.fromNickname}</div>
+            <div><b>被投诉人：</b>{detailTarget.targetNickname}</div>
+            <div><b>投诉类型：</b>{detailTarget.targetType ? TYPE_LABEL[detailTarget.targetType] || detailTarget.targetType : '用户'}</div>
+            <div><b>投诉原因：</b>{detailTarget.reason}</div>
+            <div><b>提交时间：</b>{detailTarget.createdAt?.replace('T', ' ')}</div>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>被投诉内容：</div>
+              <div style={{
+                background: '#f8f8f8', borderRadius: 8, padding: '10px 12px',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 13, lineHeight: 1.7, color: '#444',
+              }}>
+                {detailTarget.contentSnapshot || '（旧投诉无内容快照）'}
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
