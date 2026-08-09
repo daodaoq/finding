@@ -99,3 +99,30 @@
   padding: 14px; border: 1px solid #ff6b81; border-radius: 12px;
   background: #fff; color: #ff6b81; font-size: 16px; font-weight: 600; cursor: pointer;
 }
+
+/* 我的认证信息详情(只读) */
+.ver-detail {
+  background: #fff; margin: 0 16px; border-radius: 12px; overflow: hidden;
+}
+.ver-detail-title {
+  padding: 14px 16px; font-size: 14px; font-weight: 600; color: #333;
+  border-bottom: 1px solid #f5f5f5;
+}
+.ver-detail-item {
+  display: flex; align-items: center; padding: 13px 16px;
+  border-bottom: 1px solid #f5f5f5; gap: 12px;
+}
+.ver-detail-item:last-child { border-bottom: none; }
+.ver-detail-label {
+  font-size: 14px; color: #999; width: 72px; flex-shrink: 0;
+}
+.ver-detail-value {
+  flex: 1; font-size: 14px; color: #333; text-align: right; word-break: break-all;
+}
+.ver-detail-photo {
+  padding: 14px 16px; border-bottom: 1px solid #f5f5f5;
+}
+.ver-detail-photo img {
+  width: 100%; max-height: 240px; object-fit: contain;
+  border-radius: 8px; background: #fafafa; margin-top: 10px;
+}

@@ -1,39 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postApi } from '../../../api/post';
+import { useAuthStore } from '../../../store/authStore';
 import PostCard from '../../../components/PostCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 import { showToast } from '../../../components/Toast';
+import { useInfiniteList } from '../../../hooks/useInfiniteList';
 import type { Post } from '../../../types/post';
 import '../subpage.css';
 
 export default function MyPostsPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
+  const currentUser = useAuthStore(s => s.user);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
-  useEffect(() => { loadPosts(1); }, []);
-
-  const loadPosts = async (p: number) => {
-    setLoading(true);
-    try {
-      const res = await postApi.myPosts(p, 10);
-      const data = res.data.data;
-      if (p === 1) setPosts(data.records);
-      else setPosts((prev) => [...prev, ...data.records]);
-      setHasMore(data.hasMore);
-      setPage(p);
-    } catch { showToast('加载失败'); }
-    finally { setLoading(false); }
-  };
+  const { items: posts, loading, hasMore, setItems: setPosts, loadMore } =
+    useInfiniteList<Post, []>({
+      fetcher: async (p) => {
+        const res = await postApi.myPosts(p, 10);
+        return res.data.data;
+      },
+      onError: () => showToast('加载失败'),
+    });
 
   const handleLike = async (id: number) => {
-    try { await postApi.like(id);
+    try {
+      await postApi.like(id);
       setPosts(prev => prev.map(p => p.id === id ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
     } catch { showToast('操作失败'); }
+  };
+
+  const handleDelete = async () => {
+    if (deleteTarget == null) return;
+    try {
+      await postApi.delete(deleteTarget);
+      showToast('已删除');
+      setPosts(prev => prev.filter(p => p.id !== deleteTarget));
+    } catch { showToast('删除失败'); }
+    finally { setDeleteTarget(null); }
   };
 
   return (
@@ -44,14 +50,34 @@ export default function MyPostsPage() {
       </div>
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
-        {!loading && posts.map(p => <PostCard key={p.id} post={p} onLike={handleLike} onClick={id => navigate(`/square/post/${id}`)} />)}
+        {!loading && posts.map(p => (
+          <PostCard
+            key={p.id}
+            post={p}
+            onLike={handleLike}
+            onClick={id => navigate(`/square/post/${id}`)}
+            canManage={p.userId === currentUser?.id}
+            onEdit={id => navigate(`/create-post?id=${id}`)}
+            onDelete={id => setDeleteTarget(id)}
+          />
+        ))}
         {!loading && posts.length === 0 && <EmptyState message="还没有发布过动态" />}
         {hasMore && posts.length > 0 && (
-          <button className="load-more-btn" onClick={() => loadPosts(page + 1)} disabled={loading}>
+          <button className="load-more-btn" onClick={loadMore} disabled={loading}>
             {loading ? '加载中...' : '加载更多'}
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        visible={deleteTarget != null}
+        title="删除动态"
+        message="确定删除这条动态吗？删除后不可恢复。"
+        confirmText="删除"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

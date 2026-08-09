@@ -100,6 +100,16 @@ public class MateController {
         return Result.ok(mateService.getMyJoinedInvitations(userId, query));
     }
 
+    /** 我的全部申请记录(含待审核/已通过/被拒) */
+    @GetMapping("/my-applications")
+    public Result<PageVO<Map<String, Object>>> myApplications(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(mateService.listMyApplications(userId, page, size));
+    }
+
     @GetMapping("/categories")
     public Result<List<Map<String, String>>> categories() {
         List<Map<String, String>> list = List.of(

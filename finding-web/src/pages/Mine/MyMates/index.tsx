@@ -8,10 +8,18 @@ import { showToast } from '../../../components/Toast';
 import type { User } from '../../../types/user';
 import '../subpage.css';
 
+type TabKey = 'following' | 'mutual' | 'followers';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'following', label: '关注' },
+  { key: 'mutual', label: '互相关注' },
+  { key: 'followers', label: '粉丝' },
+];
+
 export default function MyMatesPage() {
   const [searchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') as 'following' | 'followers') || 'following';
-  const [activeTab, setActiveTab] = useState<'following' | 'followers'>(initialTab);
+  const initialTab = (searchParams.get('tab') as TabKey) || 'following';
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -22,7 +30,9 @@ export default function MyMatesPage() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const api = activeTab === 'following' ? userApi.getFollowing : userApi.getFollowers;
+      const api = activeTab === 'following' ? userApi.getFollowing
+        : activeTab === 'mutual' ? userApi.getMutualFollows
+        : userApi.getFollowers;
       const res = await api(currentUser!.id);
       setUsers(res.data.data.records);
     } catch { showToast('加载失败'); }
@@ -32,7 +42,7 @@ export default function MyMatesPage() {
   const handleFollow = async (user: User) => {
     try {
       await userApi.follow(user.id);
-      if (activeTab === 'following') {
+      if (activeTab === 'following' || activeTab === 'mutual') {
         // 关注/互关 → 取消关注 → 从列表移除
         setUsers(prev => prev.filter(u => u.id !== user.id));
       } else {
@@ -56,6 +66,12 @@ export default function MyMatesPage() {
     return { background: '#ff6b81', color: '#fff', borderColor: '#ff6b81' };
   };
 
+  const emptyMessage = () => {
+    if (activeTab === 'following') return '还没有关注任何人';
+    if (activeTab === 'mutual') return '还没有互相关注的人';
+    return '还没有粉丝';
+  };
+
   return (
     <div className="subpage">
       <div className="subpage-header">
@@ -63,10 +79,15 @@ export default function MyMatesPage() {
         <h2>我的搭子</h2>
       </div>
       <div className="subpage-tabs">
-        <button className={`tab ${activeTab === 'following' ? 'active' : ''}`}
-          onClick={() => setActiveTab('following')}>关注</button>
-        <button className={`tab ${activeTab === 'followers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('followers')}>粉丝</button>
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            className={`tab ${activeTab === t.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
@@ -89,7 +110,7 @@ export default function MyMatesPage() {
           </div>
         ))}
         {!loading && users.length === 0 && (
-          <EmptyState message={activeTab === 'following' ? '还没有关注任何人' : '还没有粉丝'} />
+          <EmptyState message={emptyMessage()} />
         )}
       </div>
     </div>

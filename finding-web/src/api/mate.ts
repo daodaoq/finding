@@ -26,7 +26,25 @@ export const mateApi = {
   myJoined: (page = 1, size = 20, status?: number) =>
     request.get<ApiResponse<PageResult<Mate>>>('/mates/my-joined', { params: { page, size, status } }),
 
+  /** 我的全部申请记录(含待审核/已通过/被拒) */
+  myApplications: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<MateApplication>>>('/mates/my-applications', { params: { page, size } }),
+
   /** 退出搭子 */
   leave: (id: number) =>
     request.delete<ApiResponse<null>>(`/mates/${id}/leave`),
 };
+
+/** 我的搭子申请记录 */
+export interface MateApplication {
+  invitationId: number;
+  applicationStatus: number;   // 0=待审核 1=已通过 2=被拒
+  message?: string;
+  applyTime: string;
+  title: string;
+  category?: string;
+  location?: string;
+  activityTime?: string;
+  invitationStatus: number;    // 邀约状态 0=已取消 1=进行中 2=已结束
+  authorNickname?: string;
+}

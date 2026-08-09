@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../../../api/auth';
+import { authApi, type MyVerification } from '../../../api/auth';
 import { uploadApi } from '../../../api/upload';
 import { useAuthStore } from '../../../store/authStore';
 import { showToast } from '../../../components/Toast';
 import { APP_CONFIG } from '../../../utils/config';
+import { formatDateTime } from '../../../utils/format';
 import './index.css';
 
 export default function VerifyPage() {
@@ -12,6 +13,9 @@ export default function VerifyPage() {
   const setUser = useAuthStore((s) => s.setUser);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 我自己的认证记录(仅本人可见)
+  const [verification, setVerification] = useState<MyVerification | null>(null);
 
   const [realName, setRealName] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -22,6 +26,24 @@ export default function VerifyPage() {
 
   // 当前认证状态
   const verifiedStatus = user?.realNameVerified ?? 0;
+
+  // 拉取自己的认证记录
+  useEffect(() => {
+    authApi.getMyVerification()
+      .then((res) => {
+        const v = res.data.data;
+        setVerification(v);
+        // 被拒后预填上次信息，便于修改重交
+        if (v) {
+          setRealName(v.realName || '');
+          setStudentId(v.studentId || '');
+          setSchool(v.school || user?.school || APP_CONFIG.SCHOOL_NAME);
+          setStudentCard(v.studentCard || '');
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** 上传学生证照片 */
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +76,15 @@ export default function VerifyPage() {
       // 更新本地状态为"审核中"
       if (user) setUser({ ...user, realNameVerified: 1 });
       showToast('提交成功，请等待管理员审核');
+      setVerification({
+        id: 0, userId: user?.id ?? 0,
+        realName: realName.trim(),
+        studentId: studentId.trim(),
+        school: school.trim() || APP_CONFIG.SCHOOL_NAME,
+        studentCard: studentCard || undefined,
+        status: 0,
+        createdAt: new Date().toISOString(),
+      });
     } catch {
       showToast('提交失败');
     } finally {
@@ -61,7 +92,47 @@ export default function VerifyPage() {
     }
   };
 
-  // ── 已通过 ──
+  /** 只读展示自己的认证信息(空字段隐藏) */
+  const renderDetail = () => {
+    if (!verification) return null;
+    return (
+      <div className="ver-detail">
+        <div className="ver-detail-title">我的认证信息</div>
+        {verification.realName && (
+          <div className="ver-detail-item">
+            <span className="ver-detail-label">真实姓名</span>
+            <span className="ver-detail-value">{verification.realName}</span>
+          </div>
+        )}
+        {verification.studentId && (
+          <div className="ver-detail-item">
+            <span className="ver-detail-label">学号</span>
+            <span className="ver-detail-value">{verification.studentId}</span>
+          </div>
+        )}
+        {verification.school && (
+          <div className="ver-detail-item">
+            <span className="ver-detail-label">学校</span>
+            <span className="ver-detail-value">{verification.school}</span>
+          </div>
+        )}
+        {verification.createdAt && (
+          <div className="ver-detail-item">
+            <span className="ver-detail-label">提交时间</span>
+            <span className="ver-detail-value">{formatDateTime(verification.createdAt)}</span>
+          </div>
+        )}
+        {verification.studentCard && (
+          <div className="ver-detail-photo">
+            <span className="ver-detail-label">学生证照片</span>
+            <img src={verification.studentCard} alt="学生证" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── 已通过：状态 + 详情 ──
   if (verifiedStatus === 2) {
     return (
       <div className="ver-page">
@@ -74,11 +145,12 @@ export default function VerifyPage() {
           <div className="ver-status-title">认证已通过</div>
           <div className="ver-status-desc">你是{APP_CONFIG.SCHOOL_NAME}已认证学生，可使用全部功能</div>
         </div>
+        {renderDetail()}
       </div>
     );
   }
 
-  // ── 审核中 ──
+  // ── 审核中：状态 + 详情 ──
   if (verifiedStatus === 1) {
     return (
       <div className="ver-page">
@@ -91,11 +163,12 @@ export default function VerifyPage() {
           <div className="ver-status-title">审核中</div>
           <div className="ver-status-desc">你的认证申请正在审核中，请耐心等待。审核通过后即可使用全部功能。</div>
         </div>
+        {renderDetail()}
       </div>
     );
   }
 
-  // ── 被拒绝（可重新提交）──
+  // ── 被拒绝（可查看上次信息并重新提交）──
   const isRejected = verifiedStatus === 3;
 
   return (
@@ -109,9 +182,14 @@ export default function VerifyPage() {
         <div className="ver-status-card rejected">
           <div className="ver-status-icon">❌</div>
           <div className="ver-status-title">认证未通过</div>
-          <div className="ver-status-desc">你的上次认证申请未通过审核，请核对信息后重新提交</div>
+          <div className="ver-status-desc">
+            {verification?.reviewComment
+              ? `审核意见：${verification.reviewComment}`
+              : '你的上次认证申请未通过审核，请核对信息后重新提交'}
+          </div>
         </div>
       )}
+      {isRejected && renderDetail()}
 
       <div className="ver-form">
         {/* 真实姓名 */}

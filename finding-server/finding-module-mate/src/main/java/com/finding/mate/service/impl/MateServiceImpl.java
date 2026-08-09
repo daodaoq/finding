@@ -21,8 +21,12 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import com.finding.mate.entity.MateInvitation;
 import com.finding.mate.entity.MateParticipant;
@@ -262,6 +266,51 @@ public class MateServiceImpl implements MateService {
                 .map(m -> toVO(m, userId, lat, lng))
                 .collect(Collectors.toList());
         return PageVO.of(records, total, query.getPage(), query.getSize());
+    }
+
+    @Override
+    public PageVO<Map<String, Object>> listMyApplications(Long userId, int page, int size) {
+        Page<MateParticipant> pg = new Page<>(page, size);
+        Page<MateParticipant> result = participantMapper.selectPage(pg,
+                new LambdaQueryWrapper<MateParticipant>()
+                        .eq(MateParticipant::getUserId, userId)
+                        .orderByDesc(MateParticipant::getCreatedAt));
+
+        Set<Long> invitationIds = result.getRecords().stream()
+                .map(MateParticipant::getInvitationId).collect(Collectors.toSet());
+        Map<Long, MateInvitation> invMap = new HashMap<>();
+        Set<Long> authorIds = new HashSet<>();
+        if (!invitationIds.isEmpty()) {
+            List<MateInvitation> invs = invitationMapper.selectBatchIds(invitationIds);
+            for (MateInvitation i : invs) {
+                invMap.put(i.getId(), i);
+                authorIds.add(i.getUserId());
+            }
+        }
+        Map<Long, String> nicknameMap = new HashMap<>();
+        if (!authorIds.isEmpty()) {
+            userMapper.selectBatchIds(authorIds).forEach(u -> nicknameMap.put(u.getId(), u.getNickname()));
+        }
+
+        List<Map<String, Object>> records = result.getRecords().stream().map(p -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("invitationId", p.getInvitationId());
+            map.put("applicationStatus", p.getStatus());
+            map.put("message", p.getMessage());
+            map.put("applyTime", p.getCreatedAt());
+            MateInvitation inv = invMap.get(p.getInvitationId());
+            if (inv != null) {
+                map.put("title", inv.getTitle());
+                map.put("category", inv.getCategory());
+                map.put("location", inv.getLocation());
+                map.put("activityTime", inv.getActivityTime());
+                map.put("invitationStatus", inv.getStatus());
+                map.put("authorNickname", nicknameMap.getOrDefault(inv.getUserId(), ""));
+            }
+            return map;
+        }).collect(Collectors.toList());
+
+        return PageVO.of(records, result.getTotal(), page, size);
     }
 
     private MateVO toVO(MateInvitation m, Long currentUserId, Double userLat, Double userLng) {

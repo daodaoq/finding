@@ -13,6 +13,13 @@
 }
 .subpage-header h2 { margin: 0; font-size: 17px; }
 
+.subpage-back {
+  background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; color: #333;
+}
+.back-btn {
+  background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; color: #333;
+}
+
 .subpage-tabs {
   display: flex;
   background: #fff;
@@ -26,6 +33,25 @@
 .subpage-tabs .tab.active { color: #ff6b81; border-bottom-color: #ff6b81; font-weight: 600; }
 
 .subpage-list { background: #fff; }
+
+/* 二级菜单列表(帮助/设置等) */
+.menu-list { background: #fff; }
+.menu-list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-bottom: 1px solid #f5f5f5;
+  cursor: pointer; font-size: 15px; color: #333;
+}
+.menu-list-item:active { background: #fafafa; }
+.menu-list-item:last-child { border-bottom: none; }
+.menu-list-arrow { margin-left: auto; color: #ddd; font-size: 18px; flex-shrink: 0; }
+
+/* 子页内容白卡 */
+.subpage-card {
+  background: #fff;
+  margin: 12px 12px 0;
+  border-radius: 12px;
+  padding: 16px;
+}
 
 /* 用户行 */
 .user-row {

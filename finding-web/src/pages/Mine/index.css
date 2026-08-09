@@ -82,6 +82,43 @@
   padding: 5px 14px; border-radius: 14px; font-size: 12px; cursor: pointer;
 }
 
+/* 四按钮网格 */
+.mine-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: #fff;
+  padding: 14px 0 12px;
+  margin-bottom: 8px;
+}
+.mine-quick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.mine-quick-item:active { opacity: 0.7; }
+.mine-quick-icon { font-size: 24px; }
+.mine-quick-label { font-size: 12px; color: #555; }
+
+/* 情感简历横屏卡 */
+.mine-resume-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  color: #fff;
+  cursor: pointer;
+}
+.mine-resume-banner:active { opacity: 0.92; }
+.mine-resume-icon { font-size: 28px; flex-shrink: 0; }
+.mine-resume-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.mine-resume-title { font-size: 16px; font-weight: 700; }
+.mine-resume-sub { font-size: 12px; opacity: 0.85; }
+.mine-resume-arrow { font-size: 20px; opacity: 0.8; flex-shrink: 0; }
+
 /* 统计数据 */
 .mine-stats {
   display: flex;

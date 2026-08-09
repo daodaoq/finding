@@ -5,6 +5,8 @@ import com.finding.mate.dto.MateQueryDTO;
 import com.finding.mate.vo.MateVO;
 import com.finding.common.PageVO;
 
+import java.util.Map;
+
 public interface MateService {
 
     PageVO<MateVO> listInvitations(MateQueryDTO query, Long currentUserId);
@@ -18,4 +20,7 @@ public interface MateService {
 
     PageVO<MateVO> getMyInvitations(Long userId, MateQueryDTO query);
     PageVO<MateVO> getMyJoinedInvitations(Long userId, MateQueryDTO query);
+
+    /** 我的全部申请记录(含待审核/已通过/被拒),join 邀约信息 */
+    PageVO<Map<String, Object>> listMyApplications(Long userId, int page, int size);
 }
