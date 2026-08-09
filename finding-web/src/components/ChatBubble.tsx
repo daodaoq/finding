@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatClockTime } from '../utils/format';
 import './ChatBubble.css';
 
 interface ChatMessage {
@@ -47,7 +48,7 @@ export default function ChatBubble({ message, isMine, avatar, nickname }: Props)
               <span>{message.content}</span>
             )}
           </div>
-          <span className="chat-time">{formatTime(message.createdAt)}</span>
+          <span className="chat-time">{formatClockTime(message.createdAt)}</span>
         </div>
       </div>
 
@@ -60,9 +61,4 @@ export default function ChatBubble({ message, isMine, avatar, nickname }: Props)
       )}
     </>
   );
-}
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }

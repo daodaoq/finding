@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { chatApi } from '../../api/chat';
 import { uploadApi } from '../../api/upload';
@@ -6,8 +6,9 @@ import { userApi } from '../../api/user';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { CHAT_BG_PRESETS, resolveChatBg } from '../../utils/chatBackgrounds';
 import type { ChatSettings } from '../../types/message';
+import SearchView from './components/SearchView';
+import BackgroundView from './components/BackgroundView';
 import './index.css';
 
 const REPORT_REASONS = ['骚扰 / 不文明用语', '诈骗嫌疑', '色情低俗', '冒充身份', '其他'];
@@ -36,7 +37,6 @@ export default function ChatSettingsPage() {
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportCustom, setReportCustom] = useState('');
-  const bgFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (roomId) {
@@ -100,18 +100,14 @@ export default function ChatSettingsPage() {
     }
   };
 
-  // ── 聊天背景 ──
-  const handleUploadBg = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // ── 上传聊天背景 ──
+  const handleUploadBg = async (file: File) => {
     try {
       const res = await uploadApi.uploadImage(file);
       await updateSetting({ background: res.data.data });
       showToast('背景已更新');
     } catch {
       showToast('背景设置失败');
-    } finally {
-      e.target.value = '';
     }
   };
 
@@ -120,75 +116,28 @@ export default function ChatSettingsPage() {
   // ── 查找聊天记录视图 ──
   if (view === 'search') {
     return (
-      <div className="cs-page">
-        <div className="cs-header">
-          <button className="back-btn" onClick={() => setView('main')}>←</button>
-          <span>查找聊天记录</span>
-        </div>
-        <div className="cs-search-bar">
-          <input
-            className="cs-search-input"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="输入关键词搜索"
-            autoFocus
-          />
-          <button className="cs-search-btn" onClick={handleSearch} disabled={searching || !keyword.trim()}>
-            {searching ? '搜索中' : '搜索'}
-          </button>
-        </div>
-        <div className="cs-search-results">
-          {results === null && <p className="cs-empty">输入关键词搜索聊天记录</p>}
-          {results !== null && results.length === 0 && <p className="cs-empty">没有找到相关聊天记录</p>}
-          {results?.map((m) => (
-            <div key={m.id} className="cs-result-item">
-              <span className="cs-result-name">
-                {m.fromUserId === myId ? '我' : nickname}
-              </span>
-              <span className="cs-result-text">{m.messageType === 'image' ? '[图片]' : m.content}</span>
-              <span className="cs-result-time">{formatTime(m.createdAt)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <SearchView
+        nickname={nickname}
+        myId={myId}
+        keyword={keyword}
+        onKeywordChange={setKeyword}
+        searching={searching}
+        results={results}
+        onSearch={handleSearch}
+        onBack={() => setView('main')}
+      />
     );
   }
 
   // ── 聊天背景视图 ──
   if (view === 'background') {
-    const currentBg = settings?.background || null;
     return (
-      <div className="cs-page">
-        <div className="cs-header">
-          <button className="back-btn" onClick={() => setView('main')}>←</button>
-          <span>设置聊天背景</span>
-        </div>
-        <div className="cs-bg-body">
-          <div className="cs-bg-current" style={resolveChatBg(currentBg) || { background: '#f0f0f0' }}>
-            <span>当前背景</span>
-          </div>
-          <div className="cs-bg-grid">
-            {Object.entries(CHAT_BG_PRESETS).map(([key, style]) => (
-              <button
-                key={key}
-                className={`cs-bg-swatch ${currentBg === key ? 'active' : ''}`}
-                style={style}
-                onClick={() => updateSetting({ background: key })}
-              />
-            ))}
-          </div>
-          <div className="cs-bg-actions">
-            <button className="cs-bg-action" onClick={() => updateSetting({ background: '' })}>
-              恢复默认
-            </button>
-            <button className="cs-bg-action" onClick={() => bgFileRef.current?.click()}>
-              上传图片
-            </button>
-            <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadBg} />
-          </div>
-        </div>
-      </div>
+      <BackgroundView
+        background={settings?.background ?? null}
+        onUpdate={(bg) => updateSetting({ background: bg })}
+        onUpload={handleUploadBg}
+        onBack={() => setView('main')}
+      />
     );
   }
 
@@ -200,14 +149,14 @@ export default function ChatSettingsPage() {
         <span>聊天信息</span>
       </div>
 
-      {/* 对方名片 → 跳转情感简历 */}
+      {/* 对方名片 → 跳转情感简介 */}
       <div className="cs-contact-card" onClick={openProfile}>
         <div className="cs-contact-avatar">
           {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
         </div>
         <div className="cs-contact-info">
           <span className="cs-contact-name">{nickname}</span>
-          <span className="cs-contact-sub">查看TA的情感简历 ›</span>
+          <span className="cs-contact-sub">查看TA的情感简介 ›</span>
         </div>
       </div>
 
@@ -305,13 +254,3 @@ export default function ChatSettingsPage() {
   );
 }
 
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (diff < 172800000) return '昨天';
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}

@@ -10,6 +10,7 @@ import { showToast } from '../../components/Toast';
 import { useMessageStore } from '../../store/messageStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
+import { formatSessionTime } from '../../utils/format';
 import type { Conversation } from '../../types/message';
 import type { GroupChat } from '../../types/groupChat';
 import './index.css';
@@ -155,7 +156,7 @@ export default function MessagesPage() {
                       {conv.targetNickname || `用户${conv.targetUserId}`}
                     </span>
                     <span className="conv-time">
-                      {conv.lastMessageAt ? formatConvTime(conv.lastMessageAt) : ''}
+                      {conv.lastMessageAt ? formatSessionTime(conv.lastMessageAt) : ''}
                     </span>
                   </div>
                   <div className="conv-bottom">
@@ -188,7 +189,7 @@ export default function MessagesPage() {
                     <div className="conv-top">
                       <span className="conv-name">{g.name}</span>
                       <span className="conv-time">
-                        {g.lastMessageAt ? formatConvTime(g.lastMessageAt) : ''}
+                        {g.lastMessageAt ? formatSessionTime(g.lastMessageAt) : ''}
                       </span>
                     </div>
                     <div className="conv-bottom">
@@ -213,15 +214,4 @@ function previewText(msg: string | null | undefined): string {
   if (!msg) return '暂无消息';
   if (msg.startsWith('/uploads/') || msg.startsWith('http')) return '[图片]';
   return msg;
-}
-
-function formatConvTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  if (diff < 172800000) return '昨天';
-  return `${d.getMonth() + 1}/${d.getDate()}`;
 }

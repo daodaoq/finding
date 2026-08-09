@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mateApi } from '../../api/mate';
 import SearchBar from '../../components/SearchBar';
@@ -7,9 +7,12 @@ import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { showToast } from '../../components/Toast';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate } from '../../types/mate';
+// 共享信息流样式（分类网格 + 排序栏 + 搭子列表 + .no-more）
+import '../../components/Feed.css';
 import './index.css';
 
 /** 排序选项 */
@@ -21,38 +24,23 @@ const SORT_OPTIONS = [
 export default function SquarePage() {
   const [category, setCategory] = useState('');
   const [sortBy, setSortBy] = useState('time');
-  const [mates, setMates] = useState<Mate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose } = useRequireLogin();
 
-  // 切换分类或排序时重置
-  useEffect(() => {
-    setMates([]);
-    setPage(1);
-    setHasMore(true);
-    loadMates(1, category, sortBy);
-  }, [category, sortBy]);
-
-  const loadMates = async (p: number, cat: string, sort: string) => {
-    setLoading(true);
-    try {
-      const params: Record<string, unknown> = { page: p, size: 10 };
-      if (cat) params.category = cat;
-      if (sort === 'time') params.sortBy = 'time';
-      else params.sortBy = 'distance';
-
-      const res = await mateApi.list(params);
-      const data = res.data.data;
-      if (p === 1) setMates(data.records);
-      else setMates((prev) => [...prev, ...data.records]);
-      setHasMore(data.hasMore);
-      setPage(p);
-    } catch { showToast('加载失败'); }
-    finally { setLoading(false); }
-  };
+  const { items: mates, loading, hasMore, setItems: setMates, onScroll } =
+    useInfiniteList<Mate, [string, string]>({
+      // 切换分类或排序时自动重置并加载第一页
+      fetcher: async (p, cat, sort) => {
+        const params: Record<string, unknown> = { page: p, size: 10 };
+        if (cat) params.category = cat;
+        params.sortBy = sort === 'distance' ? 'distance' : 'time';
+        const res = await mateApi.list(params);
+        return res.data.data;
+      },
+      args: [category, sortBy],
+      deps: [category, sortBy],
+      onError: () => showToast('加载失败'),
+    });
 
   const handleJoin = (id: number) => {
     requireLogin(async () => {
@@ -64,14 +52,8 @@ export default function SquarePage() {
     });
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const bottom = e.currentTarget.scrollHeight - e.currentTarget.scrollTop <=
-                   e.currentTarget.clientHeight + 100;
-    if (bottom && hasMore && !loading) loadMates(page + 1, category, sortBy);
-  };
-
   return (
-    <div className="square-page" onScroll={handleScroll}>
+    <div className="square-page" onScroll={onScroll}>
       {/* 顶部搜索 */}
       <SearchBar placeholder="搜搭子..." />
 

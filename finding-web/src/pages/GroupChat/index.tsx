@@ -3,8 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
-import ChatBubble from '../../components/ChatBubble';
 import ChatInputBar from '../../components/ChatInputBar';
+import ChatHeader from '../Chat/components/ChatHeader';
+import MessageList from '../Chat/components/MessageList';
 import type { GroupMessage } from '../../types/groupChat';
 import '../Chat/index.css';
 
@@ -33,6 +34,7 @@ export default function GroupChatPage() {
       setLoading(false);
       setLoadError(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
 
   const loadMessages = async () => {
@@ -94,62 +96,41 @@ export default function GroupChatPage() {
 
   return (
     <div className="chat-page">
-      <div className="chat-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-        <span className="chat-header-name">{groupName}</span>
-        <button className="chat-info-btn" style={{
-          marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: '0 4px',
-        }}
-          onClick={() => navigate(`/messages/group-chat/${groupId}/info?name=${encodeURIComponent(groupName)}`)}>
-          ℹ️
-        </button>
-      </div>
+      <ChatHeader
+        title={groupName}
+        onBack={() => navigate(-1)}
+        right={(
+          <button
+            className="chat-info-btn"
+            style={{
+              marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: '0 4px',
+            }}
+            onClick={() => navigate(`/messages/group-chat/${groupId}/info?name=${encodeURIComponent(groupName)}`)}
+          >
+            ℹ️
+          </button>
+        )}
+      />
 
-      <div className="chat-messages" ref={msgListRef}>
-        {loadError && (
+      <MessageList
+        messages={messages}
+        currentUserId={user?.id}
+        avatarOf={(msg) => (msg as GroupMessage).fromUserAvatar}
+        nicknameOf={(msg) => (msg as GroupMessage).fromUserNickname}
+        listRef={msgListRef}
+        errorNode={loadError ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
             ⚠️ 加载失败，请确认已加入该群聊
           </div>
-        )}
-        {!loadError && messages.length === 0 && (
+        ) : undefined}
+        emptyNode={!loadError && messages.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#ccc' }}>
             暂无消息，发送第一条消息吧
           </div>
-        )}
-        {messages.map((msg, i) => {
-          const prevMsg = i > 0 ? messages[i - 1] : null;
-          const showTimeSep = !prevMsg ||
-            (new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) > 10 * 60 * 1000;
-          return (
-            <div key={msg.id}>
-              {showTimeSep && (
-                <div className="chat-time-sep"><span>{formatChatTime(msg.createdAt)}</span></div>
-              )}
-              <ChatBubble
-                message={msg}
-                isMine={msg.fromUserId === user?.id}
-                avatar={msg.fromUserAvatar}
-                nickname={msg.fromUserNickname}
-              />
-            </div>
-          );
-        })}
-        <div ref={() => {}} /* scroll anchor */ />
-      </div>
+        ) : undefined}
+      />
 
       <ChatInputBar onSend={handleSend} />
     </div>
   );
-}
-
-function formatChatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (date.getTime() === today.getTime()) return `今天 ${time}`;
-  if (date.getTime() === yesterday.getTime()) return `昨天 ${time}`;
-  return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
 }

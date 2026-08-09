@@ -1,18 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postApi } from '../../api/post';
 import { mateApi } from '../../api/mate';
-import PostCard from '../../components/PostCard';
-import MateCard from '../../components/MateCard';
-import LoginModal from '../../components/LoginModal';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import EmptyState from '../../components/EmptyState';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
+import LoginModal from '../../components/LoginModal';
 import { showToast } from '../../components/Toast';
-import { MATE_CATEGORIES } from '../../utils/constants';
 import { APP_CONFIG } from '../../utils/config';
 import type { Post } from '../../types/post';
 import type { Mate } from '../../types/mate';
+import PostFeed from './components/PostFeed';
+import MateFeed from './components/MateFeed';
 import './index.css';
 
 const HOME_TABS = [
@@ -28,91 +26,56 @@ const SORT_OPTIONS = [
   { key: 'recommended', label: '值得推荐' },
 ] as const;
 
-const MATE_SORT_OPTIONS = [
-  { key: 'time', label: '时间最近' },
-  { key: 'distance', label: '距离最近' },
-] as const;
-
 /** 游客最多浏览的帖子数 */
 const GUEST_MAX_POSTS = 5;
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('hot');
   const [sortBy, setSortBy] = useState('recommended');
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-
   // 搭子 Tab 相关状态
   const [mateCategory, setMateCategory] = useState('');
   const [mateSortBy, setMateSortBy] = useState('time');
-  const [mates, setMates] = useState<Mate[]>([]);
 
   const navigate = useNavigate();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
 
   const isPostTab = activeTab !== 'mate';
 
-  // 帖子 Tab: 切换时重置
-  useEffect(() => {
-    if (activeTab === 'mate') return;
-    setPosts([]);
-    setPage(1);
-    setHasMore(true);
-    loadPosts(1, activeTab, sortBy);
-  }, [activeTab, sortBy]);
-
-  // 搭子 Tab: 切换分类或排序时重置
-  useEffect(() => {
-    if (activeTab !== 'mate') return;
-    setMates([]);
-    setPage(1);
-    setHasMore(true);
-    loadMates(1, mateCategory, mateSortBy);
-  }, [activeTab, mateCategory, mateSortBy]);
-
-  const loadPosts = async (p: number, tab: string, sort?: string) => {
-    setLoading(true);
-    try {
+  // 帖子列表：切换 Tab / 排序时重置（搭子 Tab 下不请求）
+  const postList = useInfiniteList<Post, [string, string?]>({
+    fetcher: async (p, tab, sort) => {
+      if (tab === 'mate') return { records: [], hasMore: false };
       const res = await postApi.list({
         tab,
         page: p,
         size: 10,
         sortBy: tab === 'hot' ? sort : undefined,
       } as Record<string, unknown>);
-      const data = res.data.data;
-      if (p === 1) setPosts(data.records);
-      else setPosts((prev) => [...prev, ...data.records]);
-      setHasMore(data.hasMore);
-      setPage(p);
-    } catch { showToast('加载失败'); }
-    finally { setLoading(false); }
-  };
+      return res.data.data;
+    },
+    args: [activeTab, isPostTab ? sortBy : undefined],
+    deps: [isPostTab ? activeTab : null, sortBy],
+    onError: () => showToast('加载失败'),
+  });
 
-  const loadMates = async (p: number, cat: string, sort: string) => {
-    setLoading(true);
-    try {
-      const params: Record<string, unknown> = { page: p, size: 10 };
+  // 搭子列表：切换 Tab / 分类 / 排序时重置
+  const mateList = useInfiniteList<Mate, [string, string]>({
+    fetcher: async (p, cat, sort) => {
+      const params: Record<string, unknown> = { page: p, size: 10, sortBy: sort };
       if (cat) params.category = cat;
-      if (sort === 'time') params.sortBy = 'time';
-      else params.sortBy = 'distance';
-
       const res = await mateApi.list(params);
-      const data = res.data.data;
-      if (p === 1) setMates(data.records);
-      else setMates((prev) => [...prev, ...data.records]);
-      setHasMore(data.hasMore);
-      setPage(p);
-    } catch { showToast('加载失败'); }
-    finally { setLoading(false); }
-  };
+      return res.data.data;
+    },
+    args: [mateCategory, mateSortBy],
+    deps: [isPostTab ? null : activeTab, mateCategory, mateSortBy],
+    onError: () => showToast('加载失败'),
+  });
 
   const handleLike = (id: number) => {
     requireLogin(async () => {
       try {
         await postApi.like(id);
-        setPosts((prev) => prev.map((p) =>
+        postList.setItems((prev) => prev.map((p) =>
           p.id === id ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
       } catch { showToast('操作失败'); }
     });
@@ -122,39 +85,28 @@ export default function HomePage() {
     requireLogin(async () => {
       try {
         await mateApi.join(id);
-        setMates((prev) => prev.map((m) =>
+        mateList.setItems((prev) => prev.map((m) =>
           m.id === id ? { ...m, hasJoined: true, currentParticipants: m.currentParticipants + 1 } : m));
       } catch { showToast('操作失败'); }
     });
   };
 
-  const handleTabChange = (key: string) => {
-    setActiveTab(key);
-    setPage(1);
-    setHasMore(true);
-  };
-
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const bottom = e.currentTarget.scrollHeight - e.currentTarget.scrollTop <=
-                   e.currentTarget.clientHeight + 100;
-    if (!bottom || !hasMore || loading) return;
-
-    // 游客限制：最多看 GUEST_MAX_POSTS 条
-    if (!isLoggedIn && isPostTab && posts.length >= GUEST_MAX_POSTS) {
+    if (activeTab === 'mate') {
+      mateList.onScroll(e);
+      return;
+    }
+    // 游客限制：未登录最多浏览 GUEST_MAX_POSTS 条
+    if (!isLoggedIn && postList.items.length >= GUEST_MAX_POSTS) {
       requireLogin(() => {});
       return;
     }
-
-    if (isPostTab) {
-      loadPosts(page + 1, activeTab, sortBy);
-    } else {
-      loadMates(page + 1, mateCategory, mateSortBy);
-    }
+    postList.onScroll(e);
   };
 
   return (
     <div className="home-page" onScroll={handleScroll}>
-      {/* 顶部：学校名 + 搜索框 */}
+      {/* 顶部：校名 + 搜索框 */}
       <div className="home-top">
         <span className="home-school">{APP_CONFIG.SCHOOL_NAME}</span>
         <div className="home-search-wrapper" onClick={() => navigate('/search')}>
@@ -168,13 +120,13 @@ export default function HomePage() {
         {HOME_TABS.map((tab) => (
           <button key={tab.key}
             className={`home-tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => handleTabChange(tab.key)}>
+            onClick={() => setActiveTab(tab.key)}>
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* 帖子 Tab 内容 */}
+      {/* 帖子 Tab */}
       {isPostTab && (
         <>
           {/* 热门子排序 */}
@@ -190,92 +142,32 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* 动态列表 */}
-          <div className="home-post-list">
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} onLike={handleLike}
-                onClick={(id) => navigate(`/square/post/${id}`)} />
-            ))}
-            {loading && <LoadingSkeleton />}
-            {!loading && posts.length === 0 && <EmptyState message="暂无动态" />}
-
-            {/* 游客限制提示 */}
-            {!isLoggedIn && posts.length >= GUEST_MAX_POSTS && hasMore && !loading && (
-              <div className="guest-limit-banner" onClick={() => requireLogin(() => {})}>
-                <span>🔒</span>
-                <div>
-                  <p className="guest-limit-title">登录查看更多动态</p>
-                  <p className="guest-limit-sub">登录后即可无限制浏览全部内容</p>
-                </div>
-                <span className="guest-limit-arrow">›</span>
-              </div>
-            )}
-
-            {!hasMore && posts.length > 0 && (
-              <p className="no-more">— 没有更多了 —</p>
-            )}
-          </div>
+          <PostFeed
+            posts={postList.items}
+            loading={postList.loading}
+            hasMore={postList.hasMore}
+            showGuestLimit={!isLoggedIn}
+            guestMaxPosts={GUEST_MAX_POSTS}
+            onLike={handleLike}
+            onOpen={(id) => navigate(`/square/post/${id}`)}
+            onGuestLimitClick={() => requireLogin(() => {})}
+          />
         </>
       )}
 
-      {/* 搭子 Tab 内容 */}
+      {/* 搭子 Tab */}
       {!isPostTab && (
-        <>
-          {/* 分类筛选网格 */}
-          <div className="square-categories">
-            <div className="category-grid">
-              {MATE_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.code}
-                  className={`category-cell ${mateCategory === cat.code ? 'active' : ''}`}
-                  onClick={() => setMateCategory(mateCategory === cat.code ? '' : cat.code)}
-                >
-                  <span className="category-cell-icon">{cat.icon}</span>
-                  <span className="category-cell-name">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 排序选项 */}
-          <div className="square-sort-bar">
-            <span className="sort-label">
-              {mateCategory ? MATE_CATEGORIES.find(c => c.code === mateCategory)?.name : '全部搭子'}
-            </span>
-            <div className="sort-options">
-              {MATE_SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  className={`sort-chip ${mateSortBy === opt.key ? 'active' : ''}`}
-                  onClick={() => setMateSortBy(opt.key)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 搭子列表 */}
-          <div className="square-mate-list">
-            {mates.map((mate) => (
-              <MateCard
-                key={mate.id}
-                mate={mate}
-                onJoin={handleJoinMate}
-                onClick={(id) => navigate(`/mate/${id}`)}
-              />
-            ))}
-            {loading && <LoadingSkeleton />}
-            {!loading && mates.length === 0 && (
-              <EmptyState icon="🔍" message={
-                mateCategory
-                  ? `暂无"${MATE_CATEGORIES.find(c => c.code === mateCategory)?.name}"邀约`
-                  : '暂无搭子邀约'
-              } />
-            )}
-            {!hasMore && mates.length > 0 && <p className="no-more">— 没有更多了 —</p>}
-          </div>
-        </>
+        <MateFeed
+          mates={mateList.items}
+          loading={mateList.loading}
+          hasMore={mateList.hasMore}
+          category={mateCategory}
+          sortBy={mateSortBy}
+          onCategoryChange={(code) => setMateCategory(mateCategory === code ? '' : code)}
+          onSortChange={setMateSortBy}
+          onJoin={handleJoinMate}
+          onOpen={(id) => navigate(`/mate/${id}`)}
+        />
       )}
 
       {/* 登录弹窗 */}

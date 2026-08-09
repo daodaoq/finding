@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS `user` (
     `longitude` DECIMAL(10,7) DEFAULT NULL,
     `role` VARCHAR(20) DEFAULT 'user' COMMENT 'user / admin',
     `status` TINYINT DEFAULT 1 COMMENT '0=banned, 1=active, 2=frozen',
+    `banned_until` DATETIME DEFAULT NULL COMMENT '封禁到期时间(NULL=永久封禁)',
+    `banned_reason` VARCHAR(500) DEFAULT NULL COMMENT '封禁原因',
     `real_name_verified` TINYINT DEFAULT 0 COMMENT '0=no, 1=pending, 2=approved, 3=rejected',
     `last_login_at` DATETIME DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -545,3 +547,40 @@ CREATE TABLE IF NOT EXISTS `report` (
     KEY `idx_target` (`target_user_id`),
     KEY `idx_from` (`from_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 22. view_history - 浏览记录(每用户每目标一条,重复浏览刷新时间)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `view_history` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `target_type` VARCHAR(20) NOT NULL COMMENT 'post/user',
+    `target_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_target` (`user_id`, `target_type`, `target_id`),
+    KEY `idx_user_time` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 23. user_settings - 用户全局设置(每用户一份)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_settings` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `chat_bg` VARCHAR(500) DEFAULT NULL COMMENT '全局默认聊天背景(preset key 或图片URL)',
+    `chat_muted` TINYINT DEFAULT 0 COMMENT '全局默认免打扰 0=否 1=是',
+    `friend_add_mode` TINYINT DEFAULT 1 COMMENT '加好友方式 0=所有人可申请 1=需验证(默认) 2=不允许申请',
+    `profile_visible` TINYINT DEFAULT 1 COMMENT '主页可见性 1=所有人 2=仅已互换(预留)',
+    `searchable` TINYINT DEFAULT 1 COMMENT '是否可被搜索 1=是 0=否',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- contact.muted 改为可空(NULL=继承全局默认免打扰)
+-- 新装库直接跑 ALTER 即可(幂等)。
+-- ============================================================
+-- ALTER TABLE `contact` MODIFY `muted` TINYINT DEFAULT NULL COMMENT '0=否 1=免打扰 NULL=继承全局';

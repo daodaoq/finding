@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mateApi } from '../../api/mate';
 import SearchBar from '../../components/SearchBar';
@@ -7,39 +7,27 @@ import MateCard from '../../components/MateCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate, MateCategory } from '../../types/mate';
 import './index.css';
 
 export default function MatePage() {
   const [category, setCategory] = useState('');
-  const [mates, setMates] = useState<Mate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setMates([]);
-    setPage(1);
-    setHasMore(true);
-    loadMates(1, category);
-  }, [category]);
-
-  const loadMates = async (p: number, cat: string) => {
-    setLoading(true);
-    try {
-      const params: Record<string, unknown> = { page: p, size: 10 };
-      if (cat) params.category = cat;
-      const res = await mateApi.list(params);
-      const data = res.data.data;
-      if (p === 1) setMates(data.records);
-      else setMates((prev) => [...prev, ...data.records]);
-      setHasMore(data.hasMore);
-      setPage(p);
-    } catch { showToast('加载失败'); }
-    finally { setLoading(false); }
-  };
+  const { items: mates, loading, hasMore, setItems: setMates, onScroll } =
+    useInfiniteList<Mate, [string]>({
+      fetcher: async (p, cat) => {
+        const params: Record<string, unknown> = { page: p, size: 10 };
+        if (cat) params.category = cat;
+        const res = await mateApi.list(params);
+        return res.data.data;
+      },
+      args: [category],
+      deps: [category],
+      onError: () => showToast('加载失败'),
+    });
 
   const handleJoin = async (id: number) => {
     try {
@@ -49,14 +37,8 @@ export default function MatePage() {
     } catch { showToast('操作失败'); }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const bottom = e.currentTarget.scrollHeight - e.currentTarget.scrollTop <=
-                   e.currentTarget.clientHeight + 100;
-    if (bottom && hasMore && !loading) loadMates(page + 1, category);
-  };
-
   return (
-    <div className="mate-page" onScroll={handleScroll}>
+    <div className="mate-page" onScroll={onScroll}>
       {/* Header */}
       <div className="mate-header">
         <h2 className="mate-title">找搭子 → 资源圈</h2>

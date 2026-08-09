@@ -6,22 +6,19 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import { showToast } from '../../components/Toast';
-import ChatBubble from '../../components/ChatBubble';
 import ChatInputBar from '../../components/ChatInputBar';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import ChatHeader from './components/ChatHeader';
+import ShareStatusTag from './components/ShareStatusTag';
+import MessageList, { type MessageLike } from './components/MessageList';
 import type { Conversation, ChatSettings } from '../../types/message';
 import type { InfoShareStatus } from '../../types/resume';
 import { resolveChatBg } from '../../utils/chatBackgrounds';
 import './index.css';
 
-interface ChatMessage {
-  id: number;
-  fromUserId: number;
+interface ChatMessage extends MessageLike {
   toUserId: number;
-  content: string;
-  messageType: string;
   isRead: number;
-  createdAt: string;
 }
 
 export default function ChatDetailPage() {
@@ -68,6 +65,7 @@ export default function ChatDetailPage() {
   // 初始化：获取或创建会话 + 加载消息历史
   useEffect(() => {
     initConversation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetUserId]);
 
   const initConversation = async () => {
@@ -107,12 +105,11 @@ export default function ChatDetailPage() {
 
   useEffect(() => {
     scrollToBottom();
-    // 图片加载会撑开高度，延迟再滚一次确保到底
     const t = setTimeout(scrollToBottom, 300);
     return () => clearTimeout(t);
   }, [messages]);
 
-  // 拉取与对方的「信息互换」状态(header 按钮);互换事件后通过全局 version 自动刷新
+  // 拉取与对方的「信息互换」状态(header 按钮)；互换事件后通过全局 version 自动刷新
   useEffect(() => {
     if (!targetUserId || !user) return;
     bridgeApi.infoShareStatus(targetUserId)
@@ -190,73 +187,47 @@ export default function ChatDetailPage() {
 
   return (
     <div className="chat-page">
-      {/* 顶部栏 */}
-      <div className="chat-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-        <div className="chat-avatar-sm">
-          {targetAvatar ? <img src={targetAvatar} alt="" /> : <span>👤</span>}
-        </div>
-        <span className="chat-header-name">{targetNickname}</span>
-        {shareStatus === 'approved' ? (
+      <ChatHeader
+        title={targetNickname}
+        avatar={targetAvatar}
+        onBack={() => navigate(-1)}
+        extra={
+          <ShareStatusTag
+            status={shareStatus}
+            targetUserId={targetUserId}
+            onRequest={handleRequestShare}
+            onShowConfirm={() => setShowShareConfirm(true)}
+          />
+        }
+        right={(
           <button
-            className="share-tag approved"
-            onClick={() => navigate(`/user/${targetUserId}`)}
-            title="查看TA的情感简历"
+            className="chat-settings-btn"
+            title="聊天信息"
+            onClick={() => {
+              const roomId = conversation?.roomId || conversation?.id;
+              navigate(
+                `/messages/chat-settings?userId=${targetUserId}` +
+                `&name=${encodeURIComponent(targetNickname)}` +
+                `&avatar=${encodeURIComponent(targetAvatar)}` +
+                `&roomId=${roomId ?? ''}`
+              );
+            }}
           >
-            已互换信息
-          </button>
-        ) : shareStatus === 'pendingSent' ? (
-          <span className="share-tag pending">已发送申请</span>
-        ) : shareStatus === 'pendingReceived' ? (
-          <button className="share-tag warn" onClick={() => setShowShareConfirm(true)}>
-            对方申请互换信息
-          </button>
-        ) : (
-          <button className="share-tag active" onClick={handleRequestShare}>
-            互换信息
+            ⚙️
           </button>
         )}
-        <button
-          className="chat-settings-btn"
-          title="聊天信息"
-          onClick={() => {
-            const roomId = conversation?.roomId || conversation?.id;
-            navigate(
-              `/messages/chat-settings?userId=${targetUserId}` +
-              `&name=${encodeURIComponent(targetNickname)}` +
-              `&avatar=${encodeURIComponent(targetAvatar)}` +
-              `&roomId=${roomId ?? ''}`
-            );
-          }}
-        >
-          ⚙️
-        </button>
-      </div>
+      />
 
       {/* 消息列表 */}
-      <div className="chat-messages" style={resolveChatBg(chatSettings?.background)} ref={msgListRef}>
-        {messages.map((msg, i) => {
-          const prevMsg = i > 0 ? messages[i - 1] : null;
-          const showTimeSep = !prevMsg ||
-            (new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) > 10 * 60 * 1000;
-          return (
-            <div key={msg.id}>
-              {showTimeSep && (
-                <div className="chat-time-sep">
-                  <span>{formatChatTime(msg.createdAt)}</span>
-                </div>
-              )}
-              <ChatBubble
-                message={msg}
-                isMine={msg.fromUserId === user?.id}
-                avatar={msg.fromUserId === user?.id ? (user?.avatar || '') : targetAvatar}
-                nickname={msg.fromUserId === user?.id ? (user?.nickname || '我') : targetNickname}
-              />
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
+      <MessageList
+        messages={messages}
+        currentUserId={user?.id}
+        avatarOf={(msg) => msg.fromUserId === user?.id ? (user?.avatar || '') : targetAvatar}
+        nicknameOf={(msg) => msg.fromUserId === user?.id ? (user?.nickname || '我') : targetNickname}
+        background={resolveChatBg(chatSettings?.background)}
+        listRef={msgListRef}
+        endRef={messagesEndRef}
+      />
 
       {/* 输入栏 */}
       <ChatInputBar onSend={handleSend} onUploading={setUploading} />
@@ -275,15 +246,3 @@ export default function ChatDetailPage() {
   );
 }
 
-/** 聊天时间分隔线格式：今天 HH:mm / 昨天 HH:mm / MM/DD HH:mm */
-function formatChatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (date.getTime() === today.getTime()) return `今天 ${time}`;
-  if (date.getTime() === yesterday.getTime()) return `昨天 ${time}`;
-  return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
-}

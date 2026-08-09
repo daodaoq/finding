@@ -1,4 +1,5 @@
 import type { Message } from '../types/message';
+import { formatSessionTime } from '../utils/format';
 import './MessageItem.css';
 
 interface Props {
@@ -27,19 +28,9 @@ export default function MessageItem({ message, onClick }: Props) {
         <div className="msg-text">{message.content}</div>
       </div>
       <div className="msg-right">
-        <span className="msg-time">{formatTime(message.createdAt)}</span>
+        <span className="msg-time">{formatSessionTime(message.createdAt)}</span>
         {!message.isRead && <span className="msg-badge" />}
       </div>
     </div>
   );
-}
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 86400000) {
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  }
-  return `${d.getMonth() + 1}/${d.getDate()}`;
 }

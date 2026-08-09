@@ -9,6 +9,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useAuthStore } from '../../store/authStore';
 import { useBridgeStore } from '../../store/bridgeStore';
 import { QUICK_ACTIONS } from '../../utils/constants';
@@ -18,19 +19,23 @@ import './index.css';
 
 export default function BridgePage() {
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [users, setUsers] = useState<BridgeRecommendUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const bridgePending = useBridgeStore((s) => s.pendingCount);
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
 
+  const { items: users, loading, hasMore, setItems: setUsers, reset, onScroll } =
+    useInfiniteList<BridgeRecommendUser, []>({
+      fetcher: async (p) => {
+        const res = await bridgeApi.recommend({ page: p, size: 10 });
+        return res.data.data;
+      },
+      onError: () => showToast('加载推荐用户失败'),
+    });
+
   useEffect(() => {
     loadBanners();
-    loadUsers(1);
   }, []);
 
   // 拉取收到的待处理申请数，用于「情书」「底部鹊桥」角标
@@ -49,19 +54,6 @@ export default function BridgePage() {
     } catch { showToast('加载Banner失败'); }
   };
 
-  const loadUsers = async (p: number) => {
-    setLoading(true);
-    try {
-      const res = await bridgeApi.recommend({ page: p, size: 10 });
-      const data = res.data.data;
-      if (p === 1) setUsers(data.records);
-      else setUsers((prev) => [...prev, ...data.records]);
-      setHasMore(data.hasMore);
-      setPage(p);
-    } catch { showToast('加载推荐用户失败'); }
-    finally { setLoading(false); }
-  };
-
   const handleLike = (userId: number) => {
     requireLogin(async () => {
       try {
@@ -71,15 +63,6 @@ export default function BridgePage() {
         );
       } catch { showToast('发送申请失败'); }
     });
-  };
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const bottom =
-      e.currentTarget.scrollHeight - e.currentTarget.scrollTop <=
-      e.currentTarget.clientHeight + 100;
-    if (bottom && hasMore && !loading) {
-      loadUsers(page + 1);
-    }
   };
 
   const handleQuickAction = (key: string) => {
@@ -102,14 +85,11 @@ export default function BridgePage() {
   };
 
   const handleRefresh = () => {
-    setUsers([]);
-    setPage(1);
-    setHasMore(true);
-    loadUsers(1);
+    reset();
   };
 
   return (
-    <div className="bridge-page" onScroll={handleScroll}>
+    <div className="bridge-page" onScroll={onScroll}>
       {/* 顶部导航栏 */}
       <div className="bridge-top-nav">
         <div className="bridge-nav-left">

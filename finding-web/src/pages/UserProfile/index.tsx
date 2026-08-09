@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { userApi } from '../../api/user';
+import { historyApi } from '../../api/history';
 import { chatApi } from '../../api/chat';
 import { resumeApi } from '../../api/resume';
 import { useAuthStore } from '../../store/authStore';
@@ -23,6 +24,7 @@ export default function UserProfilePage() {
   useEffect(() => {
     userApi.getProfile(userId).then((res) => {
       setProfile(res.data.data);
+      historyApi.record('user', userId).catch(() => {}); // 记录浏览
     }).catch(() => {}).finally(() => setLoading(false));
   }, [userId]);
 

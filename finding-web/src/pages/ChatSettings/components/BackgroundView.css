@@ -1,0 +1,40 @@
+/* 聊天背景 */
+.cs-bg-body { padding: 16px; }
+.cs-bg-current {
+  height: 120px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #eee;
+  background-size: cover;
+}
+.cs-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.cs-bg-swatch {
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+.cs-bg-swatch.active { border-color: #ff6b81; }
+.cs-bg-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.cs-bg-action {
+  flex: 1;
+  padding: 11px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}

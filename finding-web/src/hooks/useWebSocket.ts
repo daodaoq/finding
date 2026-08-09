@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 interface WsMessage {
   type: string;
   action?: string;
+  title?: string;
   fromUserId: number;
   toUserId: number;
   conversationId: number;
