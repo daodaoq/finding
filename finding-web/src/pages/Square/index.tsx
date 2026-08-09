@@ -8,6 +8,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useGeolocation } from '../../hooks/useGeolocation';
 import { showToast } from '../../components/Toast';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate } from '../../types/mate';
@@ -26,19 +27,21 @@ export default function SquarePage() {
   const [sortBy, setSortBy] = useState('time');
   const navigate = useNavigate();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose } = useRequireLogin();
+  const { lat, lng } = useGeolocation(true);
 
   const { items: mates, loading, hasMore, setItems: setMates, onScroll } =
-    useInfiniteList<Mate, [string, string]>({
+    useInfiniteList<Mate, [string, string, number?, number?]>({
       // 切换分类或排序时自动重置并加载第一页
-      fetcher: async (p, cat, sort) => {
+      fetcher: async (p, cat, sort, la, ln) => {
         const params: Record<string, unknown> = { page: p, size: 10 };
         if (cat) params.category = cat;
         params.sortBy = sort === 'distance' ? 'distance' : 'time';
+        if (la != null && ln != null) { params.lat = la; params.lng = ln; }
         const res = await mateApi.list(params);
         return res.data.data;
       },
-      args: [category, sortBy],
-      deps: [category, sortBy],
+      args: [category, sortBy, lat, lng],
+      deps: [category, sortBy, lat, lng],
       onError: () => showToast('加载失败'),
     });
 

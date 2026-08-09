@@ -8,6 +8,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useGeolocation } from '../../hooks/useGeolocation';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate, MateCategory } from '../../types/mate';
 import './index.css';
@@ -15,17 +16,19 @@ import './index.css';
 export default function MatePage() {
   const [category, setCategory] = useState('');
   const navigate = useNavigate();
+  const { lat, lng } = useGeolocation(true);
 
   const { items: mates, loading, hasMore, setItems: setMates, onScroll } =
-    useInfiniteList<Mate, [string]>({
-      fetcher: async (p, cat) => {
+    useInfiniteList<Mate, [string, number?, number?]>({
+      fetcher: async (p, cat, la, ln) => {
         const params: Record<string, unknown> = { page: p, size: 10 };
         if (cat) params.category = cat;
+        if (la != null && ln != null) { params.lat = la; params.lng = ln; }
         const res = await mateApi.list(params);
         return res.data.data;
       },
-      args: [category],
-      deps: [category],
+      args: [category, lat, lng],
+      deps: [category, lat, lng],
       onError: () => showToast('加载失败'),
     });
 

@@ -112,6 +112,20 @@
   color: #ccc;
 }
 
+/* 定位按钮 */
+.pe-locate-btn {
+  flex-shrink: 0;
+  border: 1px solid #ff6b81;
+  background: #fff;
+  color: #ff6b81;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.pe-locate-btn:active { background: #fff0f3; }
+.pe-locate-btn:disabled { opacity: 0.6; }
+
 /* 性别选择 */
 .pe-gender-group {
   display: flex;

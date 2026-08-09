@@ -4,6 +4,7 @@ import { postApi } from '../../api/post';
 import { mateApi } from '../../api/mate';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
+import { useGeolocation } from '../../hooks/useGeolocation';
 import LoginModal from '../../components/LoginModal';
 import { showToast } from '../../components/Toast';
 import { APP_CONFIG } from '../../utils/config';
@@ -38,6 +39,8 @@ export default function HomePage() {
 
   const navigate = useNavigate();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
+  // 搭子 Tab 下获取浏览器定位(用于距离)
+  const { lat, lng } = useGeolocation(activeTab === 'mate');
 
   const isPostTab = activeTab !== 'mate';
 
@@ -59,15 +62,16 @@ export default function HomePage() {
   });
 
   // 搭子列表：切换 Tab / 分类 / 排序时重置
-  const mateList = useInfiniteList<Mate, [string, string]>({
-    fetcher: async (p, cat, sort) => {
+  const mateList = useInfiniteList<Mate, [string, string, number?, number?]>({
+    fetcher: async (p, cat, sort, la, ln) => {
       const params: Record<string, unknown> = { page: p, size: 10, sortBy: sort };
       if (cat) params.category = cat;
+      if (la != null && ln != null) { params.lat = la; params.lng = ln; }
       const res = await mateApi.list(params);
       return res.data.data;
     },
-    args: [mateCategory, mateSortBy],
-    deps: [isPostTab ? null : activeTab, mateCategory, mateSortBy],
+    args: [mateCategory, mateSortBy, lat, lng],
+    deps: [isPostTab ? null : activeTab, mateCategory, mateSortBy, lat, lng],
     onError: () => showToast('加载失败'),
   });
 

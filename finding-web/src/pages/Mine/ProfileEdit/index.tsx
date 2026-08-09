@@ -5,6 +5,7 @@ import { authApi } from '../../../api/auth';
 import { uploadApi } from '../../../api/upload';
 import { showToast } from '../../../components/Toast';
 import { APP_CONFIG } from '../../../utils/config';
+import { locateCity } from '../../../utils/geocode';
 import './index.css';
 
 const GENDER_OPTIONS = [
@@ -27,6 +28,25 @@ export default function ProfileEditPage() {
   const [city, setCity] = useState(user?.city || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  /** 通过浏览器定位获取所在城市 */
+  const handleLocateCity = async () => {
+    setLocating(true);
+    try {
+      const name = await locateCity();
+      if (name) {
+        setCity(name);
+        showToast(`已定位到 ${name}`);
+      } else {
+        showToast('未能识别所在城市，请手动输入');
+      }
+    } catch (e: any) {
+      showToast(e?.message || '定位失败，请检查浏览器定位权限');
+    } finally {
+      setLocating(false);
+    }
+  };
 
   /** 选择并上传头像 */
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,6 +203,9 @@ export default function ProfileEditPage() {
             onChange={(e) => setCity(e.target.value)}
             maxLength={20}
           />
+          <button className="pe-locate-btn" onClick={handleLocateCity} disabled={locating}>
+            {locating ? '定位中...' : '📍 定位'}
+          </button>
         </div>
       </div>
 

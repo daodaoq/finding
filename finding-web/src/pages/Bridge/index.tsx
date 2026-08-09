@@ -10,6 +10,7 @@ import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useGeolocation } from '../../hooks/useGeolocation';
 import { useAuthStore } from '../../store/authStore';
 import { useBridgeStore } from '../../store/bridgeStore';
 import { QUICK_ACTIONS } from '../../utils/constants';
@@ -25,12 +26,17 @@ export default function BridgePage() {
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
 
+  const { lat, lng } = useGeolocation(true);
+
   const { items: users, loading, hasMore, setItems: setUsers, reset, onScroll } =
-    useInfiniteList<BridgeRecommendUser, []>({
-      fetcher: async (p) => {
-        const res = await bridgeApi.recommend({ page: p, size: 10 });
+    useInfiniteList<BridgeRecommendUser, [number?, number?]>({
+      fetcher: async (p, la, ln) => {
+        const params: { page: number; size: number; lat?: number; lng?: number } = { page: p, size: 10 };
+        if (la != null && ln != null) { params.lat = la; params.lng = ln; }
+        const res = await bridgeApi.recommend(params);
         return res.data.data;
       },
+      args: [lat, lng],
       onError: () => showToast('加载推荐用户失败'),
     });
 
