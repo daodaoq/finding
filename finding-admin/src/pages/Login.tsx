@@ -20,8 +20,8 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await axios.post('/api/v1/auth/login', {
-        phone: values.username,
-        password: values.password,
+        phone: values.username.trim(),
+        password: values.password.trim(),
         loginType: 'password',
       });
       const token = res.data?.data?.accessToken;

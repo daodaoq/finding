@@ -1,5 +1,7 @@
 package com.finding.user.config;
 
+import com.finding.user.entity.User;
+import com.finding.user.mapper.UserMapper;
 import com.finding.user.security.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,6 +29,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserMapper userMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -34,12 +37,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (StringUtils.hasText(token) && jwtTokenProvider.validateAccessToken(token)) {
-            Authentication auth = jwtTokenProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            log.debug("JWT 认证成功，已设置 SecurityContext");
+            Long userId = jwtTokenProvider.getUserIdFromToken(token);
+            // 校验账号仍有效:封禁/冻结/注销即时生效,已登录的旧 token 也会被拒
+            if (userId != null && isActive(userId)) {
+                Authentication auth = jwtTokenProvider.getAuthentication(token);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("JWT 认证成功，已设置 SecurityContext");
+            }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** 账号是否处于正常状态(封禁/冻结的 token 不再放行) */
+    private boolean isActive(Long userId) {
+        User user = userMapper.selectById(userId);
+        return user != null && user.getStatus() != null && user.getStatus() == 1;
     }
 
     /** 从 Authorization 头提取 Bearer Token */

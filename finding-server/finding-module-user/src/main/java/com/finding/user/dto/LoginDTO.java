@@ -20,4 +20,22 @@ public class LoginDTO {
 
     /** SMS code (when loginType=sms) */
     private String smsCode;
+
+    // ── 自定义 setter:登录时统一去掉文本两端空格(校验前生效) ──
+
+    public void setPhone(String phone) {
+        this.phone = phone == null ? null : phone.trim();
+    }
+
+    public void setLoginType(String loginType) {
+        this.loginType = loginType == null ? null : loginType.trim();
+    }
+
+    public void setPassword(String password) {
+        this.password = password == null ? null : password.trim();
+    }
+
+    public void setSmsCode(String smsCode) {
+        this.smsCode = smsCode == null ? null : smsCode.trim();
+    }
 }

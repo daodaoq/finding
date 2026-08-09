@@ -4,6 +4,7 @@ import com.finding.common.Result;
 import com.finding.user.dto.LoginDTO;
 import com.finding.user.dto.RegisterDTO;
 import com.finding.user.dto.SendCodeDTO;
+import com.finding.user.entity.UserVerification;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.AuthService;
 import com.finding.user.vo.UserVO;
@@ -76,5 +77,25 @@ public class AuthController {
         authService.submitVerification(JwtInterceptor.getCurrentUserId(),
                 realName, studentId, school, idCardFront, idCardBack, studentCard);
         return Result.ok();
+    }
+
+    /** 获取当前用户自己的认证记录(仅本人可见) */
+    @GetMapping("/verification")
+    public Result<UserVerification> getMyVerification() {
+        return Result.ok(authService.getMyVerification(JwtInterceptor.getCurrentUserId()));
+    }
+
+    /** 修改密码 */
+    @PostMapping("/password")
+    public Result<Void> changePassword(@RequestBody Map<String, String> body) {
+        authService.changePassword(JwtInterceptor.getCurrentUserId(),
+                body.get("oldPassword"), body.get("newPassword"));
+        return Result.ok();
+    }
+
+    /** 当前用户账号信息(仅本人可见,含手机号) */
+    @GetMapping("/account")
+    public Result<Map<String, String>> account() {
+        return Result.ok(authService.getAccount(JwtInterceptor.getCurrentUserId()));
     }
 }

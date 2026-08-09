@@ -65,8 +65,17 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
-        if (user.getStatus() != UserStatusEnum.ACTIVE.getCode()) {
-            throw new BusinessException(ResultCode.ACCOUNT_DISABLED);
+        if (user.getStatus() != null && user.getStatus() != UserStatusEnum.ACTIVE.getCode()) {
+            // 定时封禁到期 → 自动解封
+            if (user.getStatus() == UserStatusEnum.BANNED.getCode()
+                    && user.getBannedUntil() != null
+                    && user.getBannedUntil().isBefore(LocalDateTime.now())) {
+                user.setStatus(UserStatusEnum.ACTIVE.getCode());
+                user.setBannedUntil(null);
+                userMapper.updateById(user);
+            } else {
+                throw new BusinessException(ResultCode.ACCOUNT_DISABLED, banMessage(user));
+            }
         }
 
         if ("password".equals(dto.getLoginType())) {
@@ -252,7 +261,73 @@ public class AuthServiceImpl implements AuthService {
         userMapper.updateById(user);
     }
 
+    @Override
+    public UserVerification getMyVerification(Long userId) {
+        // 只按当前用户ID查，天然只能看到自己的认证记录
+        UserVerification v = verificationMapper.selectOne(
+                new LambdaQueryWrapper<UserVerification>()
+                        .eq(UserVerification::getUserId, userId)
+                        .orderByDesc(UserVerification::getCreatedAt)
+                        .last("LIMIT 1"));
+        // 老数据/种子账号:user 表已认证但没有认证记录时,从 user 实体兜底拼一份
+        if (v == null) {
+            User user = userMapper.selectById(userId);
+            if (user != null && user.getRealNameVerified() != null && user.getRealNameVerified() == 2) {
+                v = new UserVerification();
+                v.setUserId(userId);
+                v.setRealName(""); // user 表未存真实姓名
+                v.setStudentId(user.getStudentId());
+                v.setSchool(user.getSchool());
+                v.setStatus(1); // 已通过
+            }
+        }
+        return v;
+    }
+
+    @Override
+    public Map<String, String> getAccount(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        Map<String, String> map = new HashMap<>();
+        map.put("phone", user.getPhone() != null ? user.getPhone() : "");
+        return map;
+    }
+
+    @Override
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = userMapper.selectById(userId);
+        if (user == null) throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        if (!StringUtils.hasText(oldPassword) || !passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "旧密码不正确");
+        }
+        if (!StringUtils.hasText(newPassword) || newPassword.length() < 6) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "新密码至少 6 位");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+        // 作废旧 refresh token,强制其他端重新登录
+        redisUtils.delete(REFRESH_PREFIX + userId);
+    }
+
     // ── 私有方法 ──
+
+    /** 封禁/冻结提示文案(含原因) */
+    private String banMessage(User user) {
+        if (user.getStatus() != null && user.getStatus() == UserStatusEnum.FROZEN.getCode()) {
+            return "该账号已被冻结";
+        }
+        String reason = user.getBannedReason();
+        if (user.getBannedUntil() != null) {
+            String until = user.getBannedUntil()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            return (reason != null && !reason.isEmpty())
+                    ? "该账号已被封禁至 " + until + "，原因：" + reason
+                    : "该账号已被封禁至 " + until;
+        }
+        return (reason != null && !reason.isEmpty())
+                ? "该账号已被永久封禁，原因：" + reason
+                : "该账号已被封禁";
+    }
 
     /** 校验图片验证码(一次性,校验后删除) */
     private void verifyCaptcha(String key, String code) {

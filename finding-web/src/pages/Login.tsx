@@ -16,7 +16,8 @@ export default function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const handleSendCode = async () => {
-    if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的手机号'); return; }
+    const p = phone.trim();
+    if (!/^1[3-9]\d{9}$/.test(p)) { showToast('请输入正确的手机号'); return; }
     try {
       setSending(true);
       await authApi.sendCode(phone, 'login');
@@ -28,11 +29,12 @@ export default function LoginPage() {
   };
 
   const handleLogin = async () => {
-    if (!phone) { showToast('请输入手机号'); return; }
+    const p = phone.trim();
+    if (!p) { showToast('请输入手机号'); return; }
     try {
       const res = await authApi.login({
-        phone, loginType: mode,
-        ...(mode === 'password' ? { password } : { smsCode }),
+        phone: p, loginType: mode,
+        ...(mode === 'password' ? { password: password.trim() } : { smsCode: smsCode.trim() }),
       });
       const { accessToken, refreshToken } = res.data.data;
       // 先存储 token，后续请求才能带上 Authorization 头

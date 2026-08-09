@@ -29,6 +29,8 @@ public class User {
     private BigDecimal longitude;
     private String role;            // user / admin
     private Integer status;         // 0=banned, 1=active, 2=frozen
+    private LocalDateTime bannedUntil; // 封禁到期时间(NULL=永久封禁)
+    private String bannedReason;        // 封禁原因
     private Integer realNameVerified; // 0=no, 1=pending, 2=approved, 3=rejected
     private LocalDateTime lastLoginAt;
 
