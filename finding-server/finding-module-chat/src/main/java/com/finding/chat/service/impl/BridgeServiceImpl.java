@@ -11,12 +11,14 @@ import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Room;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserFollow;
+import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomMapper;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.mapper.UserSettingsMapper;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.service.ChatService;
 import com.finding.message.service.MessageService;
@@ -50,6 +52,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final ContactMapper contactMapper;
     private final ChatService chatService;
     private final VerificationGuard verificationGuard;
+    private final UserSettingsMapper userSettingsMapper;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -170,6 +173,15 @@ public class BridgeServiceImpl implements BridgeService {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
 
+        // 加好友方式:2=不允许申请直接拒绝;0=所有人可申请(自动通过);1=需验证(默认)
+        UserSettings targetSettings = userSettingsMapper.selectOne(
+                new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, toUserId));
+        int friendMode = targetSettings != null && targetSettings.getFriendAddMode() != null
+                ? targetSettings.getFriendAddMode() : 1;
+        if (friendMode == 2) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "对方暂不允许添加");
+        }
+
         // Check duplicate application
         Long count = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
                 .eq(ChatApply::getFromUserId, fromUserId)
@@ -187,12 +199,17 @@ public class BridgeServiceImpl implements BridgeService {
         apply.setApplyTime(LocalDateTime.now());
         chatApplyMapper.insert(apply);
 
-        // Send notification to target user
-        User fromUser = userMapper.selectById(fromUserId);
-        messageService.notify(fromUserId, toUserId, "chat_apply",
-                (fromUser != null ? fromUser.getNickname() : "有人") + "向你发送了聊天申请", apply.getId());
+        if (friendMode == 0) {
+            // 所有人可申请 → 自动通过并建立会话
+            approveApply(apply);
+        } else {
+            // 需验证(默认) → 通知对方审核
+            User fromUser = userMapper.selectById(fromUserId);
+            messageService.notify(fromUserId, toUserId, "chat_apply",
+                    (fromUser != null ? fromUser.getNickname() : "有人") + "向你发送了聊天申请", apply.getId());
+        }
 
-        log.info("Chat apply sent: user {} → user {}, applyId={}", fromUserId, toUserId, apply.getId());
+        log.info("Chat apply: user {} → user {}, applyId={}, friendMode={}", fromUserId, toUserId, apply.getId(), friendMode);
     }
 
     @Override
@@ -250,50 +267,75 @@ public class BridgeServiceImpl implements BridgeService {
         apply.setHandleTime(LocalDateTime.now());
         chatApplyMapper.updateById(apply);
 
-        String actionText = status == 1 ? "已通过" : "已拒绝";
-
         if (status == 1) {
-            // Approved — auto-create Room + send system message
-            try {
-                var convVO = chatService.getOrCreateConversation(userId, apply.getFromUserId());
-                Long roomId = convVO.getRoomId();
-                log.info("Room created for applyId={}: user {} ↔ user {}, roomId={}", applyId, userId, apply.getFromUserId(), roomId);
-
-                // Insert system message via room_id
-                PrivateChat systemMsg = new PrivateChat();
-                systemMsg.setConversationId(roomId); // 兼容旧字段
-                systemMsg.setRoomId(roomId);
-                systemMsg.setFromUserId(userId);
-                systemMsg.setToUserId(apply.getFromUserId());
-                systemMsg.setContent("已同意申请，可以开始聊天了");
-                systemMsg.setMessageType("text");
-                systemMsg.setIsRead(0);
-                privateChatMapper.insert(systemMsg);
-
-                // Update room active_time
-                Room room = roomMapper.selectById(roomId);
-                if (room != null) {
-                    room.setActiveTime(LocalDateTime.now());
-                    room.setLastMsgId(systemMsg.getId());
-                    roomMapper.updateById(room);
-                }
-
-                // Update both contacts
-                updateContact(userId, roomId, systemMsg.getId());
-                updateContact(apply.getFromUserId(), roomId, systemMsg.getId());
-            } catch (Exception e) {
-                log.error("Failed to create conversation for applyId={}", applyId, e);
-                throw new BusinessException(ResultCode.INTERNAL_ERROR, "创建会话失败，请重试");
-            }
+            // 通过:建会话 + 系统消息 + 通知申请人
+            approveApply(apply);
+        } else {
+            User handler = userMapper.selectById(userId);
+            messageService.notify(userId, apply.getFromUserId(), "chat_rejected",
+                    "你的聊天申请已拒绝" + (handler != null ? "（" + handler.getNickname() + "）" : ""), applyId);
         }
-
-        // Notify applicant
-        User handler = userMapper.selectById(userId);
-        messageService.notify(userId, apply.getFromUserId(), status == 1 ? "chat_approved" : "chat_rejected",
-                "你的聊天申请" + actionText + (handler != null ? "（" + handler.getNickname() + "）" : ""), applyId);
     }
 
     // ── Private helpers ──
+
+    /** 通过聊天申请:置状态 + 建会话/系统消息 + 通知申请人 */
+    private void approveApply(ChatApply apply) {
+        apply.setStatus(1);
+        apply.setHandleTime(LocalDateTime.now());
+        chatApplyMapper.updateById(apply);
+
+        try {
+            var convVO = chatService.getOrCreateConversation(apply.getToUserId(), apply.getFromUserId());
+            Long roomId = convVO.getRoomId();
+            log.info("Room created for applyId={}: user {} ↔ user {}, roomId={}", apply.getId(), apply.getToUserId(), apply.getFromUserId(), roomId);
+
+            PrivateChat systemMsg = new PrivateChat();
+            systemMsg.setConversationId(roomId); // 兼容旧字段
+            systemMsg.setRoomId(roomId);
+            systemMsg.setFromUserId(apply.getToUserId());
+            systemMsg.setToUserId(apply.getFromUserId());
+            systemMsg.setContent("已同意申请，可以开始聊天了");
+            systemMsg.setMessageType("text");
+            systemMsg.setIsRead(0);
+            privateChatMapper.insert(systemMsg);
+
+            Room room = roomMapper.selectById(roomId);
+            if (room != null) {
+                room.setActiveTime(LocalDateTime.now());
+                room.setLastMsgId(systemMsg.getId());
+                roomMapper.updateById(room);
+            }
+
+            updateContact(apply.getToUserId(), roomId, systemMsg.getId());
+            updateContact(apply.getFromUserId(), roomId, systemMsg.getId());
+        } catch (Exception e) {
+            log.error("Failed to create conversation for applyId={}", apply.getId(), e);
+            throw new BusinessException(ResultCode.INTERNAL_ERROR, "创建会话失败，请重试");
+        }
+
+        // 互相同意 → 自动互相关注
+        insertFollowIfAbsent(apply.getFromUserId(), apply.getToUserId());
+        insertFollowIfAbsent(apply.getToUserId(), apply.getFromUserId());
+
+        User handler = userMapper.selectById(apply.getToUserId());
+        messageService.notify(apply.getToUserId(), apply.getFromUserId(), "chat_approved",
+                "你的聊天申请已通过" + (handler != null ? "（" + handler.getNickname() + "）" : ""), apply.getId());
+    }
+
+    /** 若未关注则插入一条关注关系(自动互关用) */
+    private void insertFollowIfAbsent(Long followerId, Long followeeId) {
+        if (followerId.equals(followeeId)) return;
+        Long count = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, followerId)
+                .eq(UserFollow::getFolloweeId, followeeId));
+        if (count == 0) {
+            UserFollow f = new UserFollow();
+            f.setFollowerId(followerId);
+            f.setFolloweeId(followeeId);
+            followMapper.insert(f);
+        }
+    }
 
     /** 更新/创建 contact 记录 */
     private void updateContact(Long uid, Long roomId, Long msgId) {

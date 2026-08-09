@@ -17,4 +17,8 @@ export const userApi = {
 
   getFollowing: (id: number, page = 1, size = 20) =>
     request.get<ApiResponse<PageResult<User>>>(`/users/${id}/following`, { params: { page, size } }),
+
+  /** 互相关注列表 */
+  getMutualFollows: (id: number, page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<User>>>(`/users/${id}/mutual-follows`, { params: { page, size } }),
 };

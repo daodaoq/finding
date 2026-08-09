@@ -4,11 +4,14 @@ import com.finding.framework.config.RabbitMQConfig;
 import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Room;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomMapper;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.framework.websocket.WsMessage;
+import com.finding.user.entity.UserSettings;
+import com.finding.user.mapper.UserSettingsMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -31,6 +34,7 @@ public class MsgSendConsumer {
     private final PrivateChatMapper privateChatMapper;
     private final RoomMapper roomMapper;
     private final ContactMapper contactMapper;
+    private final UserSettingsMapper userSettingsMapper;
     private final WebSocketServer webSocketServer;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_SEND_MSG)
@@ -77,13 +81,18 @@ public class MsgSendConsumer {
                 chat.getId(), roomId, chat.getFromUserId(), chat.getToUserId());
     }
 
-    /** 判断接收方是否对该会话开启了免打扰 */
+    /** 判断接收方是否对该会话开启了免打扰(未显式设置则继承全局默认) */
     private boolean isMuted(Long uid, Long roomId) {
         Contact contact = contactMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Contact>()
+                new LambdaQueryWrapper<Contact>()
                         .eq(Contact::getUid, uid)
                         .eq(Contact::getRoomId, roomId));
-        return contact != null && contact.getMuted() != null && contact.getMuted() == 1;
+        if (contact != null && contact.getMuted() != null) {
+            return contact.getMuted() == 1;
+        }
+        UserSettings s = userSettingsMapper.selectOne(
+                new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, uid));
+        return s != null && s.getChatMuted() != null && s.getChatMuted() == 1;
     }
 
     private void updateContact(Long uid, Long roomId, Long msgId) {

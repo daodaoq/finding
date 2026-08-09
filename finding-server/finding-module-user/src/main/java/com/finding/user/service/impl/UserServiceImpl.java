@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -152,6 +153,43 @@ public class UserServiceImpl implements UserService {
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
+    }
+
+    @Override
+    public PageVO<UserVO> getMutualFollows(Long userId, PageQueryDTO pageQuery) {
+        // 我关注的人
+        List<UserFollow> following = followMapper.selectList(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, userId));
+        if (following.isEmpty()) {
+            return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
+        }
+        Set<Long> followingIds = following.stream()
+                .map(UserFollow::getFolloweeId).collect(Collectors.toSet());
+        // 关注我的人
+        List<UserFollow> followers = followMapper.selectList(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFolloweeId, userId));
+        Set<Long> followerIds = followers.stream()
+                .map(UserFollow::getFollowerId).collect(Collectors.toSet());
+
+        // 交集 = 互相关注
+        followingIds.retainAll(followerIds);
+        if (followingIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
+        }
+
+        List<Long> mutualIds = new ArrayList<>(followingIds);
+        int total = mutualIds.size();
+        int from = Math.min((pageQuery.getPage() - 1) * pageQuery.getSize(), total);
+        int to = Math.min(from + pageQuery.getSize(), total);
+        List<Long> pagedIds = mutualIds.subList(from, to);
+
+        List<User> users = userMapper.selectBatchIds(pagedIds);
+        List<UserVO> records = users.stream().map(u -> {
+            UserVO vo = toVO(u);
+            vo.setIsFollowed(true); // 列表里的都是互相关注
+            return vo;
+        }).collect(Collectors.toList());
+        return PageVO.of(records, (long) total, pageQuery.getPage(), pageQuery.getSize());
     }
 
     @Override

@@ -34,12 +34,14 @@ import com.finding.chat.entity.Report;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.RoomFriend;
 import com.finding.user.entity.User;
+import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.mapper.RoomMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.mapper.UserSettingsMapper;
 
 /**
  * 聊天服务 —— 基于 MallChat Room 模型重构。
@@ -57,6 +59,7 @@ public class ChatServiceImpl implements ChatService {
     private final ContactMapper contactMapper;
     private final UserMapper userMapper;
     private final ReportMapper reportMapper;
+    private final UserSettingsMapper userSettingsMapper;
     private final RabbitTemplate rabbitTemplate;
 
     @Override
@@ -157,7 +160,8 @@ public class ChatServiceImpl implements ChatService {
             vo.setTargetAvatar(target != null ? target.getAvatar() : null);
             vo.setLastMessageAt(contact.getActiveTime());
             vo.setPinned(contact.getPinned() != null && contact.getPinned() == 1);
-            vo.setMuted(contact.getMuted() != null && contact.getMuted() == 1);
+            Integer m = contact.getMuted();
+            vo.setMuted(m != null ? m == 1 : globalMuted(userId));
 
             PrivateChat lastMsg = lastMsgMap.get(contact.getRoomId());
             if (lastMsg != null) {
@@ -288,12 +292,15 @@ public class ChatServiceImpl implements ChatService {
         Contact contact = findContact(userId, roomId);
         if (contact == null) {
             vo.setPinned(false);
-            vo.setMuted(false);
+            vo.setMuted(globalMuted(userId));
+            vo.setBackground(globalBackground(userId));
             return vo;
         }
         vo.setPinned(contact.getPinned() != null && contact.getPinned() == 1);
-        vo.setMuted(contact.getMuted() != null && contact.getMuted() == 1);
-        vo.setBackground(contact.getBackground());
+        Integer muted = contact.getMuted();
+        vo.setMuted(muted != null ? muted == 1 : globalMuted(userId));
+        String bg = contact.getBackground();
+        vo.setBackground(bg != null ? bg : globalBackground(userId));
         return vo;
     }
 
@@ -393,6 +400,20 @@ public class ChatServiceImpl implements ChatService {
         return contactMapper.selectOne(new LambdaQueryWrapper<Contact>()
                 .eq(Contact::getUid, uid)
                 .eq(Contact::getRoomId, roomId));
+    }
+
+    /** 读取用户全局默认免打扰(单个聊天未显式设置时继承) */
+    private boolean globalMuted(Long userId) {
+        UserSettings s = userSettingsMapper.selectOne(
+                new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, userId));
+        return s != null && s.getChatMuted() != null && s.getChatMuted() == 1;
+    }
+
+    /** 读取用户全局默认聊天背景(单个聊天未设置时继承) */
+    private String globalBackground(Long userId) {
+        UserSettings s = userSettingsMapper.selectOne(
+                new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, userId));
+        return s != null ? s.getChatBg() : null;
     }
 
     // ── Private helpers ──

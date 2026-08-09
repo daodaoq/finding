@@ -55,6 +55,11 @@ public class UserController {
         return Result.ok(userService.getFollowing(id, query));
     }
 
+    @GetMapping("/{id}/mutual-follows")
+    public Result<PageVO<UserVO>> mutualFollows(@PathVariable Long id, @Valid PageQueryDTO query) {
+        return Result.ok(userService.getMutualFollows(id, query));
+    }
+
     @GetMapping("/search")
     public Result<PageVO<UserVO>> search(@RequestParam(required = false) String keyword,
                                           @Valid PageQueryDTO query) {

@@ -12,5 +12,6 @@ public interface UserService {
     void unfollowUser(Long followerId, Long followeeId);
     PageVO<UserVO> getFollowers(Long userId, PageQueryDTO pageQuery);
     PageVO<UserVO> getFollowing(Long userId, PageQueryDTO pageQuery);
+    PageVO<UserVO> getMutualFollows(Long userId, PageQueryDTO pageQuery);
     boolean isFollowing(Long followerId, Long followeeId);
 }
