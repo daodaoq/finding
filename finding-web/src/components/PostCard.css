@@ -40,6 +40,25 @@
 .post-time { font-size: 12px; color: #999; margin-top: 2px; }
 .post-location { font-size: 12px; color: #999; flex-shrink: 0; }
 
+.post-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.post-manage { display: flex; gap: 6px; }
+.post-manage-btn {
+  border: 1px solid #eee;
+  background: #fff;
+  color: #888;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.post-manage-btn:active { background: #f5f5f5; }
+.post-manage-btn.danger { color: #ff4757; border-color: #ffe0e0; }
+
 .post-body {
   font-size: 15px;
   line-height: 1.6;

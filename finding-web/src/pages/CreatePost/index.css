@@ -15,6 +15,10 @@
 .cp-submit-btn:disabled { background: #eee; color: #ccc; cursor: not-allowed; }
 
 .cp-form { padding: 16px; }
+.cp-loading {
+  min-height: 200px; display: flex; align-items: center; justify-content: center;
+  color: #bbb; font-size: 14px;
+}
 .cp-textarea {
   width: 100%; min-height: 200px; border: none; outline: none;
   font-size: 16px; line-height: 1.7; resize: none;

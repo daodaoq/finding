@@ -1,15 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { postApi } from '../../api/post';
+import { historyApi } from '../../api/history';
 import { useAuthStore } from '../../store/authStore';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import EmptyState from '../../components/EmptyState';
 import PostCard from '../../components/PostCard';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { showToast } from '../../components/Toast';
 import type { Post } from '../../types/post';
 import type { Comment } from '../../types/comment';
+import CommentList from './components/CommentList';
+import CommentInput from './components/CommentInput';
 import './index.css';
 
 export default function PostDetailPage() {
@@ -25,7 +28,19 @@ export default function PostDetailPage() {
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 删除自己的动态
+  const handleDelete = async () => {
+    if (!post) return;
+    try {
+      await postApi.delete(post.id);
+      showToast('已删除');
+      navigate(-1);
+    } catch { showToast('删除失败'); }
+    finally { setShowDeleteConfirm(false); }
+  };
 
   // 移动端键盘适配：监听 visualViewport 变化
   useEffect(() => {
@@ -49,12 +64,14 @@ export default function PostDetailPage() {
   useEffect(() => {
     loadPost();
     loadComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
   const loadPost = async () => {
     try {
       const res = await postApi.detail(postId);
       setPost(res.data.data);
+      historyApi.record('post', postId).catch(() => {}); // 记录浏览
     } catch { navigate(-1); }
     finally { setLoading(false); }
   };
@@ -145,103 +162,46 @@ export default function PostDetailPage() {
         <h3>动态详情</h3>
       </div>
 
-      {/* 帖子内容 */}
-      <PostCard post={post} onLike={handleLike} onClick={() => {}} />
-
-      {/* 评论标题 */}
-      <div className="pd-comment-header">
-        <span>评论 {post.commentCount > 0 ? `(${post.commentCount})` : ''}</span>
-      </div>
+      {/* 动态内容 */}
+      <PostCard
+        post={post}
+        onLike={handleLike}
+        onClick={() => {}}
+        canManage={post.userId === user?.id}
+        onEdit={() => navigate(`/create-post?id=${post.id}`)}
+        onDelete={() => setShowDeleteConfirm(true)}
+      />
 
       {/* 评论列表 */}
-      <div className="pd-comment-list">
-        {comments.length === 0 && <EmptyState icon="💬" message="暂无评论，来说点什么吧" />}
-        {comments.map(comment => (
-          <div key={comment.id} className="comment-item">
-            <div className="comment-avatar">
-              {comment.avatar ? <img src={comment.avatar} alt="" /> : <span>👤</span>}
-            </div>
-            <div className="comment-body">
-              <div className="comment-top">
-                <span className="comment-name">{comment.nickname}</span>
-                <span className="comment-time">{formatTime(comment.createdAt)}</span>
-              </div>
-              <div className="comment-content">
-                {comment.parentId && <span className="reply-target">回复 </span>}
-                {comment.content}
-              </div>
-              <div className="comment-actions">
-                <button onClick={() => handleCommentLike(comment.id)}>
-                  {comment.isLiked ? '❤️' : '🤍'} {comment.likeCount || ''}
-                </button>
-                <button onClick={() => handleReply(comment)}>回复</button>
-              </div>
-
-              {/* 子回复 */}
-              {comment.replies && comment.replies.length > 0 && (
-                <div className="sub-replies">
-                  {comment.replies.map(reply => (
-                    <div key={reply.id} className="reply-item">
-                      <div className="comment-avatar small">
-                        {reply.avatar ? <img src={reply.avatar} alt="" /> : <span>👤</span>}
-                      </div>
-                      <div className="comment-body">
-                        <div className="comment-top">
-                          <span className="comment-name">{reply.nickname}</span>
-                          <span className="comment-time">{formatTime(reply.createdAt)}</span>
-                        </div>
-                        <div className="comment-content">
-                          <span className="reply-target">回复 {comment.nickname}: </span>
-                          {reply.content}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {comment.replyCount && comment.replyCount > 3 && (
-                    <div className="view-all-replies">查看全部 {comment.replyCount} 条回复 ›</div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <CommentList
+        comments={comments}
+        commentCount={post.commentCount}
+        onLike={handleCommentLike}
+        onReply={handleReply}
+      />
 
       {/* 底部输入栏 — 移动端键盘适配 */}
-      <div className="pd-input-bar" style={{ bottom: keyboardOffset > 0 ? keyboardOffset : 56 }}>
-        {replyTo && (
-          <div className="reply-indicator">
-            回复 @{replyTo.name}
-            <button onClick={() => setReplyTo(null)}>✕</button>
-          </div>
-        )}
-        <div className="pd-input-row">
-          <input
-            ref={inputRef}
-            className="pd-input"
-            type="text"
-            placeholder={replyTo ? `回复 ${replyTo.name}...` : '说点什么...'}
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSendComment(); }}
-          />
-          <button className="pd-send-btn" onClick={handleSendComment} disabled={!inputText.trim()}>
-            发送
-          </button>
-        </div>
-      </div>
+      <CommentInput
+        inputText={inputText}
+        onInputChange={setInputText}
+        onSend={handleSendComment}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+        bottom={keyboardOffset}
+        inputRef={inputRef}
+      />
 
       <LoginModal visible={showLogin} onClose={handleClose} onSuccess={handleLoginSuccess} />
+
+      <ConfirmDialog
+        visible={showDeleteConfirm}
+        title="删除动态"
+        message="确定删除这条动态吗？删除后不可恢复。"
+        confirmText="删除"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
-}
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  return `${d.getMonth() + 1}/${d.getDate()}`;
 }

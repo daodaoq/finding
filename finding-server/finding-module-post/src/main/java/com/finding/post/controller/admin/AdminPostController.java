@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.Result;
 import com.finding.common.ResultCode;
+import com.finding.post.dto.PostCreateDTO;
 import com.finding.post.entity.Post;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserMapper;
@@ -61,6 +62,21 @@ public class AdminPostController {
         }).toList();
 
         return Result.ok(PageVO.of(records, result.getTotal(), page, size));
+    }
+
+    /** 编辑动态(管理端,无所有权限制) */
+    @PutMapping("/posts/{id}")
+    public Result<Void> updatePost(@PathVariable Long id, @RequestBody PostCreateDTO dto) {
+        Post post = postMapper.selectById(id);
+        if (post == null) throw new BusinessException(ResultCode.PARAM_ERROR, "动态不存在");
+        post.setContent(dto.getContent());
+        post.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
+        post.setLocation(dto.getLocation());
+        post.setCity(dto.getCity());
+        if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
+        if (dto.getLongitude() != null) post.setLongitude(dto.getLongitude());
+        postMapper.updateById(post);
+        return Result.ok();
     }
 
     @PutMapping("/posts/{id}/status")

@@ -141,6 +141,25 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public PostVO updatePost(Long userId, Long postId, PostCreateDTO dto) {
+        Post post = postMapper.selectById(postId);
+        if (post == null || post.getStatus() == 0) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
+        if (!post.getUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "只能编辑自己的动态");
+        }
+        post.setContent(dto.getContent());
+        post.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
+        post.setLocation(dto.getLocation());
+        post.setCity(dto.getCity());
+        if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
+        if (dto.getLongitude() != null) post.setLongitude(dto.getLongitude());
+        postMapper.updateById(post);
+        return toVO(post, userId);
+    }
+
+    @Override
     public void deletePost(Long userId, Long postId) {
         Post post = postMapper.selectById(postId);
         if (post == null || post.getStatus() == 0) {

@@ -47,6 +47,14 @@ public class PostController {
         return Result.ok();
     }
 
+    /** 编辑自己发布的动态 */
+    @PutMapping("/{id}")
+    public Result<PostVO> update(@PathVariable Long id, @Valid @RequestBody PostCreateDTO dto) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(postService.updatePost(userId, id, dto));
+    }
+
     @PostMapping("/{id}/like")
     public Result<Void> like(@PathVariable Long id) {
         Long userId = JwtInterceptor.getCurrentUserId();

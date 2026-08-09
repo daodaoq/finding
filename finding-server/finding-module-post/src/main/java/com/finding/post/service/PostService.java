@@ -11,6 +11,7 @@ public interface PostService {
     PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId);
     PostVO getPostDetail(Long postId, Long currentUserId);
     PostVO createPost(Long userId, PostCreateDTO dto);
+    PostVO updatePost(Long userId, Long postId, PostCreateDTO dto);
     void deletePost(Long userId, Long postId);
     void toggleLike(Long userId, Long postId);
     PageVO<CommentVO> listComments(Long postId, int page, int size, Long currentUserId);

@@ -1,13 +1,18 @@
 import type { Post } from '../types/post';
+import { formatRelativeTime } from '../utils/format';
 import './PostCard.css';
 
 interface Props {
   post: Post;
   onLike: (id: number) => void;
   onClick: (id: number) => void;
+  /** 当前用户是否可管理该动态(作者本人),显示编辑/删除 */
+  canManage?: boolean;
+  onEdit?: (id: number) => void;
+  onDelete?: (id: number) => void;
 }
 
-export default function PostCard({ post, onLike, onClick }: Props) {
+export default function PostCard({ post, onLike, onClick, canManage, onEdit, onDelete }: Props) {
   return (
     <div className="post-card" onClick={() => onClick(post.id)}>
       <div className="post-header">
@@ -21,10 +26,18 @@ export default function PostCard({ post, onLike, onClick }: Props) {
           </div>
           <div className="post-author-info">
             <span className="post-nickname">{post.author?.nickname || '匿名用户'}</span>
-            <span className="post-time">{formatTime(post.createdAt)}</span>
+            <span className="post-time">{formatRelativeTime(post.createdAt)}</span>
           </div>
         </div>
-        {post.location && <span className="post-location">📍 {post.location}</span>}
+        <div className="post-header-right">
+          {canManage && (
+            <div className="post-manage" onClick={(e) => e.stopPropagation()}>
+              <button className="post-manage-btn" onClick={() => onEdit?.(post.id)}>编辑</button>
+              <button className="post-manage-btn danger" onClick={() => onDelete?.(post.id)}>删除</button>
+            </div>
+          )}
+          {post.location && <span className="post-location">📍 {post.location}</span>}
+        </div>
       </div>
       <div className="post-body">{post.content}</div>
       {post.images && post.images.length > 0 && (
@@ -46,14 +59,4 @@ export default function PostCard({ post, onLike, onClick }: Props) {
       </div>
     </div>
   );
-}
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  return d.toLocaleDateString('zh-CN');
 }
