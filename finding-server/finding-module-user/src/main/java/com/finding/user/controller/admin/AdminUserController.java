@@ -5,14 +5,20 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.Result;
 import com.finding.common.ResultCode;
+import com.finding.user.dto.UserResumeDTO;
 import com.finding.user.entity.User;
+import com.finding.user.entity.UserResume;
+import com.finding.user.event.UserBannedEvent;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.service.UserResumeService;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +33,8 @@ public class AdminUserController {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final UserResumeService userResumeService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @GetMapping("/users")
     public Result<PageVO<Map<String, Object>>> listUsers(
@@ -101,6 +109,8 @@ public class AdminUserController {
         map.put("avatar", user.getAvatar());
         map.put("school", user.getSchool());
         map.put("gender", user.getGender());
+        map.put("birthday", user.getBirthday());
+        map.put("email", user.getEmail());
         map.put("signature", user.getSignature());
         map.put("city", user.getCity());
         map.put("status", user.getStatus());
@@ -126,12 +136,22 @@ public class AdminUserController {
             user.setSchool((String) body.get("school"));
         if (body.containsKey("gender") && body.get("gender") != null)
             user.setGender((Integer) body.get("gender"));
+        if (body.containsKey("birthday") && body.get("birthday") != null) {
+            String bd = body.get("birthday").toString();
+            if (!bd.isEmpty()) {
+                try { user.setBirthday(java.time.LocalDate.parse(bd)); } catch (Exception ignored) {}
+            }
+        }
+        if (body.containsKey("email") && body.get("email") != null)
+            user.setEmail((String) body.get("email"));
         if (body.containsKey("signature") && body.get("signature") != null)
             user.setSignature((String) body.get("signature"));
         if (body.containsKey("city") && body.get("city") != null)
             user.setCity((String) body.get("city"));
         if (body.containsKey("status") && body.get("status") != null)
             user.setStatus((Integer) body.get("status"));
+        if (body.containsKey("role") && body.get("role") != null)
+            user.setRole((String) body.get("role"));
 
         // 密码单独处理：非空才更新
         String password = (String) body.get("password");
@@ -149,7 +169,50 @@ public class AdminUserController {
         if (user == null) throw new BusinessException(ResultCode.PARAM_ERROR, "用户不存在");
         Integer newStatus = body.get("status");
         user.setStatus(newStatus != null ? newStatus : (user.getStatus() == 1 ? 0 : 1));
+        // 解封时清掉封禁到期时间与原因
+        if (user.getStatus() == 1) {
+            user.setBannedUntil(null);
+            user.setBannedReason(null);
+        }
         userMapper.updateById(user);
+        return Result.ok();
+    }
+
+    /** 封禁用户(支持按天 + 原因):days>0 封禁 days 天,days=0 永久;发布事件让在线用户实时收到提示 */
+    @PutMapping("/users/{id}/ban")
+    public Result<Void> banUser(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        User user = userMapper.selectById(id);
+        if (user == null) throw new BusinessException(ResultCode.PARAM_ERROR, "用户不存在");
+        Object daysRaw = body.get("days");
+        int days = daysRaw != null ? ((Number) daysRaw).intValue() : 0;
+        String reason = body.get("reason") != null ? body.get("reason").toString() : null;
+        user.setStatus(0);
+        if (days > 0) {
+            user.setBannedUntil(LocalDateTime.now().plusDays(days));
+        } else {
+            user.setBannedUntil(null); // 永久封禁
+        }
+        user.setBannedReason(reason);
+        userMapper.updateById(user);
+        // 实时通知在线用户(前端弹提示框并强制退出)
+        eventPublisher.publishEvent(new UserBannedEvent(user.getId(), reason, user.getBannedUntil()));
+        return Result.ok();
+    }
+
+    /** 查看任意用户的情感简历(绕过互换权限，仅管理员可见) */
+    @GetMapping("/users/{id}/resume")
+    public Result<UserResume> getUserResume(@PathVariable Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) throw new BusinessException(ResultCode.PARAM_ERROR, "用户不存在");
+        return Result.ok(userResumeService.getMyResume(id));
+    }
+
+    /** 编辑任意用户的情感简历(管理员可改一切) */
+    @PutMapping("/users/{id}/resume")
+    public Result<Void> updateUserResume(@PathVariable Long id, @RequestBody UserResumeDTO dto) {
+        User user = userMapper.selectById(id);
+        if (user == null) throw new BusinessException(ResultCode.PARAM_ERROR, "用户不存在");
+        userResumeService.saveResume(id, dto);
         return Result.ok();
     }
 }

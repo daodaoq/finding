@@ -5,6 +5,7 @@ import {
   DashboardOutlined, UserOutlined, SafetyOutlined,
   FileTextOutlined, PictureOutlined, NotificationOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
+  WarningOutlined, TeamOutlined, UsergroupAddOutlined, CommentOutlined,
 } from '@ant-design/icons';
 
 const { Header, Sider, Content, Footer } = Layout;
@@ -13,7 +14,11 @@ const menuItems = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '数据面板' },
   { key: '/users', icon: <UserOutlined />, label: '用户管理' },
   { key: '/verification', icon: <SafetyOutlined />, label: '实名审核' },
+  { key: '/reports', icon: <WarningOutlined />, label: '投诉管理' },
   { key: '/posts', icon: <FileTextOutlined />, label: '动态管理' },
+  { key: '/comments', icon: <CommentOutlined />, label: '评论管理' },
+  { key: '/mates', icon: <TeamOutlined />, label: '搭子管理' },
+  { key: '/groups', icon: <UsergroupAddOutlined />, label: '群聊管理' },
   { key: '/banners', icon: <PictureOutlined />, label: '轮播管理' },
   { key: '/announcements', icon: <NotificationOutlined />, label: '系统公告' },
 ];
@@ -22,7 +27,11 @@ const breadcrumbMap: Record<string, string> = {
   '/dashboard': '数据面板',
   '/users': '用户管理',
   '/verification': '实名审核',
+  '/reports': '投诉管理',
   '/posts': '动态管理',
+  '/comments': '评论管理',
+  '/mates': '搭子管理',
+  '/groups': '群聊管理',
   '/banners': '轮播管理',
   '/announcements': '系统公告',
 };

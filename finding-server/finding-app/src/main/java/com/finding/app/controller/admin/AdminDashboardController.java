@@ -2,8 +2,13 @@ package com.finding.app.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.finding.common.Result;
+import com.finding.chat.entity.Report;
+import com.finding.chat.mapper.ReportMapper;
+import com.finding.group.entity.GroupChat;
+import com.finding.group.mapper.GroupChatMapper;
 import com.finding.mate.entity.MateInvitation;
 import com.finding.post.entity.Post;
+import com.finding.user.entity.User;
 import com.finding.user.entity.UserVerification;
 import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.post.mapper.PostMapper;
@@ -30,6 +35,8 @@ public class AdminDashboardController {
     private final PostMapper postMapper;
     private final MateInvitationMapper mateMapper;
     private final UserVerificationMapper verificationMapper;
+    private final ReportMapper reportMapper;
+    private final GroupChatMapper groupChatMapper;
 
     @GetMapping("/dashboard")
     public Result<Map<String, Object>> dashboard() {
@@ -41,6 +48,12 @@ public class AdminDashboardController {
                 new LambdaQueryWrapper<MateInvitation>().ge(MateInvitation::getCreatedAt, LocalDateTime.now().toLocalDate())));
         stats.put("pendingVerifications", verificationMapper.selectCount(
                 new LambdaQueryWrapper<UserVerification>().eq(UserVerification::getStatus, 0)));
+        stats.put("todayNewUsers", userMapper.selectCount(
+                new LambdaQueryWrapper<User>().ge(User::getCreatedAt, LocalDateTime.now().toLocalDate())));
+        stats.put("totalMates", mateMapper.selectCount(null));
+        stats.put("pendingReports", reportMapper.selectCount(
+                new LambdaQueryWrapper<Report>().eq(Report::getStatus, 0)));
+        stats.put("groupCount", groupChatMapper.selectCount(null));
         return Result.ok(stats);
     }
 }

@@ -5,7 +5,11 @@ import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Verification from './pages/Verification';
+import Reports from './pages/Reports';
 import Posts from './pages/Posts';
+import Comments from './pages/Comments';
+import Mates from './pages/Mates';
+import Groups from './pages/Groups';
 import Banners from './pages/Banners';
 import Announcements from './pages/Announcements';
 import Login from './pages/Login';
@@ -21,7 +25,11 @@ export default function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="verification" element={<Verification />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="posts" element={<Posts />} />
+            <Route path="comments" element={<Comments />} />
+            <Route path="mates" element={<Mates />} />
+            <Route path="groups" element={<Groups />} />
             <Route path="banners" element={<Banners />} />
             <Route path="announcements" element={<Announcements />} />
           </Route>

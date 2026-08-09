@@ -1,0 +1,180 @@
+import { useEffect, useState } from 'react';
+import { Table, Space, Tag, Tabs, Popconfirm, Avatar, Modal, Input, InputNumber, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import request from '../api/request';
+
+interface ReportRecord {
+  id: number;
+  fromUserId: number;
+  fromNickname: string;
+  fromAvatar?: string;
+  targetUserId: number;
+  targetNickname: string;
+  targetAvatar?: string;
+  reason: string;
+  status: number;
+  roomId?: number;
+  createdAt: string;
+}
+
+const STATUS_MAP: Record<number, { label: string; color: string }> = {
+  0: { label: '待处理', color: 'processing' },
+  1: { label: '已处理', color: 'success' },
+  2: { label: '已驳回', color: 'default' },
+};
+
+export default function Reports() {
+  const [data, setData] = useState<ReportRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('all');
+
+  const fetchData = (p = 1, status?: string) => {
+    setLoading(true);
+    request.get('/admin/reports', {
+      params: {
+        page: p,
+        size: 10,
+        status: status === 'all' ? undefined : Number(status || activeTab),
+      },
+    })
+      .then((res) => {
+        setData(res.data.data.records);
+        setTotal(res.data.data.total);
+        setPage(p);
+      })
+      .catch(() => message.error('获取投诉列表失败'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchData(1, activeTab); }, [activeTab]);
+
+  const updateStatus = async (id: number, status: number) => {
+    try {
+      await request.put(`/admin/reports/${id}/status`, { status });
+      message.success('已更新');
+      fetchData(page, activeTab);
+    } catch { message.error('操作失败'); }
+  };
+
+  // 封禁弹窗(可选天数 + 原因)
+  const [banTarget, setBanTarget] = useState<{ id: number; nickname: string } | null>(null);
+  const [banDays, setBanDays] = useState(0);
+  const [banReason, setBanReason] = useState('');
+  const [banLoading, setBanLoading] = useState(false);
+
+  const openBan = (record: ReportRecord) => {
+    setBanTarget({ id: record.targetUserId, nickname: record.targetNickname });
+    setBanDays(0);
+    setBanReason(record.reason || '');
+  };
+
+  const confirmBan = async () => {
+    if (!banTarget) return;
+    setBanLoading(true);
+    try {
+      await request.put(`/admin/users/${banTarget.id}/ban`, {
+        days: banDays,
+        reason: banReason.trim() || undefined,
+      });
+      message.success(banDays > 0 ? `已封禁 ${banTarget.nickname} ${banDays} 天` : `已永久封禁 ${banTarget.nickname}`);
+      setBanTarget(null);
+    } catch { message.error('封禁失败'); }
+    finally { setBanLoading(false); }
+  };
+
+  const userCell = (nickname: string, avatar?: string) => (
+    <Space size={6}>
+      <Avatar size={24} src={avatar}>{nickname?.[0] || '?'}</Avatar>
+      <span>{nickname}</span>
+    </Space>
+  );
+
+  const columns: ColumnsType<ReportRecord> = [
+    { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
+    { title: '投诉人', render: (_, r) => userCell(r.fromNickname, r.fromAvatar) },
+    { title: '被投诉人', render: (_, r) => userCell(r.targetNickname, r.targetAvatar) },
+    { title: '投诉原因', dataIndex: 'reason', ellipsis: true },
+    {
+      title: '状态', dataIndex: 'status', width: 90,
+      render: (v: number) => <Tag color={STATUS_MAP[v]?.color}>{STATUS_MAP[v]?.label}</Tag>,
+    },
+    { title: '时间', dataIndex: 'createdAt', width: 160, render: (v: string) => v?.replace('T', ' ') },
+    {
+      title: '操作', width: 210,
+      render: (_, record) => (
+        <Space>
+          {record.status === 0 && (
+            <>
+              <Popconfirm title="标记该投诉为已处理？" onConfirm={() => updateStatus(record.id, 1)}>
+                <a>处理</a>
+              </Popconfirm>
+              <Popconfirm title="驳回该投诉？" onConfirm={() => updateStatus(record.id, 2)}>
+                <a style={{ color: '#888' }}>驳回</a>
+              </Popconfirm>
+            </>
+          )}
+          <a style={{ color: 'red' }} onClick={() => openBan(record)}>封禁</a>
+        </Space>
+      ),
+    },
+  ];
+
+  const tabItems = [
+    { key: 'all', label: '全部' },
+    { key: '0', label: '待处理' },
+    { key: '1', label: '已处理' },
+    { key: '2', label: '已驳回' },
+  ];
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: 16 }}>投诉管理</h2>
+      <Tabs activeKey={activeTab} onChange={(k) => setActiveTab(k)} items={tabItems} />
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          current: page, total, pageSize: 10,
+          onChange: (p) => fetchData(p, activeTab),
+          showTotal: (t) => `共 ${t} 条`,
+        }}
+      />
+
+      {/* 封禁弹窗 */}
+      <Modal
+        title={`封禁 ${banTarget?.nickname ?? ''}`}
+        open={banTarget != null}
+        onOk={confirmBan}
+        onCancel={() => setBanTarget(null)}
+        okText="确认封禁"
+        okButtonProps={{ danger: true }}
+        confirmLoading={banLoading}
+        width={420}
+      >
+        <p style={{ marginBottom: 12 }}>封禁天数：</p>
+        <InputNumber
+          min={0}
+          max={3650}
+          value={banDays}
+          onChange={(v) => setBanDays(v ?? 0)}
+          style={{ width: '100%' }}
+          addonAfter="天"
+        />
+        <p style={{ marginTop: 12, marginBottom: 8 }}>封禁原因：</p>
+        <Input.TextArea
+          rows={2}
+          placeholder="填写的封禁原因会展示给用户"
+          value={banReason}
+          onChange={(e) => setBanReason(e.target.value)}
+        />
+        <p style={{ marginTop: 12, fontSize: 12, color: '#999' }}>
+          0 表示永久封禁；按天封禁到期后账号自动解封。封禁立即生效，已登录也会被强制失效。
+        </p>
+      </Modal>
+    </div>
+  );
+}
