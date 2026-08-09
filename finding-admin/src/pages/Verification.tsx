@@ -31,7 +31,7 @@ export default function Verification() {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [activeTab, setActiveTab] = useState('0');
+  const [activeTab, setActiveTab] = useState('all');
   const [materialVisible, setMaterialVisible] = useState(false);
   const [materials, setMaterials] = useState<VerifyRecord | null>(null);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -134,10 +134,10 @@ export default function Verification() {
   ];
 
   const tabItems = [
+    { key: 'all', label: '全部' },
     { key: '0', label: '待审核' },
     { key: '1', label: '已通过' },
     { key: '2', label: '已拒绝' },
-    { key: 'all', label: '全部' },
   ];
 
   return (

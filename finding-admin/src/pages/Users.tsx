@@ -3,6 +3,8 @@ import { Table, Button, Input, Space, Tag, Popconfirm, Modal, Select, Upload, me
 import { UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
+import ResumeModal from '../components/ResumeModal';
+import ResumeEditModal from '../components/ResumeEditModal';
 
 interface UserRecord {
   id: number; nickname: string; phone: string; school: string;
@@ -11,13 +13,15 @@ interface UserRecord {
 
 interface UserDetail {
   id: number; nickname: string; phone: string; avatar: string;
-  school: string; gender: number; signature: string; city: string;
+  school: string; gender: number; birthday?: string; email?: string;
+  signature: string; city: string;
   status: number; role: string; realNameVerified: number;
 }
 
 const emptyForm = {
   nickname: '', phone: '', password: '', avatar: '',
-  school: '', gender: 0, signature: '', city: '', status: 1,
+  school: '', gender: 0, birthday: '', email: '', role: 'user',
+  signature: '', city: '', status: 1,
 };
 
 export default function Users() {
@@ -33,6 +37,13 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState<UserDetail | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+
+  // 查看情感简历
+  const [resumeUserId, setResumeUserId] = useState<number | null>(null);
+  const [resumeOpen, setResumeOpen] = useState(false);
+  // 编辑情感简历
+  const [resumeEditId, setResumeEditId] = useState<number | null>(null);
+  const [resumeEditOpen, setResumeEditOpen] = useState(false);
 
   const fetchData = (p = 1, kw?: string) => {
     setLoading(true);
@@ -75,6 +86,9 @@ export default function Users() {
         avatar: u.avatar || '',
         school: u.school || '',
         gender: u.gender ?? 0,
+        birthday: u.birthday || '',
+        email: u.email || '',
+        role: u.role || 'user',
         signature: u.signature || '',
         city: u.city || '',
         status: u.status ?? 1,
@@ -156,6 +170,8 @@ export default function Users() {
       title: '操作', render: (_, record) => (
         <Space>
           <a onClick={() => openEdit(record)}>编辑</a>
+          <a onClick={() => { setResumeUserId(record.id); setResumeOpen(true); }}>简历</a>
+          <a onClick={() => { setResumeEditId(record.id); setResumeEditOpen(true); }}>编辑简历</a>
           <Popconfirm
             title={`确定${record.status === 1 ? '禁用' : '解禁'}该用户？`}
             onConfirm={() => toggleStatus(record)}
@@ -275,12 +291,54 @@ export default function Users() {
             </div>
           </div>
 
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label>生日</label>
+              <Input
+                type="date"
+                value={form.birthday}
+                onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>角色</label>
+              <Select
+                value={form.role}
+                onChange={(v) => setForm({ ...form, role: v })}
+                style={{ width: '100%' }}
+                options={[
+                  { value: 'user', label: '用户' },
+                  { value: 'admin', label: '管理员' },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label>邮箱</label>
+            <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
+
           <div>
             <label>个性签名</label>
             <Input.TextArea rows={2} value={form.signature} onChange={(e) => setForm({ ...form, signature: e.target.value })} />
           </div>
         </div>
       </Modal>
+
+      {/* 查看情感简历 */}
+      <ResumeModal
+        userId={resumeUserId}
+        open={resumeOpen}
+        onClose={() => { setResumeOpen(false); setResumeUserId(null); }}
+      />
+
+      {/* 编辑情感简历 */}
+      <ResumeEditModal
+        userId={resumeEditId}
+        open={resumeEditOpen}
+        onClose={() => { setResumeEditOpen(false); setResumeEditId(null); }}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Input, Popconfirm, Select, message } from 'antd';
+import { Table, Button, Space, Tag, Input, Popconfirm, Select, Modal, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -20,6 +20,32 @@ export default function Posts() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState('');
+
+  // 编辑弹窗
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+
+  const openEdit = (record: PostRecord) => {
+    setEditingId(record.id);
+    setEditContent(record.content);
+    setEditLocation('');
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingId == null) return;
+    try {
+      await request.put(`/admin/posts/${editingId}`, {
+        content: editContent,
+        location: editLocation || undefined,
+      });
+      message.success('已保存');
+      setEditOpen(false);
+      fetchData(page);
+    } catch { message.error('操作失败'); }
+  };
 
   const fetchData = (p = 1, kw?: string) => {
     setLoading(true);
@@ -66,6 +92,7 @@ export default function Posts() {
     {
       title: '操作', render: (_, record) => (
         <Space>
+          <a onClick={() => openEdit(record)}>编辑</a>
           {record.status !== 2 && (
             <Popconfirm title="确定隐藏该动态？" onConfirm={() => updateStatus(record.id, 2)}>
               <a>隐藏</a>
@@ -104,6 +131,30 @@ export default function Posts() {
           showTotal: (t) => `共 ${t} 条`,
         }}
       />
+
+      {/* 编辑动态弹窗 */}
+      <Modal
+        title="编辑动态"
+        open={editOpen}
+        onOk={handleSaveEdit}
+        onCancel={() => setEditOpen(false)}
+        okText="保存"
+        width={560}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input.TextArea
+            rows={6}
+            placeholder="动态内容"
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+          />
+          <Input
+            placeholder="位置（选填）"
+            value={editLocation}
+            onChange={(e) => setEditLocation(e.target.value)}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }
