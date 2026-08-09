@@ -65,6 +65,9 @@ public class AdminReportController {
             map.put("reason", r.getReason());
             map.put("status", r.getStatus());
             map.put("roomId", r.getRoomId());
+            map.put("targetType", r.getTargetType());
+            map.put("targetId", r.getTargetId());
+            map.put("contentSnapshot", r.getContentSnapshot());
             map.put("createdAt", r.getCreatedAt());
             return map;
         }).toList();
