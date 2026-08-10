@@ -13,7 +13,6 @@ import { useBridgeStore } from '../store/bridgeStore';
 import { useInfoShareStore } from '../store/infoShareStore';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { authApi } from '../api/auth';
-import { messageApi } from '../api/message';
 import { bridgeApi } from '../api/bridge';
 import { homeApi } from '../api/home';
 import './MainLayout.css';
@@ -27,6 +26,7 @@ export default function MainLayout() {
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const setUnreadCount = useMessageStore((s) => s.setUnreadCount);
+  const refreshUnread = useMessageStore((s) => s.refreshTotal);
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const setInfoSharePrompt = useInfoShareStore((s) => s.setPrompt);
   const bumpInfoShare = useInfoShareStore((s) => s.bump);
@@ -61,9 +61,9 @@ export default function MainLayout() {
       });
       return;
     }
-    // 收到新站内通知 → 刷新未读角标
-    if (msg.type === 'new_notification') {
-      messageApi.unreadCount().then((res) => setUnreadCount(res.data.data.count)).catch(() => {});
+    // 收到新通知/私聊/群聊消息 → 刷新汇总角标(通知+私聊+群聊)
+    if (msg.type === 'new_notification' || msg.type === 'chat' || msg.type === 'group_chat') {
+      refreshUnread();
       return;
     }
     if (msg.type !== 'info_share') return;
@@ -101,16 +101,25 @@ export default function MainLayout() {
     }
   }, [isLoggedIn, user]);
 
-  // 全局角标计数：消息未读数 + 鹊桥待处理申请数
+  // 全局角标计数：通知+私聊+群聊汇总未读 + 鹊桥待处理申请数
   useEffect(() => {
     if (isLoggedIn) {
-      messageApi.unreadCount().then((res) => setUnreadCount(res.data.data.count)).catch(() => {});
+      refreshUnread();
       bridgeApi.receivedPendingCount().then((res) => setBridgePending(res.data.data?.count ?? 0)).catch(() => {});
     } else {
       setUnreadCount(0);
       setBridgePending(0);
     }
-  }, [isLoggedIn, setUnreadCount, setBridgePending]);
+  }, [isLoggedIn, setUnreadCount, setBridgePending, refreshUnread]);
+
+  // 回到前台时刷新角标(读过的私聊/群聊/通知后回来能及时减)
+  useEffect(() => {
+    const onFocus = () => {
+      if (isLoggedIn) refreshUnread();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [isLoggedIn, refreshUnread]);
 
   // 监听 BottomNav 的中间的"+"点击
   const handleCreatePost = () => navigate('/create-post');

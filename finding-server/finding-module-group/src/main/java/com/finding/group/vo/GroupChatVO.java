@@ -14,6 +14,7 @@ public class GroupChatVO {
     private String announcement;
     private String lastMessage;
     private LocalDateTime lastMessageAt;
+    private Integer unreadCount; // 该群未读消息数(自己发的除外)
     private LocalDateTime createdAt;
 
     /** 成员列表（详情场景用） */

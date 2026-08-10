@@ -4,6 +4,7 @@ import { chatApi } from '../../api/chat';
 import { bridgeApi } from '../../api/bridge';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
+import { useMessageStore } from '../../store/messageStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
@@ -101,6 +102,8 @@ export default function ChatDetailPage() {
         createdAt: r.createdAt,
       }));
       setMessages(records);
+      // 进入会话已标记已读 → 刷新汇总角标
+      useMessageStore.getState().refreshTotal();
     } catch (e) {
       console.error('初始化会话失败', e);
     } finally {

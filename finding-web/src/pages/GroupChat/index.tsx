@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
+import { useMessageStore } from '../../store/messageStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
@@ -52,6 +53,9 @@ export default function GroupChatPage() {
           createdAt: new Date().toISOString(),
         } as GroupMessage];
       });
+      // 正在看群时收到新消息 → 更新已读位置,角标不误增
+      groupChatApi.markRead(groupId).catch(() => {});
+      useMessageStore.getState().refreshTotal();
     }
   });
 
@@ -86,6 +90,9 @@ export default function GroupChatPage() {
       setLoadError(true);
     }
     finally { setLoading(false); }
+    // 打开群聊即标记已读并刷新角标
+    groupChatApi.markRead(groupId).catch(() => {});
+    useMessageStore.getState().refreshTotal();
   };
 
   // 向上滚动加载更早的群消息(分页)

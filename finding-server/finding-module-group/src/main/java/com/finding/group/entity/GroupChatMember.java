@@ -12,6 +12,7 @@ public class GroupChatMember {
     private Long groupId;
     private Long userId;
     private Integer role; // 0=member, 1=admin, 2=owner
+    private Long lastReadMsgId; // 该群最后已读的消息ID(0=未读任何)
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime joinedAt;

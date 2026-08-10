@@ -7,6 +7,7 @@ export interface GroupChat {
   announcement: string;
   lastMessage: string;
   lastMessageAt: string;
+  unreadCount?: number;
   createdAt: string;
   members?: GroupMember[];
 }

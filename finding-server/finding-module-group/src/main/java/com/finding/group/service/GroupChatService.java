@@ -86,6 +86,12 @@ public class GroupChatService {
             if (!msgs.isEmpty()) lastMsgMap.put(gid, msgs.get(0));
         }
 
+        // 每个群我已读到的消息ID
+        Map<Long, Long> lastReadMap = new HashMap<>();
+        for (GroupChatMember m : memberships) {
+            lastReadMap.put(m.getGroupId(), m.getLastReadMsgId() != null ? m.getLastReadMsgId() : 0L);
+        }
+
         return groups.stream().map(g -> {
             GroupChatVO vo = toVO(g, userId);
             GroupMessage last = lastMsgMap.get(g.getId());
@@ -93,8 +99,35 @@ public class GroupChatService {
                 vo.setLastMessage("image".equals(last.getMessageType()) ? "[图片]" : last.getContent());
                 vo.setLastMessageAt(last.getCreatedAt());
             }
+            // 未读数 = 我未读之后且不是我自己发的
+            long lastRead = lastReadMap.getOrDefault(g.getId(), 0L);
+            long unread = messageMapper.selectCount(new LambdaQueryWrapper<GroupMessage>()
+                    .eq(GroupMessage::getGroupId, g.getId())
+                    .gt(GroupMessage::getId, lastRead)
+                    .ne(GroupMessage::getFromUserId, userId));
+            vo.setUnreadCount((int) unread);
             return vo;
         }).collect(Collectors.toList());
+    }
+
+    /** 用户打开群聊后标记已读:last_read_msg_id = 群当前最大消息ID */
+    @Transactional
+    public void markRead(Long groupId, Long userId) {
+        GroupChatMember member = memberMapper.selectOne(new LambdaQueryWrapper<GroupChatMember>()
+                .eq(GroupChatMember::getGroupId, groupId)
+                .eq(GroupChatMember::getUserId, userId));
+        if (member == null) {
+            return;
+        }
+        GroupMessage maxMsg = messageMapper.selectOne(new LambdaQueryWrapper<GroupMessage>()
+                .eq(GroupMessage::getGroupId, groupId)
+                .orderByDesc(GroupMessage::getId)
+                .last("LIMIT 1"));
+        long maxId = maxMsg != null ? maxMsg.getId() : 0L;
+        if (member.getLastReadMsgId() == null || member.getLastReadMsgId() < maxId) {
+            member.setLastReadMsgId(maxId);
+            memberMapper.updateById(member);
+        }
     }
 
     /** 群详情 */

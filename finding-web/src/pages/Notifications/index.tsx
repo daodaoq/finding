@@ -36,7 +36,7 @@ export default function NotificationsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const navigate = useNavigate();
-  const setUnreadCount = useMessageStore((s) => s.setUnreadCount);
+  const refreshUnread = useMessageStore((s) => s.refreshTotal);
 
   useEffect(() => {
     setLoading(true);
@@ -50,8 +50,8 @@ export default function NotificationsPage() {
       })
       .catch(() => showToast('加载通知失败'))
       .finally(() => setLoading(false));
-    // 进入通知页即标记已读
-    messageApi.markAllRead().then(() => setUnreadCount(0)).catch(() => {});
+    // 进入通知页即标记已读,并刷新汇总角标(私聊/群聊未读不受影响)
+    messageApi.markAllRead().then(() => refreshUnread()).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 

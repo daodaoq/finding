@@ -104,4 +104,11 @@ public class GroupChatController {
         groupChatService.recallMessage(id, JwtInterceptor.getCurrentUserId(), messageId);
         return Result.ok();
     }
+
+    /** 打开群聊后标记已读 */
+    @PostMapping("/{id}/read")
+    public Result<Void> markRead(@PathVariable Long id) {
+        groupChatService.markRead(id, JwtInterceptor.getCurrentUserId());
+        return Result.ok();
+    }
 }

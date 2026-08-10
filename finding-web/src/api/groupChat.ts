@@ -37,4 +37,8 @@ export const groupChatApi = {
   /** 群主修改群公告 */
   updateAnnouncement: (groupId: number, announcement: string) =>
     request.put<ApiResponse<null>>(`/chat/groups/${groupId}/announcement`, { announcement }),
+
+  /** 打开群聊后标记已读 */
+  markRead: (groupId: number) =>
+    request.post<ApiResponse<null>>(`/chat/groups/${groupId}/read`),
 };

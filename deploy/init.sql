@@ -369,6 +369,7 @@ CREATE TABLE IF NOT EXISTS `group_chat_member` (
     `group_id` BIGINT NOT NULL,
     `user_id` BIGINT NOT NULL,
     `role` TINYINT DEFAULT 0 COMMENT '0=member, 1=admin, 2=owner',
+    `last_read_msg_id` BIGINT NOT NULL DEFAULT 0 COMMENT '用户在该群最后已读的消息ID',
     `joined_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
