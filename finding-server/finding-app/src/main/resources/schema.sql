@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `to_user_id` BIGINT NOT NULL,
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text' COMMENT 'text / image',
+    `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `is_read` TINYINT DEFAULT 0,
     `uid1_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid1(较小者)是否已单侧清空',
     `uid2_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid2(较大者)是否已单侧清空',
@@ -374,6 +375,7 @@ CREATE TABLE IF NOT EXISTS `group_message` (
     `from_user_id` BIGINT NOT NULL,
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text',
+    `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `idx_group_msg` (`group_id`, `created_at`)
@@ -401,6 +403,8 @@ CREATE TABLE IF NOT EXISTS `system_announcement` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(200) NOT NULL,
     `content` TEXT,
+    `type` TINYINT NOT NULL DEFAULT 1 COMMENT '1=普通公告(弹窗) 2=永久展示(顶部横条)',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '1=展示中 0=已下架',
     `created_by` BIGINT DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
@@ -587,3 +591,28 @@ CREATE TABLE IF NOT EXISTS `user_settings` (
 -- 新装库直接跑 ALTER 即可(幂等)。
 -- ============================================================
 -- ALTER TABLE `contact` MODIFY `muted` TINYINT DEFAULT NULL COMMENT '0=否 1=免打扰 NULL=继承全局';
+
+-- ============================================================
+-- 24. forbidden_word - 违禁词(管理员动态维护,内容发布全链路拦截)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `forbidden_word` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `word` VARCHAR(100) NOT NULL COMMENT '违禁词',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_word` (`word`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 25. user_block - 拉黑/屏蔽(单向,防骚扰)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_block` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '拉黑发起方',
+    `blocked_user_id` BIGINT NOT NULL COMMENT '被拉黑用户',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_blocked` (`user_id`, `blocked_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

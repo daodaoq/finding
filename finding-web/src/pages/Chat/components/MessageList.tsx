@@ -9,6 +9,7 @@ export interface MessageLike {
   fromUserId: number;
   content: string;
   messageType: string;
+  isRecalled?: number;
   createdAt: string;
 }
 
@@ -28,6 +29,12 @@ interface Props {
   emptyNode?: ReactNode;
   /** 长按消息投诉 */
   onReportMessage?: (msg: MessageLike) => void;
+  /** 长按消息撤回(仅自己的消息) */
+  onRecallMessage?: (msg: MessageLike) => void;
+  /** 滚动到顶部时加载更早消息 */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  hasMore?: boolean;
 }
 
 /** 聊天消息列表：10 分钟间隔时间分隔线 + 消息气泡。私聊 / 群聊共用。 */
@@ -42,9 +49,21 @@ export default function MessageList({
   errorNode,
   emptyNode,
   onReportMessage,
+  onRecallMessage,
+  onLoadMore,
+  loadingMore,
+  hasMore,
 }: Props) {
   return (
-    <div className="chat-messages" style={background} ref={listRef}>
+    <div
+      className="chat-messages"
+      style={background}
+      ref={listRef}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        if (hasMore && !loadingMore && el.scrollTop < 30) onLoadMore?.();
+      }}
+    >
       {errorNode}
       {emptyNode}
       {messages.map((msg, i) => {
@@ -64,6 +83,7 @@ export default function MessageList({
               avatar={avatarOf(msg)}
               nickname={nicknameOf(msg)}
               onReport={onReportMessage}
+              onRecall={onRecallMessage}
             />
           </div>
         );

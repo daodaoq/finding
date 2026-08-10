@@ -26,6 +26,7 @@ export interface GroupMessage {
   fromUserAvatar: string;
   content: string;
   messageType: string;
+  isRecalled?: number;
   createdAt: string;
 }
 

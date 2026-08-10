@@ -130,6 +130,17 @@ export default function PostDetailPage() {
     }, 100);
   };
 
+  const handleDeleteComment = async (comment: Comment) => {
+    try {
+      await postApi.deleteComment(postId, comment.id);
+      // 移除一级评论或其子回复
+      setComments(prev => prev.filter(c => c.id !== comment.id).map(c =>
+        c.replies ? { ...c, replies: c.replies.filter(r => r.id !== comment.id) } : c));
+      if (post) setPost(prev => prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : null);
+      showToast('评论已删除');
+    } catch (e: any) { showToast(e?.message || '删除失败'); }
+  };
+
   const handleCommentLike = (commentId: number) => {
     requireLogin(async () => {
       try {
@@ -186,9 +197,11 @@ export default function PostDetailPage() {
       <CommentList
         comments={comments}
         commentCount={post.commentCount}
+        currentUserId={user?.id}
         onLike={handleCommentLike}
         onReply={handleReply}
         onReport={(c) => setReportTarget({ targetType: 'comment', targetId: c.id, title: '该评论' })}
+        onDelete={handleDeleteComment}
       />
 
       {/* 底部输入栏 — 移动端键盘适配 */}

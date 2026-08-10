@@ -31,6 +31,8 @@ export default function ChatDetailPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [uploading, setUploading] = useState(false);
   // 信息互换按钮状态
   const [shareStatus, setShareStatus] = useState<InfoShareStatus['status']>('none');
@@ -50,6 +52,11 @@ export default function ChatDetailPage() {
 
   // WebSocket 实时消息处理
   const { sendMessage } = useWebSocket((wsMsg) => {
+    if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
+      setMessages((prev) => prev.map((m) =>
+        m.id === wsMsg.messageId ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
+      return;
+    }
     if (wsMsg.type === 'chat' && wsMsg.fromUserId === targetUserId && wsMsg.messageId) {
       // 按 ID 去重：避免消息历史加载完后又收到同一条 WebSocket 推送
       setMessages((prev) => {
@@ -89,6 +96,7 @@ export default function ChatDetailPage() {
         toUserId: r.toUserId,
         content: r.content,
         messageType: r.messageType || 'text',
+        isRecalled: r.isRecalled,
         isRead: r.isRead,
         createdAt: r.createdAt,
       }));
@@ -152,6 +160,46 @@ export default function ChatDetailPage() {
       showToast(approve ? '已同意互换详细信息' : '已拒绝互换申请');
     } catch (e: any) {
       showToast(e?.message || '操作失败，请重试');
+    }
+  };
+
+  // 向上滚动加载更早的消息(游标分页,lastId = 当前最小消息ID)
+  const loadOlder = async () => {
+    if (loadingMore || !hasMore) return;
+    const roomId = conversation?.roomId || conversation?.id;
+    if (!roomId) return;
+    const minId = messages.length ? Math.min(...messages.map(m => m.id)) : undefined;
+    setLoadingMore(true);
+    try {
+      const res = await chatApi.getMessageHistory(roomId, minId, 50);
+      const older = (res.data.data.records || []).map((r: any) => ({
+        id: r.id,
+        fromUserId: r.fromUserId,
+        toUserId: r.toUserId,
+        content: r.content,
+        messageType: r.messageType || 'text',
+        isRecalled: r.isRecalled,
+        isRead: r.isRead,
+        createdAt: r.createdAt,
+      }));
+      setMessages((prev) => {
+        const merged = [...older, ...prev];
+        const seen = new Set<number>();
+        return merged.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+      });
+      setHasMore((res.data.data.records?.length || 0) === 50);
+    } catch { /* 忽略 */ }
+    finally { setLoadingMore(false); }
+  };
+
+  // 撤回自己发送的消息
+  const handleRecallMessage = async (msg: MessageLike) => {
+    try {
+      await chatApi.recallMessage(msg.id);
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
+      showToast('已撤回');
+    } catch (e: any) {
+      showToast(e?.message || '撤回失败');
     }
   };
 
@@ -238,6 +286,10 @@ export default function ChatDetailPage() {
           roomId: conversation?.roomId || conversation?.id,
           title: '这条消息',
         })}
+        onRecallMessage={handleRecallMessage}
+        onLoadMore={loadOlder}
+        loadingMore={loadingMore}
+        hasMore={hasMore}
       />
 
       {/* 输入栏 */}

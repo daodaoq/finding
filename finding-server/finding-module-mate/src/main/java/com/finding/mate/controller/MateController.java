@@ -84,6 +84,14 @@ public class MateController {
         return Result.ok();
     }
 
+    /** 发起人查看某邀约的申请人列表(含待审核/已通过/已拒绝) */
+    @GetMapping("/{id}/participants")
+    public Result<List<Map<String, Object>>> participants(@PathVariable Long id) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(mateService.listParticipants(id, userId));
+    }
+
     /** 我发布的搭子邀约 */
     @GetMapping("/my")
     public Result<PageVO<MateVO>> myInvitations(@Valid MateQueryDTO query) {

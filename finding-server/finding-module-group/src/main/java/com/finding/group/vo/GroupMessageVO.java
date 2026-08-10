@@ -12,5 +12,6 @@ public class GroupMessageVO {
     private String fromUserAvatar;
     private String content;
     private String messageType;
+    private Integer isRecalled;
     private LocalDateTime createdAt;
 }

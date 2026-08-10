@@ -101,4 +101,11 @@ public class ChatController {
         chatService.reportUser(JwtInterceptor.getCurrentUserId(), dto.getTargetUserId(), dto.getRoomId(), dto.getReason());
         return Result.ok();
     }
+
+    /** 撤回自己发送的消息(2分钟内) */
+    @PostMapping("/messages/{messageId}/recall")
+    public Result<Void> recallMessage(@PathVariable Long messageId) {
+        chatService.recallMessage(JwtInterceptor.getCurrentUserId(), messageId);
+        return Result.ok();
+    }
 }

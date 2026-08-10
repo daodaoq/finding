@@ -4,6 +4,10 @@ import { userApi } from '../../api/user';
 import { historyApi } from '../../api/history';
 import { chatApi } from '../../api/chat';
 import { resumeApi } from '../../api/resume';
+import { postApi } from '../../api/post';
+import { showToast } from '../../components/Toast';
+import PostCard from '../../components/PostCard';
+import type { Post } from '../../types/post';
 import { useAuthStore } from '../../store/authStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import ResumeView from '../../components/ResumeView';
@@ -19,6 +23,10 @@ export default function UserProfilePage() {
   const [resumeView, setResumeView] = useState<ResumeViewType | null>(null);
   const [resumeLoading, setResumeLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockedBy, setBlockedBy] = useState(false);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const navigate = useNavigate();
   const myId = useAuthStore((s) => s.user?.id);
   const shareVersion = useInfoShareStore((s) => s.version);
@@ -29,6 +37,56 @@ export default function UserProfilePage() {
       historyApi.record('user', userId).catch(() => {}); // 记录浏览
     }).catch(() => {}).finally(() => setLoading(false));
   }, [userId]);
+
+  // 拉黑状态
+  useEffect(() => {
+    if (!myId || userId === myId) return;
+    userApi.blockStatus(userId).then((res) => {
+      setBlocked(res.data.data.blocked);
+      setBlockedBy(res.data.data.blockedBy);
+    }).catch(() => {});
+  }, [userId, myId]);
+
+  // 对方公开动态
+  useEffect(() => {
+    setLoadingPosts(true);
+    postApi.userPosts(userId).then((res) => {
+      setUserPosts(res.data.data.records || []);
+    }).catch(() => setUserPosts([])).finally(() => setLoadingPosts(false));
+  }, [userId]);
+
+  const handleFollowToggle = async () => {
+    try {
+      if (profile.isFollowed) {
+        await userApi.unfollow(userId);
+        setProfile((prev: any) => prev ? { ...prev, isFollowed: false, followerCount: Math.max(0, (prev.followerCount || 0) - 1) } : prev);
+      } else {
+        await userApi.follow(userId);
+        setProfile((prev: any) => prev ? { ...prev, isFollowed: true, followerCount: (prev.followerCount || 0) + 1 } : prev);
+      }
+    } catch { /* 拦截器统一提示 */ }
+  };
+
+  const handlePostLike = async (postId: number) => {
+    try {
+      await postApi.like(postId);
+      setUserPosts((prev) => prev.map(p => p.id === postId ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
+    } catch { /* 拦截器统一提示 */ }
+  };
+
+  const handleBlock = async () => {
+    try {
+      if (blocked) {
+        await userApi.unblock(userId);
+        setBlocked(false);
+        showToast('已解除拉黑');
+      } else {
+        await userApi.block(userId);
+        setBlocked(true);
+        showToast('已拉黑，对方将无法再联系你');
+      }
+    } catch { /* 错误提示由拦截器统一弹出 */ }
+  };
 
   // 拉取情感简历(已互换则展示内容,否则锁定占位);互换成功后 version 变化自动刷新
   useEffect(() => {
@@ -78,11 +136,37 @@ export default function UserProfilePage() {
             {profile.gender === 1 ? '男' : profile.gender === 2 ? '女' : '未设置'}
           </div>
         </div>
+        <div className="up-stats" style={{ display: 'flex', gap: 24, marginTop: 12, color: '#666', fontSize: 14 }}>
+          <span><b style={{ color: '#333' }}>{profile.followingCount || 0}</b> 关注</span>
+          <span><b style={{ color: '#333' }}>{profile.followerCount || 0}</b> 粉丝</span>
+          <span><b style={{ color: '#333' }}>{profile.postCount || 0}</b> 动态</span>
+        </div>
       </div>
 
       {myId && userId !== myId && (
         <div className="up-actions">
-          <button className="up-chat-btn" onClick={handleChat}>发消息</button>
+          <button
+            onClick={handleFollowToggle}
+            style={{
+              border: 'none', padding: '0 16px', height: 36, borderRadius: 18, fontSize: 14,
+              background: profile.isFollowed ? '#f0f0f0' : '#ff6b81', color: profile.isFollowed ? '#666' : '#fff',
+            }}
+          >
+            {profile.isFollowed ? '已关注' : '+ 关注'}
+          </button>
+          <button className="up-chat-btn" onClick={handleChat} disabled={blockedBy}>{blockedBy ? '对方已拉黑你' : '发消息'}</button>
+          <button
+            className="up-block-btn"
+            onClick={handleBlock}
+            style={{
+              border: 'none',
+              background: blocked ? '#f0f0f0' : '#f5222d',
+              color: blocked ? '#666' : '#fff',
+              padding: '0 16px', height: 36, borderRadius: 18, fontSize: 14,
+            }}
+          >
+            {blocked ? '解除拉黑' : '拉黑'}
+          </button>
         </div>
       )}
 
@@ -101,6 +185,26 @@ export default function UserProfilePage() {
               去聊天里和TA互换详细信息后，就能看到这份专属档案啦
             </p>
           </div>
+        )}
+      </div>
+
+      {/* TA 的动态 */}
+      <div className="up-resume-section">
+        <div className="up-resume-title">TA 的动态</div>
+        {loadingPosts ? (
+          <div className="up-resume-loading">加载中...</div>
+        ) : userPosts.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#999', padding: 24 }}>TA 还没有发布动态</div>
+        ) : (
+          userPosts.map((p) => (
+            <PostCard
+              key={p.id}
+              post={p}
+              onLike={() => handlePostLike(p.id)}
+              onClick={() => navigate(`/square/post/${p.id}`)}
+              canManage={false}
+            />
+          ))
         )}
       </div>
 

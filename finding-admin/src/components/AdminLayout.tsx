@@ -5,7 +5,7 @@ import {
   DashboardOutlined, UserOutlined, SafetyOutlined,
   FileTextOutlined, PictureOutlined, NotificationOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
-  WarningOutlined, TeamOutlined, UsergroupAddOutlined, CommentOutlined,
+  WarningOutlined, TeamOutlined, UsergroupAddOutlined, CommentOutlined, StopOutlined,
 } from '@ant-design/icons';
 
 const { Header, Sider, Content, Footer } = Layout;
@@ -21,6 +21,7 @@ const menuItems = [
   { key: '/groups', icon: <UsergroupAddOutlined />, label: '群聊管理' },
   { key: '/banners', icon: <PictureOutlined />, label: '轮播管理' },
   { key: '/announcements', icon: <NotificationOutlined />, label: '系统公告' },
+  { key: '/banned-words', icon: <StopOutlined />, label: '违禁词管理' },
 ];
 
 const breadcrumbMap: Record<string, string> = {
@@ -34,6 +35,7 @@ const breadcrumbMap: Record<string, string> = {
   '/groups': '群聊管理',
   '/banners': '轮播管理',
   '/announcements': '系统公告',
+  '/banned-words': '违禁词管理',
 };
 
 function getToken() {

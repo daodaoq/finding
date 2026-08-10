@@ -17,6 +17,7 @@ public class PrivateChat {
     private Long toUserId;
     private String content;
     private String messageType;     // text / image
+    private Integer isRecalled;     // 0=否 1=已撤回
     private Integer isRead;
     /** uid1(较小者)是否已单侧清空该消息 */
     private Integer uid1Hidden;

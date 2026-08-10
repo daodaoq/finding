@@ -35,13 +35,27 @@ public class HomeController {
         return Result.ok(homeService.getBanners());
     }
 
-    /** 获取 afterId 之后的系统公告列表(客户端启动时补拉全部未读,配合 WS 实时推送) */
+    /** 获取 afterId 之后的普通公告列表(客户端启动时补拉未读,配合 WS 实时推送;永久公告走顶部横条,不进弹窗) */
     @GetMapping("/announcements")
     public Result<List<SystemAnnouncement>> listAnnouncements(
             @RequestParam(defaultValue = "0") Long afterId) {
         return Result.ok(announcementMapper.selectList(
                 new LambdaQueryWrapper<SystemAnnouncement>()
+                        .eq(SystemAnnouncement::getType, 1)
+                        .eq(SystemAnnouncement::getStatus, 1)
                         .gt(SystemAnnouncement::getId, afterId)
                         .orderByAsc(SystemAnnouncement::getId)));
+    }
+
+    /** 当前生效的永久展示公告(顶部悬浮横条),无则 data=null */
+    @GetMapping("/permanent-announcements")
+    public Result<SystemAnnouncement> permanentAnnouncement() {
+        SystemAnnouncement one = announcementMapper.selectOne(
+                new LambdaQueryWrapper<SystemAnnouncement>()
+                        .eq(SystemAnnouncement::getType, 2)
+                        .eq(SystemAnnouncement::getStatus, 1)
+                        .orderByDesc(SystemAnnouncement::getCreatedAt)
+                        .last("LIMIT 1"));
+        return Result.ok(one);
     }
 }

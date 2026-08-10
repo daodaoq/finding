@@ -48,4 +48,8 @@ export const chatApi = {
   /** 投诉用户 */
   reportUser: (data: { targetUserId: number; roomId?: number; reason: string }) =>
     request.post<ApiResponse<null>>('/chat/report', data),
+
+  /** 撤回自己发送的消息(2分钟内) */
+  recallMessage: (messageId: number) =>
+    request.post<ApiResponse<null>>(`/chat/messages/${messageId}/recall`),
 };

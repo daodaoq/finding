@@ -10,12 +10,14 @@ import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Room;
 import com.finding.user.entity.User;
+import com.finding.user.entity.UserBlock;
 import com.finding.user.entity.UserFollow;
 import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomMapper;
+import com.finding.user.mapper.UserBlockMapper;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
@@ -26,6 +28,7 @@ import com.finding.common.GeoUtils;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
 import com.finding.common.PageVO;
+import com.finding.common.word.SensitiveWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,6 +56,8 @@ public class BridgeServiceImpl implements BridgeService {
     private final ChatService chatService;
     private final VerificationGuard verificationGuard;
     private final UserSettingsMapper userSettingsMapper;
+    private final SensitiveWordFilter sensitiveWordFilter;
+    private final UserBlockMapper userBlockMapper;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -167,6 +172,16 @@ public class BridgeServiceImpl implements BridgeService {
         // Check real-name verification
         verificationGuard.checkVerified(fromUserId);
 
+        // 拉黑拦截:任一方拉黑对方都无法发送申请
+        if (userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
+                .eq(UserBlock::getUserId, fromUserId)
+                .eq(UserBlock::getBlockedUserId, toUserId)) > 0
+                || userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
+                .eq(UserBlock::getUserId, toUserId)
+                .eq(UserBlock::getBlockedUserId, fromUserId)) > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "无法向该用户发送申请");
+        }
+
         // Check if target user exists
         User targetUser = userMapper.selectById(toUserId);
         if (targetUser == null) {
@@ -197,6 +212,8 @@ public class BridgeServiceImpl implements BridgeService {
         apply.setStatus(0); // pending
         apply.setRemark(remark);
         apply.setApplyTime(LocalDateTime.now());
+        // 申请备注含违禁词直接拒绝
+        sensitiveWordFilter.assertClean(remark);
         chatApplyMapper.insert(apply);
 
         if (friendMode == 0) {

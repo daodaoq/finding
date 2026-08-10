@@ -21,4 +21,14 @@ export const userApi = {
   /** 互相关注列表 */
   getMutualFollows: (id: number, page = 1, size = 20) =>
     request.get<ApiResponse<PageResult<User>>>(`/users/${id}/mutual-follows`, { params: { page, size } }),
+
+  block: (id: number) =>
+    request.post<ApiResponse<null>>(`/users/${id}/block`),
+
+  unblock: (id: number) =>
+    request.delete<ApiResponse<null>>(`/users/${id}/block`),
+
+  /** blocked=我拉黑了对方, blockedBy=对方拉黑了我 */
+  blockStatus: (id: number) =>
+    request.get<ApiResponse<{ blocked: boolean; blockedBy: boolean }>>(`/users/${id}/block-status`),
 };

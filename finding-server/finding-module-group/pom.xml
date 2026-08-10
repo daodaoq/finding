@@ -23,6 +23,10 @@
             <groupId>com.finding</groupId>
             <artifactId>finding-module-user</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-framework</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

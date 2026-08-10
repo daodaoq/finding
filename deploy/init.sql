@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS `user` (
     `longitude` DECIMAL(10,7) DEFAULT NULL,
     `role` VARCHAR(20) DEFAULT 'user' COMMENT 'user / admin',
     `status` TINYINT DEFAULT 1 COMMENT '0=banned, 1=active, 2=frozen',
+    `banned_until` DATETIME DEFAULT NULL COMMENT '封禁到期时间(NULL=永久封禁)',
+    `banned_reason` VARCHAR(500) DEFAULT NULL COMMENT '封禁原因',
     `real_name_verified` TINYINT DEFAULT 0 COMMENT '0=no, 1=pending, 2=approved, 3=rejected',
     `last_login_at` DATETIME DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -237,6 +239,7 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `to_user_id` BIGINT NOT NULL,
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text' COMMENT 'text / image',
+    `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `is_read` TINYINT DEFAULT 0,
     `uid1_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid1(较小者)是否已单侧清空',
     `uid2_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid2(较大者)是否已单侧清空',
@@ -381,6 +384,7 @@ CREATE TABLE IF NOT EXISTS `group_message` (
     `from_user_id` BIGINT NOT NULL,
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text',
+    `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `idx_group_msg` (`group_id`, `created_at`)
@@ -408,6 +412,8 @@ CREATE TABLE IF NOT EXISTS `system_announcement` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(200) NOT NULL,
     `content` TEXT,
+    `type` TINYINT NOT NULL DEFAULT 1 COMMENT '1=普通公告(弹窗) 2=永久展示(顶部横条)',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '1=展示中 0=已下架',
     `created_by` BIGINT DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
@@ -547,12 +553,71 @@ CREATE TABLE IF NOT EXISTS `report` (
     `from_user_id` BIGINT NOT NULL COMMENT '投诉人',
     `target_user_id` BIGINT NOT NULL COMMENT '被投诉人',
     `room_id` BIGINT DEFAULT NULL COMMENT '关联会话(可选)',
+    `target_type` VARCHAR(20) DEFAULT NULL COMMENT 'message/post/comment/user/resume',
+    `target_id` BIGINT DEFAULT NULL COMMENT '被投诉目标ID',
+    `content_snapshot` TEXT COMMENT '被投诉内容快照',
     `reason` VARCHAR(500) DEFAULT NULL COMMENT '投诉原因',
     `status` TINYINT DEFAULT 0 COMMENT '0=待处理 1=已处理 2=驳回',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `idx_target` (`target_user_id`),
     KEY `idx_from` (`from_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 22. view_history - 浏览记录(每用户每目标一条,重复浏览刷新时间)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `view_history` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `target_type` VARCHAR(20) NOT NULL COMMENT 'post/user',
+    `target_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_target` (`user_id`, `target_type`, `target_id`),
+    KEY `idx_user_time` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 23. user_settings - 用户全局设置(每用户一份)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_settings` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `chat_bg` VARCHAR(500) DEFAULT NULL COMMENT '全局默认聊天背景(preset key 或图片URL)',
+    `chat_muted` TINYINT DEFAULT 0 COMMENT '全局默认免打扰 0=否 1=是',
+    `friend_add_mode` TINYINT DEFAULT 1 COMMENT '加好友方式 0=所有人可申请 1=需验证(默认) 2=不允许申请',
+    `profile_visible` TINYINT DEFAULT 1 COMMENT '主页可见性 1=所有人 2=仅已互换(预留)',
+    `searchable` TINYINT DEFAULT 1 COMMENT '是否可被搜索 1=是 0=否',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 24. forbidden_word - 违禁词(管理员动态维护,内容发布全链路拦截)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `forbidden_word` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `word` VARCHAR(100) NOT NULL COMMENT '违禁词',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_word` (`word`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 25. user_block - 拉黑/屏蔽(单向,防骚扰)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_block` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '拉黑发起方',
+    `blocked_user_id` BIGINT NOT NULL COMMENT '被拉黑用户',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_blocked` (`user_id`, `blocked_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -12,6 +12,7 @@ import Mates from './pages/Mates';
 import Groups from './pages/Groups';
 import Banners from './pages/Banners';
 import Announcements from './pages/Announcements';
+import ForbiddenWords from './pages/ForbiddenWords';
 import Login from './pages/Login';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="groups" element={<Groups />} />
             <Route path="banners" element={<Banners />} />
             <Route path="announcements" element={<Announcements />} />
+            <Route path="banned-words" element={<ForbiddenWords />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -24,4 +24,7 @@ public interface PostService {
 
     /** 获取当前用户点赞过的动态列表 */
     PageVO<PostVO> getMyLikedPosts(Long userId, int page, int size);
+
+    /** 获取指定用户的公开动态(仅展示中,他人主页用) */
+    PageVO<PostVO> getUserPublicPosts(Long userId, Long viewerId, int page, int size);
 }

@@ -13,6 +13,8 @@ import com.finding.user.service.UserService;
 import com.finding.common.GeoUtils;
 import com.finding.mate.vo.MateVO;
 import com.finding.common.PageVO;
+import com.finding.common.util.XssUtil;
+import com.finding.common.word.SensitiveWordFilter;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ import com.finding.mate.entity.MateInvitation;
 import com.finding.mate.entity.MateParticipant;
 import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.mate.mapper.MateParticipantMapper;
+import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
 import com.finding.message.service.MessageService;
 
@@ -44,6 +47,7 @@ public class MateServiceImpl implements MateService {
     private final MessageService messageService;
     private final UserMapper userMapper;
     private final UserService userService;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     @Override
     public PageVO<MateVO> listInvitations(MateQueryDTO query, Long currentUserId) {
@@ -96,6 +100,10 @@ public class MateServiceImpl implements MateService {
         invitation.setCurrentParticipants(1);
         invitation.setIsAnonymous(dto.getIsAnonymous());
         invitation.setStatus(1);
+        // XSS 清洗 + 违禁词拦截
+        dto.setTitle(XssUtil.clean(dto.getTitle()));
+        dto.setDescription(XssUtil.clean(dto.getDescription()));
+        sensitiveWordFilter.assertClean(dto.getTitle(), dto.getDescription());
         invitationMapper.insert(invitation);
         return toVO(invitation, userId, null, null);
     }
@@ -115,6 +123,9 @@ public class MateServiceImpl implements MateService {
         invitation.setActivityTime(dto.getActivityTime());
         invitation.setLocation(dto.getLocation());
         invitation.setMaxParticipants(dto.getMaxParticipants());
+        dto.setTitle(XssUtil.clean(dto.getTitle()));
+        dto.setDescription(XssUtil.clean(dto.getDescription()));
+        sensitiveWordFilter.assertClean(dto.getTitle(), dto.getDescription());
         invitationMapper.updateById(invitation);
     }
 
@@ -154,6 +165,9 @@ public class MateServiceImpl implements MateService {
         participant.setUserId(userId);
         participant.setMessage(message);
         participant.setStatus(0); // pending
+        // XSS 清洗 + 违禁词拦截
+        message = XssUtil.clean(message);
+        sensitiveWordFilter.assertClean(message);
         participantMapper.insert(participant);
 
         // Notify creator
@@ -311,6 +325,44 @@ public class MateServiceImpl implements MateService {
         }).collect(Collectors.toList());
 
         return PageVO.of(records, result.getTotal(), page, size);
+    }
+
+    @Override
+    public List<Map<String, Object>> listParticipants(Long invitationId, Long currentUserId) {
+        MateInvitation invitation = invitationMapper.selectById(invitationId);
+        if (invitation == null) {
+            throw new BusinessException(ResultCode.MATE_NOT_FOUND);
+        }
+        if (!invitation.getUserId().equals(currentUserId)) {
+            throw new BusinessException(ResultCode.NOT_CREATOR);
+        }
+        List<MateParticipant> participants = participantMapper.selectList(
+                new LambdaQueryWrapper<MateParticipant>()
+                        .eq(MateParticipant::getInvitationId, invitationId)
+                        .orderByDesc(MateParticipant::getCreatedAt));
+        if (participants.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> uids = participants.stream().map(MateParticipant::getUserId).collect(Collectors.toSet());
+        Map<Long, User> userMap = new HashMap<>();
+        if (!uids.isEmpty()) {
+            userMapper.selectBatchIds(uids).forEach(u -> userMap.put(u.getId(), u));
+        }
+        return participants.stream().map(p -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("participantId", p.getId());
+            map.put("userId", p.getUserId());
+            map.put("message", p.getMessage());
+            map.put("status", p.getStatus()); // 0=待审核 1=已通过 2=已拒绝
+            map.put("applyTime", p.getCreatedAt());
+            User u = userMap.get(p.getUserId());
+            if (u != null) {
+                map.put("nickname", u.getNickname());
+                map.put("avatar", u.getAvatar());
+                map.put("school", u.getSchool());
+            }
+            return map;
+        }).collect(Collectors.toList());
     }
 
     private MateVO toVO(MateInvitation m, Long currentUserId, Double userLat, Double userLng) {

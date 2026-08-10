@@ -1,14 +1,19 @@
 import { useState, useRef } from 'react';
 import './ChatInputBar.css';
 
+interface MentionMember { userId: number; nickname: string; }
+
 interface Props {
   onSend: (content: string, messageType?: string) => void;
   onUploading?: (uploading: boolean) => void;
+  /** 传入时显示 @ 按钮,可 @ 群成员 */
+  mentionMembers?: MentionMember[];
 }
 
-export default function ChatInputBar({ onSend, onUploading }: Props) {
+export default function ChatInputBar({ onSend, onUploading, mentionMembers }: Props) {
   const [text, setText] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
@@ -62,6 +67,24 @@ export default function ChatInputBar({ onSend, onUploading }: Props) {
         </>
       )}
 
+      {/* @成员选择面板 */}
+      {showMentions && mentionMembers && mentionMembers.length > 0 && (
+        <div className="mention-panel">
+          {mentionMembers.map((m) => (
+            <div
+              key={m.userId}
+              className="mention-item"
+              onClick={() => {
+                setText((prev) => prev + '@' + m.nickname + ' ');
+                setShowMentions(false);
+              }}
+            >
+              @{m.nickname}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="chat-input-bar">
         <input
           ref={fileRef}
@@ -73,6 +96,11 @@ export default function ChatInputBar({ onSend, onUploading }: Props) {
         <button className="input-action-btn" onClick={() => setPanelOpen(!panelOpen)}>
           {panelOpen ? '✕' : '＋'}
         </button>
+        {mentionMembers && mentionMembers.length > 0 && (
+          <button className="input-action-btn" onClick={() => setShowMentions(!showMentions)}>
+            @
+          </button>
+        )}
         <input
           className="chat-input"
           type="text"

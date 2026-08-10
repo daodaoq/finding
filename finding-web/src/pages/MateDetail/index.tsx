@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mateApi } from '../../api/mate';
+import { mateApi, type Participant } from '../../api/mate';
 import { useAuthStore } from '../../store/authStore';
 import ReportDialog from '../../components/ReportDialog';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
@@ -23,6 +23,8 @@ export default function MateDetailPage() {
   const [leaving, setLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [managing, setManaging] = useState(false);
 
   useEffect(() => { loadDetail(); }, [mateId]);
 
@@ -66,6 +68,25 @@ export default function MateDetailPage() {
   };
 
   const isOwner = user?.id != null && mate?.userId === user.id;
+
+  // 发起人拉取申请人列表
+  useEffect(() => {
+    if (!isOwner) return;
+    mateApi.participants(mateId).then((res) => setParticipants(res.data.data || [])).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner, mateId]);
+
+  const handleJoinRequest = async (participantId: number, accept: boolean) => {
+    setManaging(true);
+    try {
+      await mateApi.handleJoin(mateId, participantId, accept);
+      showToast(accept ? '已通过申请' : '已拒绝申请');
+      const res = await mateApi.participants(mateId);
+      setParticipants(res.data.data || []);
+      loadDetail(); // 刷新参与人数
+    } catch { showToast('操作失败，请重试'); }
+    finally { setManaging(false); }
+  };
 
   if (loading) return <div className="md-page"><LoadingSkeleton /></div>;
   if (!mate) return null;
@@ -149,6 +170,50 @@ export default function MateDetailPage() {
             </div>
             {isOwner && <span className="md-owner-badge">我发布的</span>}
           </div>
+        </div>
+      )}
+
+      {/* 发起人:申请管理 */}
+      {isOwner && (
+        <div className="md-section">
+          <h4 className="md-section-title">
+            申请管理（{participants.filter(p => p.status === 0).length} 待处理）
+          </h4>
+          {participants.length === 0 ? (
+            <p className="md-desc" style={{ color: '#999' }}>暂无申请</p>
+          ) : participants.map((p) => (
+            <div key={p.participantId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0' }}>
+                {p.avatar
+                  ? <img src={p.avatar} alt="" style={{ width: 36, height: 36, objectFit: 'cover' }} />
+                  : <span style={{ display: 'block', textAlign: 'center', lineHeight: '36px' }}>👤</span>}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600 }}>{p.nickname || `用户${p.userId}`}</div>
+                {p.message && (
+                  <div style={{ fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.message}
+                  </div>
+                )}
+              </div>
+              {p.status === 0 ? (
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => handleJoinRequest(p.participantId, true)} disabled={managing}
+                    style={{ border: 'none', background: '#52c41a', color: '#fff', padding: '4px 12px', borderRadius: 14, fontSize: 13 }}
+                  >通过</button>
+                  <button
+                    onClick={() => handleJoinRequest(p.participantId, false)} disabled={managing}
+                    style={{ border: 'none', background: '#f5222d', color: '#fff', padding: '4px 12px', borderRadius: 14, fontSize: 13 }}
+                  >拒绝</button>
+                </div>
+              ) : (
+                <span style={{ fontSize: 12, flexShrink: 0, color: p.status === 1 ? '#52c41a' : '#999' }}>
+                  {p.status === 1 ? '已通过' : '已拒绝'}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

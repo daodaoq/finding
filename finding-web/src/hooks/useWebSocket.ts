@@ -5,6 +5,8 @@ interface WsMessage {
   action?: string;
   title?: string;
   fromUserId: number;
+  fromUserNickname?: string;
+  fromUserAvatar?: string;
   toUserId: number;
   conversationId: number;
   content: string;

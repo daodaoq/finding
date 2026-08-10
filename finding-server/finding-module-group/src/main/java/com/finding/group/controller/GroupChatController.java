@@ -72,6 +72,13 @@ public class GroupChatController {
         return Result.ok();
     }
 
+    /** 群主修改群公告 */
+    @PutMapping("/{id}/announcement")
+    public Result<Void> updateAnnouncement(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        groupChatService.updateAnnouncement(id, JwtInterceptor.getCurrentUserId(), body.get("announcement"));
+        return Result.ok();
+    }
+
     /** 发送群消息 */
     @PostMapping("/{id}/send")
     public Result<GroupMessageVO> sendMessage(@PathVariable Long id,
@@ -89,5 +96,12 @@ public class GroupChatController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int size) {
         return Result.ok(groupChatService.getMessageHistory(id, page, size));
+    }
+
+    /** 撤回群消息(发送者本人,2分钟内) */
+    @PostMapping("/{id}/messages/{messageId}/recall")
+    public Result<Void> recallMessage(@PathVariable Long id, @PathVariable Long messageId) {
+        groupChatService.recallMessage(id, JwtInterceptor.getCurrentUserId(), messageId);
+        return Result.ok();
     }
 }

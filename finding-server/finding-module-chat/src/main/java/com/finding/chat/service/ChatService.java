@@ -43,4 +43,7 @@ public interface ChatService {
 
     /** 投诉用户 */
     void reportUser(Long fromUserId, Long toUserId, Long roomId, String reason);
+
+    /** 撤回自己发送的消息(2分钟内),并 WS 同步双方 */
+    void recallMessage(Long userId, Long messageId);
 }

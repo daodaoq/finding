@@ -33,7 +33,27 @@ export const mateApi = {
   /** 退出搭子 */
   leave: (id: number) =>
     request.delete<ApiResponse<null>>(`/mates/${id}/leave`),
+
+  /** 发起人查看某邀约的申请人列表 */
+  participants: (id: number) =>
+    request.get<ApiResponse<Participant[]>>(`/mates/${id}/participants`),
+
+  /** 发起人处理申请: accept=true 通过 / false 拒绝 */
+  handleJoin: (id: number, participantId: number, accept: boolean) =>
+    request.put<ApiResponse<null>>(`/mates/${id}/participants/${participantId}`, null, { params: { accept } }),
 };
+
+/** 搭子申请人(发起人视角) */
+export interface Participant {
+  participantId: number;
+  userId: number;
+  nickname?: string;
+  avatar?: string;
+  school?: string;
+  message?: string;
+  status: number;   // 0=待审核 1=已通过 2=已拒绝
+  applyTime: string;
+}
 
 /** 我的搭子申请记录 */
 export interface MateApplication {

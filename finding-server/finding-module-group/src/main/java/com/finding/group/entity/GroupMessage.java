@@ -13,6 +13,7 @@ public class GroupMessage {
     private Long fromUserId;
     private String content;
     private String messageType;
+    private Integer isRecalled; // 0=否 1=已撤回
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

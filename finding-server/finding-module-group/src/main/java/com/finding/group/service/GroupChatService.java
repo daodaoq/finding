@@ -4,6 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
+import com.finding.common.util.XssUtil;
+import com.finding.common.word.SensitiveWordFilter;
+import com.finding.framework.websocket.WebSocketServer;
+import com.finding.framework.websocket.WsMessage;
 
 
 
@@ -11,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import com.finding.group.entity.GroupChat;
@@ -36,6 +41,8 @@ public class GroupChatService {
     private final GroupMessageMapper messageMapper;
     private final UserMapper userMapper;
     private final UserFollowMapper followMapper;
+    private final SensitiveWordFilter sensitiveWordFilter;
+    private final WebSocketServer webSocketServer;
 
     /** 创建群聊 */
     @Transactional
@@ -44,6 +51,9 @@ public class GroupChatService {
         group.setName(name);
         group.setOwnerId(ownerId);
         group.setMemberCount(memberIds.size() + 1); // +owner
+        // XSS 清洗 + 违禁词拦截
+        name = XssUtil.clean(name);
+        sensitiveWordFilter.assertClean(name);
         groupMapper.insert(group);
 
         // 添加群主
@@ -120,9 +130,28 @@ public class GroupChatService {
         msg.setFromUserId(fromUserId);
         msg.setContent(content);
         msg.setMessageType(messageType != null ? messageType : "text");
+        // XSS 清洗 + 违禁词拦截
+        content = XssUtil.clean(content);
+        sensitiveWordFilter.assertClean(content);
         messageMapper.insert(msg);
 
         User u = userMapper.selectById(fromUserId);
+
+        // WS 实时推送给群内所有成员(含发送者本人,前端按 messageId 去重/替换临时消息)
+        WsMessage ws = new WsMessage();
+        ws.setType("group_chat");
+        ws.setMessageId(msg.getId());
+        ws.setConversationId(groupId);
+        ws.setFromUserId(fromUserId);
+        ws.setFromUserNickname(u != null ? u.getNickname() : "");
+        ws.setFromUserAvatar(u != null ? u.getAvatar() : "");
+        ws.setContent(content);
+        ws.setMessageType(messageType != null ? messageType : "text");
+        ws.setTimestamp(System.currentTimeMillis());
+        memberMapper.selectList(new LambdaQueryWrapper<GroupChatMember>()
+                        .eq(GroupChatMember::getGroupId, groupId))
+                .forEach(m -> webSocketServer.sendToUser(m.getUserId(), ws));
+
         GroupMessageVO vo = new GroupMessageVO();
         vo.setId(msg.getId());
         vo.setGroupId(groupId);
@@ -131,6 +160,7 @@ public class GroupChatService {
         vo.setFromUserAvatar(u != null ? u.getAvatar() : "");
         vo.setContent(content);
         vo.setMessageType(messageType);
+        vo.setIsRecalled(msg.getIsRecalled());
         vo.setCreatedAt(msg.getCreatedAt());
         return vo;
     }
@@ -159,6 +189,7 @@ public class GroupChatService {
             vo.setFromUserAvatar(uu != null ? uu.getAvatar() : "");
             vo.setContent(m.getContent());
             vo.setMessageType(m.getMessageType());
+            vo.setIsRecalled(m.getIsRecalled());
             vo.setCreatedAt(m.getCreatedAt());
             return vo;
         }).toList();
@@ -253,6 +284,53 @@ public class GroupChatService {
             group.setMemberCount(Math.max(1, group.getMemberCount() - 1));
             groupMapper.updateById(group);
         }
+    }
+
+    /** 群主修改群公告 */
+    @Transactional
+    public void updateAnnouncement(Long groupId, Long userId, String announcement) {
+        GroupChat group = groupMapper.selectById(groupId);
+        if (group == null) throw new BusinessException(ResultCode.PARAM_ERROR, "群聊不存在");
+        if (!group.getOwnerId().equals(userId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "仅群主可修改群公告");
+        }
+        group.setAnnouncement(XssUtil.clean(announcement));
+        groupMapper.updateById(group);
+    }
+
+    /** 撤回群消息(发送者本人,2分钟内),并 WS 通知群内成员 */
+    @Transactional
+    public void recallMessage(Long groupId, Long userId, Long messageId) {
+        GroupMessage msg = messageMapper.selectById(messageId);
+        if (msg == null || (msg.getIsRecalled() != null && msg.getIsRecalled() == 1)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "消息不存在或已撤回");
+        }
+        if (!msg.getGroupId().equals(groupId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "消息不属于该群");
+        }
+        if (!msg.getFromUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "只能撤回自己发送的消息");
+        }
+        if (msg.getCreatedAt() != null
+                && msg.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(2))) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "发送超过 2 分钟的消息无法撤回");
+        }
+        GroupMessage update = new GroupMessage();
+        update.setId(messageId);
+        update.setIsRecalled(1);
+        update.setContent("该消息已撤回");
+        messageMapper.updateById(update);
+
+        // WS 通知群内所有成员刷新该消息
+        WsMessage ws = new WsMessage();
+        ws.setType("message_recalled");
+        ws.setAction("group");
+        ws.setMessageId(messageId);
+        ws.setConversationId(groupId);
+        ws.setTimestamp(System.currentTimeMillis());
+        memberMapper.selectList(new LambdaQueryWrapper<GroupChatMember>()
+                        .eq(GroupChatMember::getGroupId, groupId))
+                .forEach(m -> webSocketServer.sendToUser(m.getUserId(), ws));
     }
 
     // ── private ──

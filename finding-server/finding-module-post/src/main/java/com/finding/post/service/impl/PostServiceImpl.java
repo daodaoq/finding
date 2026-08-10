@@ -12,6 +12,8 @@ import com.finding.post.service.PostService;
 import com.finding.user.service.UserService;
 import com.finding.post.vo.CommentVO;
 import com.finding.common.PageVO;
+import com.finding.common.util.XssUtil;
+import com.finding.common.word.SensitiveWordFilter;
 import com.finding.post.vo.PostVO;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +52,7 @@ public class PostServiceImpl implements PostService {
     private final UserService userService;
     private final MessageService messageService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     @Override
     public PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId) {
@@ -127,9 +130,11 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostVO createPost(Long userId, PostCreateDTO dto) {
+        String content = XssUtil.clean(dto.getContent());
+        sensitiveWordFilter.assertClean(content);
         Post post = new Post();
         post.setUserId(userId);
-        post.setContent(dto.getContent());
+        post.setContent(content);
         post.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
         post.setLocation(dto.getLocation());
         post.setCity(dto.getCity());
@@ -149,12 +154,13 @@ public class PostServiceImpl implements PostService {
         if (!post.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "只能编辑自己的动态");
         }
-        post.setContent(dto.getContent());
+        post.setContent(XssUtil.clean(dto.getContent()));
         post.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
         post.setLocation(dto.getLocation());
         post.setCity(dto.getCity());
         if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
         if (dto.getLongitude() != null) post.setLongitude(dto.getLongitude());
+        sensitiveWordFilter.assertClean(XssUtil.clean(dto.getContent()));
         postMapper.updateById(post);
         return toVO(post, userId);
     }
@@ -229,7 +235,8 @@ public class PostServiceImpl implements PostService {
         comment.setPostId(postId);
         comment.setUserId(userId);
         comment.setParentId(parentId);
-        comment.setContent(content);
+        comment.setContent(XssUtil.clean(content));
+        sensitiveWordFilter.assertClean(content);
         commentMapper.insert(comment);
 
         post.setCommentCount(post.getCommentCount() + 1);
@@ -372,6 +379,20 @@ public class PostServiceImpl implements PostService {
                 .map(p -> toVO(p, userId))
                 .collect(Collectors.toList());
         return PageVO.of(records, likes.getTotal(), page, size);
+    }
+
+    @Override
+    public PageVO<PostVO> getUserPublicPosts(Long userId, Long viewerId, int page, int size) {
+        Page<Post> pg = new Page<>(page, size);
+        Page<Post> result = postMapper.selectPage(pg,
+                new LambdaQueryWrapper<Post>()
+                        .eq(Post::getUserId, userId)
+                        .eq(Post::getStatus, 1)
+                        .orderByDesc(Post::getCreatedAt));
+        List<PostVO> records = result.getRecords().stream()
+                .map(p -> toVO(p, viewerId))
+                .collect(Collectors.toList());
+        return PageVO.of(records, result.getTotal(), page, size);
     }
 
     private PostVO toVO(Post post, Long currentUserId) {

@@ -96,6 +96,14 @@ public class PostController {
         return Result.ok();
     }
 
+    /** 指定用户的公开动态(他人主页) */
+    @GetMapping("/user/{userId}")
+    public Result<PageVO<PostVO>> userPosts(@PathVariable Long userId,
+                                            @RequestParam(defaultValue = "1") int page,
+                                            @RequestParam(defaultValue = "10") int size) {
+        return Result.ok(postService.getUserPublicPosts(userId, JwtInterceptor.getCurrentUserId(), page, size));
+    }
+
     /** 我发布的动态 */
     @GetMapping("/my")
     public Result<PageVO<PostVO>> myPosts(@RequestParam(defaultValue = "1") int page,

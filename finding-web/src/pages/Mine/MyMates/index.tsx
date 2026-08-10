@@ -41,12 +41,16 @@ export default function MyMatesPage() {
 
   const handleFollow = async (user: User) => {
     try {
-      await userApi.follow(user.id);
+      // 关注列表/互关列表里的都是已关注的 → 取关;粉丝列表按 isFollowed 判断
+      const isFollowingNow = activeTab === 'following' || activeTab === 'mutual' ? true : user.isFollowed;
+      if (isFollowingNow) {
+        await userApi.unfollow(user.id);
+      } else {
+        await userApi.follow(user.id);
+      }
       if (activeTab === 'following' || activeTab === 'mutual') {
-        // 关注/互关 → 取消关注 → 从列表移除
         setUsers(prev => prev.filter(u => u.id !== user.id));
       } else {
-        // 粉丝列表：点击 +关注/互相关注 → 切换
         setUsers(prev => prev.map(u =>
           u.id === user.id ? { ...u, isFollowed: !u.isFollowed } : u
         ));

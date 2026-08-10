@@ -13,6 +13,7 @@ public class ChatMessageVO {
     private Long toUserId;
     private String content;
     private String messageType;     // text / image
+    private Integer isRecalled;
     private Integer isRead;
     private LocalDateTime createdAt;
 }

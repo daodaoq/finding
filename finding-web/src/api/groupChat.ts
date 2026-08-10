@@ -29,4 +29,12 @@ export const groupChatApi = {
 
   leaveOrDisband: (groupId: number) =>
     request.delete<ApiResponse<null>>(`/chat/groups/${groupId}`),
+
+  /** 撤回群消息(发送者本人,2分钟内) */
+  recallMessage: (groupId: number, messageId: number) =>
+    request.post<ApiResponse<null>>(`/chat/groups/${groupId}/messages/${messageId}/recall`),
+
+  /** 群主修改群公告 */
+  updateAnnouncement: (groupId: number, announcement: string) =>
+    request.put<ApiResponse<null>>(`/chat/groups/${groupId}/announcement`, { announcement }),
 };

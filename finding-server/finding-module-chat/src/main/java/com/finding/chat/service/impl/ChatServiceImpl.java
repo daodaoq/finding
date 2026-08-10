@@ -8,6 +8,8 @@ import com.finding.common.ResultCode;
 import com.finding.chat.dto.MessageSendDTO;
 
 import com.finding.framework.config.RabbitMQConfig;
+import com.finding.framework.websocket.WebSocketServer;
+import com.finding.framework.websocket.WsMessage;
 import com.finding.chat.event.MsgSendMessageDTO;
 
 import com.finding.chat.service.ChatService;
@@ -15,6 +17,8 @@ import com.finding.chat.vo.ChatMessageVO;
 import com.finding.chat.vo.ConversationSettingsVO;
 import com.finding.message.vo.ConversationVO;
 import com.finding.common.PageVO;
+import com.finding.common.util.XssUtil;
+import com.finding.common.word.SensitiveWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -34,12 +38,14 @@ import com.finding.chat.entity.Report;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.RoomFriend;
 import com.finding.user.entity.User;
+import com.finding.user.entity.UserBlock;
 import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.mapper.RoomMapper;
+import com.finding.user.mapper.UserBlockMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
 
@@ -61,6 +67,9 @@ public class ChatServiceImpl implements ChatService {
     private final ReportMapper reportMapper;
     private final UserSettingsMapper userSettingsMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final SensitiveWordFilter sensitiveWordFilter;
+    private final UserBlockMapper userBlockMapper;
+    private final WebSocketServer webSocketServer;
 
     @Override
     public ConversationVO getOrCreateConversation(Long userId, Long targetUserId) {
@@ -197,8 +206,23 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ConversationVO sendMessage(Long userId, MessageSendDTO dto) {
+        // 拉黑拦截:任一方拉黑对方都禁止私聊
+        if (userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
+                .eq(UserBlock::getUserId, userId)
+                .eq(UserBlock::getBlockedUserId, dto.getToUserId())) > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "你已拉黑对方，无法发送消息");
+        }
+        if (userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
+                .eq(UserBlock::getUserId, dto.getToUserId())
+                .eq(UserBlock::getBlockedUserId, userId)) > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "对方已拉黑你，无法发送消息");
+        }
         // 获取或创建房间
         ConversationVO convVO = getOrCreateConversation(userId, dto.getToUserId());
+
+        // XSS 清洗 + 违禁词拦截
+        dto.setContent(XssUtil.clean(dto.getContent()));
+        sensitiveWordFilter.assertClean(dto.getContent());
 
         // 保存消息（使用 room_id）
         PrivateChat chat = new PrivateChat();
@@ -254,6 +278,7 @@ public class ChatServiceImpl implements ChatService {
                     vo.setToUserId(m.getToUserId());
                     vo.setContent(m.getContent());
                     vo.setMessageType(m.getMessageType());
+                    vo.setIsRecalled(m.getIsRecalled());
                     vo.setIsRead(m.getIsRead());
                     vo.setCreatedAt(m.getCreatedAt());
                     return vo;
@@ -347,6 +372,7 @@ public class ChatServiceImpl implements ChatService {
                     vo.setToUserId(m.getToUserId());
                     vo.setContent(m.getContent());
                     vo.setMessageType(m.getMessageType());
+                    vo.setIsRecalled(m.getIsRecalled());
                     vo.setIsRead(m.getIsRead());
                     vo.setCreatedAt(m.getCreatedAt());
                     return vo;
@@ -394,6 +420,39 @@ public class ChatServiceImpl implements ChatService {
         report.setReason(reason);
         report.setStatus(0);
         reportMapper.insert(report);
+    }
+
+    @Override
+    @Transactional
+    public void recallMessage(Long userId, Long messageId) {
+        PrivateChat chat = privateChatMapper.selectById(messageId);
+        if (chat == null || (chat.getIsRecalled() != null && chat.getIsRecalled() == 1)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "消息不存在或已撤回");
+        }
+        if (!chat.getFromUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "只能撤回自己发送的消息");
+        }
+        if (chat.getCreatedAt() != null
+                && chat.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(2))) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "发送超过 2 分钟的消息无法撤回");
+        }
+        PrivateChat update = new PrivateChat();
+        update.setId(messageId);
+        update.setIsRecalled(1);
+        update.setContent("该消息已撤回");
+        privateChatMapper.updateById(update);
+
+        // WS 通知双方刷新该消息
+        WsMessage ws = new WsMessage();
+        ws.setType("message_recalled");
+        ws.setAction("private");
+        ws.setMessageId(messageId);
+        ws.setConversationId(chat.getRoomId());
+        ws.setFromUserId(chat.getFromUserId());
+        ws.setToUserId(chat.getToUserId());
+        ws.setTimestamp(System.currentTimeMillis());
+        webSocketServer.sendToUser(chat.getFromUserId(), ws);
+        webSocketServer.sendToUser(chat.getToUserId(), ws);
     }
 
     private Contact findContact(Long uid, Long roomId) {

@@ -23,4 +23,7 @@ public interface MateService {
 
     /** 我的全部申请记录(含待审核/已通过/被拒),join 邀约信息 */
     PageVO<Map<String, Object>> listMyApplications(Long userId, int page, int size);
+
+    /** 发起人查看某邀约的申请人列表(含待审核/已通过/已拒绝),仅发起人可查 */
+    java.util.List<Map<String, Object>> listParticipants(Long invitationId, Long currentUserId);
 }

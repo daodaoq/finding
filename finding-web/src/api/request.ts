@@ -30,6 +30,10 @@ request.interceptors.response.use(
       if (res.code === 2003 || res.code === 2004 || res.code === 2005) {
         showToast(res.message || '请先完成学生认证');
       }
+      // 违禁词拦截:直接展示服务端给出的具体违禁词提示
+      if (res.code === 9010) {
+        showToast(res.message || '内容包含违禁词');
+      }
       return Promise.reject(new Error(res.message || 'Request failed'));
     }
     return response;

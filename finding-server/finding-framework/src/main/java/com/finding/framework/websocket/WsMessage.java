@@ -19,6 +19,12 @@ public class WsMessage {
     /** 发送者ID（服务端填充） */
     private Long fromUserId;
 
+    /** 发送者昵称(群聊实时推送用) */
+    private String fromUserNickname;
+
+    /** 发送者头像(群聊实时推送用) */
+    private String fromUserAvatar;
+
     /** 接收者ID */
     private Long toUserId;
 

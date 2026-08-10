@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Popconfirm, message, Modal, Input } from 'antd';
+import { Table, Button, Space, Tag, Radio, Popconfirm, message, Modal, Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
@@ -7,7 +7,7 @@ import '@uiw/react-markdown-preview/markdown.css';
 import request from '../api/request';
 
 interface AnnouncementRecord {
-  id: number; title: string; content: string; createdBy: number; createdAt: string;
+  id: number; title: string; content: string; type: number; status: number; createdBy: number; createdAt: string;
 }
 
 export default function Announcements() {
@@ -17,7 +17,7 @@ export default function Announcements() {
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AnnouncementRecord | null>(null);
-  const [form, setForm] = useState({ title: '', content: '' });
+  const [form, setForm] = useState({ title: '', content: '', type: 1 });
 
   const fetchData = (p = 1) => {
     setLoading(true);
@@ -35,23 +35,24 @@ export default function Announcements() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ title: '', content: '' });
+    setForm({ title: '', content: '', type: 1 });
     setModalOpen(true);
   };
 
   const openEdit = (record: AnnouncementRecord) => {
     setEditing(record);
-    setForm({ title: record.title, content: record.content });
+    setForm({ title: record.title, content: record.content, type: record.type || 1 });
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     try {
+      const body = { title: form.title, content: form.content, type: form.type };
       if (editing) {
-        await request.put(`/admin/announcements/${editing.id}`, form);
+        await request.put(`/admin/announcements/${editing.id}`, body);
         message.success('已更新');
       } else {
-        await request.post('/admin/announcements', form);
+        await request.post('/admin/announcements', body);
         message.success('已发布');
       }
       setModalOpen(false);
@@ -59,10 +60,19 @@ export default function Announcements() {
     } catch { message.error('操作失败'); }
   };
 
+  const toggleStatus = async (record: AnnouncementRecord) => {
+    const newStatus = record.status === 1 ? 0 : 1;
+    try {
+      await request.put(`/admin/announcements/${record.id}/status`, { status: newStatus });
+      message.success(newStatus === 1 ? '已上架' : '已下架');
+      fetchData(page);
+    } catch { message.error('操作失败'); }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await request.delete(`/admin/announcements/${id}`);
-      message.success('已删除');
+      message.success('已撤回');
       fetchData(page);
     } catch { message.error('操作失败'); }
   };
@@ -70,14 +80,25 @@ export default function Announcements() {
   const columns: ColumnsType<AnnouncementRecord> = [
     { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '标题', dataIndex: 'title' },
+    { title: '类型', dataIndex: 'type', width: 90, render: (v: number) => (
+      <Tag color={v === 2 ? 'blue' : 'default'}>{v === 2 ? '永久展示' : '普通公告'}</Tag>
+    )},
     { title: '内容', dataIndex: 'content', ellipsis: true },
+    { title: '状态', dataIndex: 'status', width: 90, render: (v: number) => (
+      <Tag color={v === 1 ? 'success' : 'default'}>{v === 1 ? '展示中' : '已下架'}</Tag>
+    )},
     { title: '发布时间', dataIndex: 'createdAt', render: (v: string) => v?.replace('T', ' ') },
     {
       title: '操作', render: (_, record) => (
         <Space>
           <a onClick={() => openEdit(record)}>编辑</a>
-          <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
-            <a style={{ color: 'red' }}>删除</a>
+          <Popconfirm title={`确定${record.status === 1 ? '下架' : '上架'}该公告？`} onConfirm={() => toggleStatus(record)}>
+            <a style={{ color: record.status === 1 ? 'orange' : 'green' }}>
+              {record.status === 1 ? '下架' : '上架'}
+            </a>
+          </Popconfirm>
+          <Popconfirm title="确定撤回？撤回后不可恢复" onConfirm={() => handleDelete(record.id)}>
+            <a style={{ color: 'red' }}>撤回</a>
           </Popconfirm>
         </Space>
       ),
@@ -107,6 +128,14 @@ export default function Announcements() {
         okText={editing ? '保存' : '发布'}
         width={760}
       >
+        <Radio.Group
+          value={form.type}
+          onChange={(e) => setForm({ ...form, type: e.target.value })}
+          style={{ marginBottom: 12 }}
+        >
+          <Radio value={1}>普通公告(发布后弹窗展示)</Radio>
+          <Radio value={2}>永久展示(页面顶部悬浮横条)</Radio>
+        </Radio.Group>
         <Input
           placeholder="公告标题"
           style={{ marginBottom: 12 }}

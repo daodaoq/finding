@@ -73,3 +73,35 @@
   align-items: center;
   justify-content: center;
 }
+
+/* 长按消息操作菜单(撤回/举报) */
+.chat-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.chat-menu {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+.chat-menu-item {
+  padding: 14px 0;
+  font-size: 16px;
+  border: none;
+  background: none;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  text-align: center;
+  color: #333;
+}
+.chat-menu-item:last-child { border-bottom: none; color: #f5222d; }
+.chat-menu-item:active { background: #f5f5f5; }

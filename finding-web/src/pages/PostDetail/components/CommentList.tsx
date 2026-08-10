@@ -6,13 +6,15 @@ import './CommentList.css';
 interface Props {
   comments: Comment[];
   commentCount?: number;
+  currentUserId?: number;
   onLike: (commentId: number) => void;
   onReply: (comment: Comment) => void;
   onReport: (comment: Comment) => void;
+  onDelete?: (comment: Comment) => void;
 }
 
 /** 动态详情 - 评论列表（含子回复） */
-export default function CommentList({ comments, commentCount, onLike, onReply, onReport }: Props) {
+export default function CommentList({ comments, commentCount, currentUserId, onLike, onReply, onReport, onDelete }: Props) {
   return (
     <>
       {/* 评论标题 */}
@@ -42,6 +44,9 @@ export default function CommentList({ comments, commentCount, onLike, onReply, o
                   {comment.isLiked ? '❤️' : '🤍'} {comment.likeCount || ''}
                 </button>
                 <button onClick={() => onReply(comment)}>回复</button>
+                {comment.userId === currentUserId && (
+                  <button className="comment-report" onClick={() => onDelete?.(comment)}>删除</button>
+                )}
                 <button className="comment-report" onClick={() => onReport(comment)}>举报</button>
               </div>
 
@@ -63,6 +68,9 @@ export default function CommentList({ comments, commentCount, onLike, onReply, o
                           {reply.content}
                         </div>
                         <div className="reply-actions">
+                          {reply.userId === currentUserId && (
+                            <button className="comment-report" onClick={() => onDelete?.(reply)}>删除</button>
+                          )}
                           <button className="comment-report" onClick={() => onReport(reply)}>举报</button>
                         </div>
                       </div>

@@ -45,6 +45,29 @@ export default function Users() {
   const [resumeEditId, setResumeEditId] = useState<number | null>(null);
   const [resumeEditOpen, setResumeEditOpen] = useState(false);
 
+  // 发送系统通知(单用户 / 广播)
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [msgMode, setMsgMode] = useState<'user' | 'broadcast'>('user');
+  const [msgUserId, setMsgUserId] = useState<number | null>(null);
+  const [msgContent, setMsgContent] = useState('');
+  const [msgSending, setMsgSending] = useState(false);
+
+  const handleSendMessage = async () => {
+    if (!msgContent.trim()) { message.warning('请输入消息内容'); return; }
+    setMsgSending(true);
+    try {
+      if (msgMode === 'user' && msgUserId) {
+        await request.post('/admin/messages', { targetUserId: msgUserId, content: msgContent.trim() });
+      } else {
+        await request.post('/admin/messages/broadcast', { content: msgContent.trim() });
+      }
+      message.success('已发送');
+      setMsgOpen(false);
+      setMsgContent('');
+    } catch { message.error('发送失败'); }
+    finally { setMsgSending(false); }
+  };
+
   const fetchData = (p = 1, kw?: string) => {
     setLoading(true);
     request.get('/admin/users', { params: { page: p, size: 10, keyword: kw || keyword } })
@@ -172,6 +195,7 @@ export default function Users() {
           <a onClick={() => openEdit(record)}>编辑</a>
           <a onClick={() => { setResumeUserId(record.id); setResumeOpen(true); }}>简历</a>
           <a onClick={() => { setResumeEditId(record.id); setResumeEditOpen(true); }}>编辑简历</a>
+          <a onClick={() => { setMsgMode('user'); setMsgUserId(record.id); setMsgContent(''); setMsgOpen(true); }}>发消息</a>
           <Popconfirm
             title={`确定${record.status === 1 ? '禁用' : '解禁'}该用户？`}
             onConfirm={() => toggleStatus(record)}
@@ -197,6 +221,7 @@ export default function Users() {
           onSearch={(v) => fetchData(1, v)}
         />
         <Button type="primary" onClick={openCreate}>+ 新建用户</Button>
+        <Button onClick={() => { setMsgMode('broadcast'); setMsgUserId(null); setMsgContent(''); setMsgOpen(true); }}>📢 发送广播</Button>
       </Space>
       <Table
         columns={columns} dataSource={data} rowKey="id" loading={loading}
@@ -324,6 +349,27 @@ export default function Users() {
             <Input.TextArea rows={2} value={form.signature} onChange={(e) => setForm({ ...form, signature: e.target.value })} />
           </div>
         </div>
+      </Modal>
+
+      {/* 发送系统通知 */}
+      <Modal
+        title={msgMode === 'broadcast'
+          ? '发送广播通知'
+          : `发送通知给 ${data.find((d) => d.id === msgUserId)?.nickname || '用户'}`}
+        open={msgOpen}
+        onOk={handleSendMessage}
+        onCancel={() => setMsgOpen(false)}
+        confirmLoading={msgSending}
+        okText="发送"
+        width={520}
+      >
+        <Input.TextArea
+          rows={4}
+          placeholder={msgMode === 'broadcast' ? '输入广播内容，将发送给全部正常用户' : '输入通知内容，将出现在该用户的通知中心'}
+          value={msgContent}
+          onChange={(e) => setMsgContent(e.target.value)}
+          maxLength={500}
+        />
       </Modal>
 
       {/* 查看情感简历 */}

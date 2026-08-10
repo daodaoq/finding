@@ -22,6 +22,10 @@ export const postApi = {
   myLikes: (page = 1, size = 20) =>
     request.get<ApiResponse<PageResult<Post>>>('/posts/my-likes', { params: { page, size } }),
 
+  /** 指定用户的公开动态(他人主页) */
+  userPosts: (userId: number, page = 1, size = 10) =>
+    request.get<ApiResponse<PageResult<Post>>>(`/posts/user/${userId}`, { params: { page, size } }),
+
   delete: (id: number) =>
     request.delete<ApiResponse<null>>(`/posts/${id}`),
 

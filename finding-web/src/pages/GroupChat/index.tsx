@@ -2,12 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
 import ReportDialog from '../../components/ReportDialog';
 import ChatHeader from '../Chat/components/ChatHeader';
-import MessageList from '../Chat/components/MessageList';
-import type { GroupMessage } from '../../types/groupChat';
+import MessageList, { type MessageLike } from '../Chat/components/MessageList';
+import type { GroupMessage, GroupMember } from '../../types/groupChat';
 import '../Chat/index.css';
 
 export default function GroupChatPage() {
@@ -17,14 +18,42 @@ export default function GroupChatPage() {
   const groupName = searchParams.get('name') || '群聊';
 
   const [messages, setMessages] = useState<GroupMessage[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const pageRef = useRef(1);
   const [reportTarget, setReportTarget] = useState<{
     targetType: string; targetId: number; roomId?: number; title: string;
   } | null>(null);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const msgListRef = useRef<HTMLDivElement>(null);
+
+  // WebSocket:撤回同步 + 实时群消息
+  const { sendMessage } = useWebSocket((wsMsg) => {
+    if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
+      setMessages((prev) => prev.map((m) =>
+        m.id === wsMsg.messageId ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
+      return;
+    }
+    if (wsMsg.type === 'group_chat' && wsMsg.conversationId === groupId && wsMsg.messageId) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === wsMsg.messageId)) return prev;
+        return [...prev, {
+          id: wsMsg.messageId,
+          groupId,
+          fromUserId: wsMsg.fromUserId,
+          fromUserNickname: wsMsg.fromUserNickname || '成员',
+          fromUserAvatar: wsMsg.fromUserAvatar || '',
+          content: wsMsg.content,
+          messageType: wsMsg.messageType || 'text',
+          createdAt: new Date().toISOString(),
+        } as GroupMessage];
+      });
+    }
+  });
 
   const scrollToBottom = () => {
     const el = msgListRef.current;
@@ -34,6 +63,10 @@ export default function GroupChatPage() {
   useEffect(() => {
     if (groupId && !isNaN(groupId)) {
       loadMessages();
+      // 拉取群成员(供 @ 使用)
+      groupChatApi.getGroupDetail(groupId)
+        .then((res) => setMembers(res.data.data.members || []))
+        .catch(() => {});
     } else {
       setLoading(false);
       setLoadError(true);
@@ -45,6 +78,8 @@ export default function GroupChatPage() {
     try {
       setLoading(true);
       setLoadError(false);
+      pageRef.current = 1;
+      setHasMore(true);
       const res = await groupChatApi.getMessageHistory(groupId);
       setMessages(res.data.data.records || []);
     } catch (e) {
@@ -53,14 +88,41 @@ export default function GroupChatPage() {
     finally { setLoading(false); }
   };
 
+  // 向上滚动加载更早的群消息(分页)
+  const loadOlder = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = pageRef.current + 1;
+      const res = await groupChatApi.getMessageHistory(groupId, nextPage, 50);
+      const older = res.data.data.records || [];
+      setMessages((prev) => {
+        const merged = [...older, ...prev];
+        const seen = new Set<number>();
+        return merged.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+      });
+      pageRef.current = nextPage;
+      setHasMore(older.length === 50);
+    } catch { /* 忽略 */ }
+    finally { setLoadingMore(false); }
+  };
+
   useEffect(() => {
     scrollToBottom();
     const t = setTimeout(scrollToBottom, 300);
     return () => clearTimeout(t);
   }, [messages]);
 
-  // TODO: 后续可接入 WebSocket 实时接收群消息
-  // 目前每次进页面重新加载，也可以加轮询
+  // 撤回自己发送的群消息
+  const handleRecallMessage = async (msg: MessageLike) => {
+    try {
+      await groupChatApi.recallMessage(groupId, msg.id);
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
+      showToast('已撤回');
+    } catch (e: any) {
+      showToast(e?.message || '撤回失败');
+    }
+  };
 
   const handleSend = async (content: string, messageType = 'text') => {
     if (!user || !content) return;
@@ -79,7 +141,11 @@ export default function GroupChatPage() {
     setMessages((prev) => [...prev, newMsg]);
 
     try {
-      await groupChatApi.sendMessage(groupId, content, messageType);
+      const res = await groupChatApi.sendMessage(groupId, content, messageType);
+      const real = res.data.data;
+      // 用真实消息替换临时消息(避免与 WS 推送重复)
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== real.id).map((m) => m.id === tempId ? { ...real } : m));
     } catch (e: any) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       showToast(e?.message || '发送失败');
@@ -137,9 +203,16 @@ export default function GroupChatPage() {
           targetId: msg.id,
           title: '这条消息',
         })}
+        onRecallMessage={handleRecallMessage}
+        onLoadMore={loadOlder}
+        loadingMore={loadingMore}
+        hasMore={hasMore}
       />
 
-      <ChatInputBar onSend={handleSend} />
+      <ChatInputBar
+        onSend={handleSend}
+        mentionMembers={members.map((m) => ({ userId: m.userId, nickname: m.nickname }))}
+      />
 
       {reportTarget && (
         <ReportDialog

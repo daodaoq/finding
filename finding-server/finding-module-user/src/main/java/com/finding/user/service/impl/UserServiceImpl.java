@@ -7,8 +7,11 @@ import com.finding.common.ResultCode;
 import com.finding.common.PageQueryDTO;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserFollow;
+import com.finding.user.entity.UserSettings;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.mapper.UserSettingsMapper;
+import com.finding.user.service.InfoShareQuery;
 import com.finding.user.service.UserPostStatsQuery;
 import com.finding.user.service.UserService;
 import com.finding.common.PageVO;
@@ -30,6 +33,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserFollowMapper followMapper;
     private final UserPostStatsQuery userPostStatsQuery;
+    private final UserSettingsMapper userSettingsMapper;
+    private final InfoShareQuery infoShareQuery;
 
     @Override
     public UserVO getUserProfile(Long userId, Long currentUserId) {
@@ -50,13 +55,29 @@ public class UserServiceImpl implements UserService {
             vo.setIsFollowed(isFollowing(currentUserId, userId));
         }
 
+        // 主页可见性:设置"仅已互换"时,未互换信息的访问者隐藏签名/城市
+        if (currentUserId != null && !userId.equals(currentUserId)) {
+            UserSettings s = userSettingsMapper.selectOne(
+                    new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, userId));
+            if (s != null && s.getProfileVisible() != null && s.getProfileVisible() == 2
+                    && infoShareQuery.getShareStatus(currentUserId, userId) != InfoShareQuery.STATUS_APPROVED) {
+                vo.setSignature(null);
+                vo.setCity(null);
+            }
+        }
+
         return vo;
     }
 
     @Override
     public PageVO<UserVO> searchUsers(String keyword, PageQueryDTO pageQuery) {
+        // 排除关闭"允许被搜索"的用户
+        List<Long> hiddenIds = userSettingsMapper.selectList(
+                        new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getSearchable, 0))
+                .stream().map(UserSettings::getUserId).toList();
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
-                .eq(User::getStatus, 1);
+                .eq(User::getStatus, 1)
+                .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds);
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like(User::getNickname, keyword)
                     .or().like(User::getSchool, keyword));

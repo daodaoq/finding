@@ -6,9 +6,11 @@ import com.finding.common.Result;
 import com.finding.mate.entity.MateInvitation;
 import com.finding.post.entity.Post;
 import com.finding.user.entity.User;
+import com.finding.user.entity.UserSettings;
 import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.mapper.UserSettingsMapper;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
@@ -25,6 +27,7 @@ public class SearchController {
     private final UserMapper userMapper;
     private final PostMapper postMapper;
     private final MateInvitationMapper mateMapper;
+    private final UserSettingsMapper userSettingsMapper;
 
     @GetMapping
     public Result<Map<String, Object>> search(
@@ -43,11 +46,14 @@ public class SearchController {
 
         String kw = "%" + keyword + "%";
 
-        // 用户：按昵称或手机号模糊匹配
+        // 用户：按昵称或手机号模糊匹配(排除关闭"允许被搜索"的用户)
+        List<Long> hiddenIds = userSettingsMapper.selectList(
+                        new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getSearchable, 0))
+                .stream().map(UserSettings::getUserId).toList();
         Page<User> userPage = userMapper.selectPage(new Page<>(page, size),
                 new LambdaQueryWrapper<User>()
-                        .like(User::getNickname, keyword)
-                        .or().like(User::getPhone, keyword)
+                        .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds)
+                        .and(w -> w.like(User::getNickname, keyword).or().like(User::getPhone, keyword))
                         .orderByDesc(User::getLastLoginAt));
         List<Map<String, Object>> users = userPage.getRecords().stream().map(u -> {
             Map<String, Object> m = new LinkedHashMap<>();

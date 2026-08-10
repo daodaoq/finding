@@ -5,12 +5,15 @@ import com.finding.common.PageQueryDTO;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.UserService;
 import com.finding.user.service.UserResumeService;
+import com.finding.user.service.UserBlockService;
 import com.finding.common.PageVO;
 import com.finding.user.vo.UserVO;
 import com.finding.user.vo.ResumeViewVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -19,6 +22,7 @@ public class UserController {
 
     private final UserService userService;
     private final UserResumeService userResumeService;
+    private final UserBlockService userBlockService;
 
     @GetMapping("/{id}")
     public Result<UserVO> getUser(@PathVariable Long id) {
@@ -64,5 +68,25 @@ public class UserController {
     public Result<PageVO<UserVO>> search(@RequestParam(required = false) String keyword,
                                           @Valid PageQueryDTO query) {
         return Result.ok(userService.searchUsers(keyword, query));
+    }
+
+    /** 拉黑用户 */
+    @PostMapping("/{id}/block")
+    public Result<Void> block(@PathVariable Long id) {
+        userBlockService.block(JwtInterceptor.getCurrentUserId(), id);
+        return Result.ok();
+    }
+
+    /** 解除拉黑 */
+    @DeleteMapping("/{id}/block")
+    public Result<Void> unblock(@PathVariable Long id) {
+        userBlockService.unblock(JwtInterceptor.getCurrentUserId(), id);
+        return Result.ok();
+    }
+
+    /** 拉黑状态:blocked=我拉黑了对方, blockedBy=对方拉黑了我 */
+    @GetMapping("/{id}/block-status")
+    public Result<Map<String, Boolean>> blockStatus(@PathVariable Long id) {
+        return Result.ok(userBlockService.blockStatus(JwtInterceptor.getCurrentUserId(), id));
     }
 }

@@ -16,6 +16,8 @@ import com.finding.user.security.JwtTokenProvider;
 import com.finding.user.service.AuthService;
 import com.finding.user.service.UserPostStatsQuery;
 import com.finding.common.RedisUtils;
+import com.finding.common.util.XssUtil;
+import com.finding.common.word.SensitiveWordFilter;
 import com.finding.user.util.CaptchaGenerator;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +53,7 @@ public class AuthServiceImpl implements AuthService {
     private final RedisUtils redisUtils;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
     private static final String SMS_LIMIT_PREFIX = "sms:limit:";
@@ -134,6 +137,10 @@ public class AuthServiceImpl implements AuthService {
         user.setGender(dto.getGender() != null ? dto.getGender() : 0);
         user.setRole("user");
         user.setStatus(UserStatusEnum.ACTIVE.getCode());
+        // XSS 清洗 + 违禁词拦截
+        dto.setNickname(XssUtil.clean(dto.getNickname()));
+        dto.setSchool(XssUtil.clean(dto.getSchool()));
+        sensitiveWordFilter.assertClean(dto.getNickname(), dto.getSchool());
         userMapper.insert(user);
 
         log.info("新用户注册: id={}, phone={}", user.getId(), dto.getPhone());
@@ -235,6 +242,12 @@ public class AuthServiceImpl implements AuthService {
         if (vo.getSchool() != null) user.setSchool(vo.getSchool());
         if (vo.getGender() != null) user.setGender(vo.getGender());
         if (vo.getCity() != null) user.setCity(vo.getCity());
+        // XSS 清洗 + 违禁词拦截
+        vo.setNickname(XssUtil.clean(vo.getNickname()));
+        vo.setSignature(XssUtil.clean(vo.getSignature()));
+        vo.setSchool(XssUtil.clean(vo.getSchool()));
+        vo.setCity(XssUtil.clean(vo.getCity()));
+        sensitiveWordFilter.assertClean(vo.getNickname(), vo.getSignature(), vo.getSchool(), vo.getCity());
         userMapper.updateById(user);
     }
 

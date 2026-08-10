@@ -8,6 +8,7 @@ interface ChatMessage {
   fromUserId: number;
   content: string;
   messageType: string;
+  isRecalled?: number;
   createdAt: string;
 }
 
@@ -16,12 +17,15 @@ interface Props {
   isMine: boolean;
   avatar?: string;
   nickname?: string;
-  /** 长按消息触发投诉 */
+  /** 长按消息触发举报 */
   onReport?: (message: ChatMessage) => void;
+  /** 长按消息触发撤回(仅自己的消息) */
+  onRecall?: (message: ChatMessage) => void;
 }
 
-export default function ChatBubble({ message, isMine, avatar, nickname, onReport }: Props) {
+export default function ChatBubble({ message, isMine, avatar, nickname, onReport, onRecall }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -31,15 +35,17 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
     }
   };
 
-  // 长按 600ms 触发投诉
+  // 长按 600ms 弹出操作菜单(撤回/举报)
   const startPress = () => {
     longPressTimer.current = setTimeout(() => {
-      onReport?.(message);
+      setShowMenu(true);
     }, 600);
   };
   const clearPress = () => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
+
+  const recalled = message.isRecalled === 1;
 
   return (
     <>
@@ -48,15 +54,17 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
         onTouchStart={startPress}
         onTouchEnd={clearPress}
         onTouchMove={clearPress}
-        onContextMenu={(e) => { e.preventDefault(); onReport?.(message); }}
+        onContextMenu={(e) => { e.preventDefault(); setShowMenu(true); }}
       >
         <div className="chat-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
           {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
         </div>
         <div className="chat-bubble-wrapper">
           {!isMine && <span className="chat-sender">{nickname}</span>}
-          <div className={`chat-bubble ${isMine ? 'bubble-mine' : 'bubble-other'}`}>
-            {message.messageType === 'image' ? (
+          <div className={`chat-bubble ${isMine ? 'bubble-mine' : 'bubble-other'}${recalled ? ' bubble-recalled' : ''}`}>
+            {recalled ? (
+              <span style={{ color: '#bbb', fontStyle: 'italic' }}>该消息已撤回</span>
+            ) : message.messageType === 'image' ? (
               <img
                 src={message.content}
                 alt=""
@@ -70,6 +78,24 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
           <span className="chat-time">{formatClockTime(message.createdAt)}</span>
         </div>
       </div>
+
+      {/* 长按操作菜单 */}
+      {showMenu && (
+        <div className="chat-menu-overlay" onClick={() => setShowMenu(false)}>
+          <div className="chat-menu" onClick={(e) => e.stopPropagation()}>
+            {isMine && (
+              <button
+                className="chat-menu-item"
+                onClick={() => { setShowMenu(false); onRecall?.(message); }}
+              >撤回</button>
+            )}
+            <button
+              className="chat-menu-item"
+              onClick={() => { setShowMenu(false); onReport?.(message); }}
+            >举报</button>
+          </div>
+        </div>
+      )}
 
       {/* 图片预览遮罩 */}
       {preview && (
