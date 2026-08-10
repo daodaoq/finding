@@ -28,6 +28,10 @@ export const bridgeApi = {
   handleApply: (id: number, approve: boolean) =>
     request.put<ApiResponse<null>>(`/bridge/apply/${id}/handle`, { status: approve ? 1 : 2 }),
 
+  /** 撤回我发出的待处理申请 */
+  withdrawApply: (id: number) =>
+    request.post<ApiResponse<null>>(`/bridge/apply/${id}/withdraw`),
+
   /** 发起信息互换申请 */
   infoShareRequest: (toUserId: number) =>
     request.post<ApiResponse<null>>('/bridge/info-share/request', { toUserId }),

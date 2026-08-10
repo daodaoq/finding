@@ -26,4 +26,7 @@ public interface BridgeService {
 
     /** 处理聊天申请（通过/拒绝） */
     void handleApply(Long userId, Long applyId, Integer status);
+
+    /** 撤回我发出的待处理申请 */
+    void withdrawApply(Long userId, Long applyId);
 }

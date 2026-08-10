@@ -1,10 +1,12 @@
 package com.finding.chat.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.user.common.VerificationGuard;
+import com.finding.chat.constant.ChatApplyStatus;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
@@ -30,6 +32,7 @@ import com.finding.common.PageVO;
 import com.finding.common.word.SensitiveWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +47,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class BridgeServiceImpl implements BridgeService {
+
+    /** 申请被拒绝/撤回后的冷却期(天内不能重发) */
+    private static final int APPLY_COOLDOWN_DAYS = 7;
+    /** 待处理申请超期惰性过期的天数 */
+    private static final int APPLY_EXPIRE_DAYS = 7;
 
     private final UserMapper userMapper;
     private final ChatApplyMapper chatApplyMapper;
@@ -196,27 +204,47 @@ public class BridgeServiceImpl implements BridgeService {
             throw new BusinessException(ResultCode.CONTACT_PERMISSION_DENIED);
         }
 
-        // Check duplicate application
-        Long count = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
+        // 冷却期:同一方向最近一次被拒绝/撤回后 7 天内不能重发
+        LambdaQueryWrapper<ChatApply> cooldownW = new LambdaQueryWrapper<ChatApply>()
                 .eq(ChatApply::getFromUserId, fromUserId)
-                .eq(ChatApply::getToUserId, toUserId));
-        if (count > 0) {
+                .eq(ChatApply::getToUserId, toUserId)
+                .in(ChatApply::getStatus, ChatApplyStatus.REJECTED.getCode(), ChatApplyStatus.CANCELLED.getCode())
+                .isNotNull(ChatApply::getHandleTime)
+                .orderByDesc(ChatApply::getHandleTime)
+                .last("LIMIT 1");
+        ChatApply lastRejected = chatApplyMapper.selectOne(cooldownW);
+        if (lastRejected != null && lastRejected.getHandleTime() != null
+                && lastRejected.getHandleTime().isAfter(LocalDateTime.now().minusDays(APPLY_COOLDOWN_DAYS))) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_COOLDOWN);
+        }
+
+        // 已有待处理申请 → 拒绝重复申请
+        Long pendingCount = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
+                .eq(ChatApply::getFromUserId, fromUserId)
+                .eq(ChatApply::getToUserId, toUserId)
+                .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode()));
+        if (pendingCount > 0) {
             throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT);
         }
 
-        // Insert application
+        // Insert application(pending_key 唯一约束兜底并发:同一方向同时只有一条待处理)
         ChatApply apply = new ChatApply();
         apply.setFromUserId(fromUserId);
         apply.setToUserId(toUserId);
-        apply.setStatus(0); // pending
+        apply.setStatus(ChatApplyStatus.PENDING.getCode());
         apply.setRemark(remark);
         apply.setApplyTime(LocalDateTime.now());
         // 申请备注含违禁词直接拒绝
         sensitiveWordFilter.assertClean(remark);
-        chatApplyMapper.insert(apply);
+        try {
+            chatApplyMapper.insert(apply);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT);
+        }
 
         if (friendMode == 0) {
             // 所有人可申请 → 自动通过并建立会话
+            apply.setHandleBy(toUserId); // 由接收方设置自动通过
             approveApply(apply);
         } else {
             // 需验证(默认) → 通知对方审核
@@ -230,6 +258,7 @@ public class BridgeServiceImpl implements BridgeService {
 
     @Override
     public PageVO<ChatApplyVO> getSentApplies(Long userId, int page, int size) {
+        expireStalePending();
         Page<ChatApply> pg = new Page<>(page, size);
         Page<ChatApply> result = chatApplyMapper.selectPage(pg,
                 new LambdaQueryWrapper<ChatApply>()
@@ -244,6 +273,7 @@ public class BridgeServiceImpl implements BridgeService {
 
     @Override
     public PageVO<ChatApplyVO> getReceivedApplies(Long userId, int page, int size) {
+        expireStalePending();
         Page<ChatApply> pg = new Page<>(page, size);
         Page<ChatApply> result = chatApplyMapper.selectPage(pg,
                 new LambdaQueryWrapper<ChatApply>()
@@ -258,14 +288,16 @@ public class BridgeServiceImpl implements BridgeService {
 
     @Override
     public long countPendingReceived(Long userId) {
+        expireStalePending();
         return chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
                 .eq(ChatApply::getToUserId, userId)
-                .eq(ChatApply::getStatus, 0));
+                .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode()));
     }
 
     @Override
     @Transactional
     public void handleApply(Long userId, Long applyId, Integer status) {
+        expireStalePending();
         ChatApply apply = chatApplyMapper.selectById(applyId);
         if (apply == null) {
             throw new BusinessException(ResultCode.CHAT_APPLY_NOT_FOUND);
@@ -274,17 +306,38 @@ public class BridgeServiceImpl implements BridgeService {
         if (!apply.getToUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "无权处理该申请");
         }
-        // Only pending applications can be handled
-        if (apply.getStatus() != 0) {
+        // 待处理超期 → 惰性过期,接收人不可再处理
+        if (apply.getStatus() == ChatApplyStatus.PENDING.getCode()
+                && apply.getApplyTime().isBefore(LocalDateTime.now().minusDays(APPLY_EXPIRE_DAYS))) {
+            chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()
+                    .eq(ChatApply::getId, applyId)
+                    .set(ChatApply::getStatus, ChatApplyStatus.EXPIRED.getCode())
+                    .set(ChatApply::getHandleTime, LocalDateTime.now()));
+            throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED, "申请已过期，无法处理");
+        }
+        // 审批时再次检查拉黑:拉黑后待处理申请作废
+        if (relationshipService.isBlockedEitherWay(apply.getFromUserId(), apply.getToUserId())) {
+            chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()
+                    .eq(ChatApply::getId, applyId)
+                    .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode())
+                    .set(ChatApply::getStatus, ChatApplyStatus.CANCELLED.getCode())
+                    .set(ChatApply::getHandleTime, LocalDateTime.now())
+                    .set(ChatApply::getHandleBy, userId));
+            throw new BusinessException(ResultCode.RELATION_BLOCKED);
+        }
+        // 条件更新:仅 status=PENDING 才能处理,保证并发下只有一次成功
+        int rows = chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()
+                .eq(ChatApply::getId, applyId)
+                .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode())
+                .set(ChatApply::getStatus, status)
+                .set(ChatApply::getHandleTime, LocalDateTime.now())
+                .set(ChatApply::getHandleBy, userId));
+        if (rows == 0) {
             throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED);
         }
 
-        apply.setStatus(status);
-        apply.setHandleTime(LocalDateTime.now());
-        chatApplyMapper.updateById(apply);
-
-        if (status == 1) {
-            // 通过:建会话 + 系统消息 + 通知申请人
+        if (status == ChatApplyStatus.APPROVED.getCode()) {
+            // 通过:建会话 + 系统消息 + 通知申请人(仅一次)
             approveApply(apply);
         } else {
             User handler = userMapper.selectById(userId);
@@ -293,11 +346,44 @@ public class BridgeServiceImpl implements BridgeService {
         }
     }
 
+    @Override
+    @Transactional
+    public void withdrawApply(Long userId, Long applyId) {
+        expireStalePending();
+        ChatApply apply = chatApplyMapper.selectById(applyId);
+        if (apply == null) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_NOT_FOUND);
+        }
+        // Only the applicant can withdraw
+        if (!apply.getFromUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "无权撤回该申请");
+        }
+        // 条件更新:仅待处理可撤回
+        int rows = chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()
+                .eq(ChatApply::getId, applyId)
+                .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode())
+                .set(ChatApply::getStatus, ChatApplyStatus.CANCELLED.getCode())
+                .set(ChatApply::getHandleTime, LocalDateTime.now())
+                .set(ChatApply::getHandleBy, userId));
+        if (rows == 0) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED, "申请已处理，无法撤回");
+        }
+    }
+
+    /** 惰性过期:超过期限未处理的待申请置为 EXPIRED(供列表/计数/处理前调用) */
+    private void expireStalePending() {
+        chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()
+                .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode())
+                .lt(ChatApply::getApplyTime, LocalDateTime.now().minusDays(APPLY_EXPIRE_DAYS))
+                .set(ChatApply::getStatus, ChatApplyStatus.EXPIRED.getCode())
+                .set(ChatApply::getHandleTime, LocalDateTime.now()));
+    }
+
     // ── Private helpers ──
 
-    /** 通过聊天申请:置状态 + 建会话/系统消息 + 通知申请人 */
+    /** 通过聊天申请:置状态 + 建会话/系统消息 + 通知申请人(幂等,并发下仅一次成功) */
     private void approveApply(ChatApply apply) {
-        apply.setStatus(1);
+        apply.setStatus(ChatApplyStatus.APPROVED.getCode());
         apply.setHandleTime(LocalDateTime.now());
         chatApplyMapper.updateById(apply);
 
@@ -445,11 +531,6 @@ public class BridgeServiceImpl implements BridgeService {
     }
 
     private String getStatusDesc(Integer status) {
-        return switch (status) {
-            case 0 -> "待通过";
-            case 1 -> "已通过";
-            case 2 -> "已拒绝";
-            default -> "未知";
-        };
+        return ChatApplyStatus.descOf(status);
     }
 }

@@ -54,6 +54,7 @@ public enum ResultCode {
     CHAT_APPLY_ALREADY_SENT(6001, "已经发送过申请了"),
     CHAT_APPLY_NOT_FOUND(6002, "申请记录不存在"),
     CHAT_APPLY_ALREADY_HANDLED(6003, "申请已处理，不能重复操作"),
+    CHAT_APPLY_COOLDOWN(6004, "对方刚处理过你的申请，请7天后再试"),
 
     // Relationship errors (9xxx)
     RELATION_BLOCKED(9101, "你与对方存在拉黑关系，无法执行此操作"),

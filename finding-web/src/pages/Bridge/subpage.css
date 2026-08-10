@@ -124,6 +124,28 @@
   color: #999;
 }
 
+/* 撤回按钮(我发出的待处理申请) */
+.apply-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.apply-withdraw {
+  padding: 4px 12px;
+  border-radius: 14px;
+  border: 1px solid #ff6b81;
+  background: #fff;
+  color: #ff6b81;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.apply-withdraw:active {
+  background: #fff0f3;
+  transform: scale(0.96);
+}
+
 /* ── 操作按钮 ── */
 .apply-actions {
   display: flex;

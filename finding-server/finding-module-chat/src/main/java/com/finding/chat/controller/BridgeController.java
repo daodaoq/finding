@@ -79,4 +79,13 @@ public class BridgeController {
         bridgeService.handleApply(userId, id, dto.getStatus());
         return Result.ok();
     }
+
+    /** 撤回我发出的待处理申请 */
+    @PostMapping("/apply/{id}/withdraw")
+    public Result<Void> withdrawApply(@PathVariable Long id) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        bridgeService.withdrawApply(userId, id);
+        return Result.ok();
+    }
 }

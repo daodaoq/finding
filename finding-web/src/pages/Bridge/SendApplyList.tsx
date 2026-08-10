@@ -44,6 +44,16 @@ export default function SendApplyList() {
     }
   };
 
+  /** 撤回待处理申请 */
+  const handleWithdraw = async (apply: ChatApply) => {
+    try {
+      await bridgeApi.withdrawApply(apply.id);
+      setApplies((prev) => prev.map((a) =>
+        a.id === apply.id ? { ...a, status: 3, statusDesc: '已撤回' } : a));
+      showToast('已撤回申请');
+    } catch { showToast('撤回失败'); }
+  };
+
   const formatTime = (dateStr: string): string => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -96,9 +106,16 @@ export default function SendApplyList() {
               <span className="apply-name">{apply.toUserNickname || '用户'}</span>
               <span className="apply-time">{formatTime(apply.applyTime)}</span>
             </div>
-            <span className={`status-badge ${apply.status === 0 ? 'pending' : apply.status === 1 ? 'approved' : 'rejected'}`}>
-              {apply.statusDesc}
-            </span>
+            <div className="apply-right">
+              {apply.status === 0 && (
+                <button className="apply-withdraw" onClick={(e) => { e.stopPropagation(); handleWithdraw(apply); }}>
+                  撤回
+                </button>
+              )}
+              <span className={`status-badge ${apply.status === 0 ? 'pending' : apply.status === 1 ? 'approved' : 'rejected'}`}>
+                {apply.statusDesc}
+              </span>
+            </div>
           </div>
         ))}
 

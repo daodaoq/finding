@@ -460,12 +460,16 @@ CREATE TABLE IF NOT EXISTS `chat_apply` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `from_user_id` BIGINT NOT NULL COMMENT '申请人',
     `to_user_id` BIGINT NOT NULL COMMENT '接收人',
-    `status` TINYINT DEFAULT 0 COMMENT '0=pending, 1=approved, 2=rejected',
+    `status` TINYINT DEFAULT 0 COMMENT '0=pending, 1=approved, 2=rejected, 3=cancelled, 4=expired',
     `remark` VARCHAR(200) DEFAULT NULL COMMENT '申请备注',
     `apply_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `handle_time` DATETIME DEFAULT NULL,
+    `handle_time` DATETIME DEFAULT NULL COMMENT '处理时间',
+    `handle_by` BIGINT DEFAULT NULL COMMENT '处理人用户ID(撤回/审批/系统过期)',
+    -- 仅待处理申请非空(等于 from_to),唯一约束保证同一方向同时只有一条待处理申请;
+    -- 审批/撤回/过期后变 NULL,允许同方向在冷却期后重新申请
+    `pending_key` VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN `status` = 0 THEN CONCAT(`from_user_id`, '_', `to_user_id`) ELSE NULL END) STORED,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_from_to` (`from_user_id`, `to_user_id`),
+    UNIQUE KEY `uk_pending_key` (`pending_key`),
     KEY `idx_to_user_status` (`to_user_id`, `status`),
     KEY `idx_from_user` (`from_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
