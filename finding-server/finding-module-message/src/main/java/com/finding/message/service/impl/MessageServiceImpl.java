@@ -8,6 +8,7 @@ import com.finding.common.PageQueryDTO;
 import com.finding.message.entity.Conversation;
 import com.finding.message.entity.Message;
 import com.finding.user.entity.User;
+import com.finding.message.event.NewNotificationEvent;
 import com.finding.message.mapper.ConversationMapper;
 import com.finding.message.mapper.MessageMapper;
 import com.finding.user.mapper.UserMapper;
@@ -16,6 +17,7 @@ import com.finding.message.vo.ConversationVO;
 import com.finding.message.vo.MessageVO;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +30,7 @@ public class MessageServiceImpl implements MessageService {
     private final MessageMapper messageMapper;
     private final ConversationMapper conversationMapper;
     private final UserMapper userMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public void notify(Long fromUserId, Long toUserId, String type, String content, Long relatedId) {
@@ -38,6 +41,10 @@ public class MessageServiceImpl implements MessageService {
         msg.setContent(content);
         msg.setRelatedId(relatedId);
         messageMapper.insert(msg);
+        // 发布事件 → app 模块监听后 WS 实时推送未读
+        if (toUserId != null) {
+            eventPublisher.publishEvent(new NewNotificationEvent(toUserId));
+        }
     }
 
     @Override

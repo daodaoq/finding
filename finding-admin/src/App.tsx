@@ -13,6 +13,8 @@ import Groups from './pages/Groups';
 import Banners from './pages/Banners';
 import Announcements from './pages/Announcements';
 import ForbiddenWords from './pages/ForbiddenWords';
+import ChatAudit from './pages/ChatAudit';
+import Feedback from './pages/Feedback';
 import Login from './pages/Login';
 
 export default function App() {
@@ -34,6 +36,8 @@ export default function App() {
             <Route path="banners" element={<Banners />} />
             <Route path="announcements" element={<Announcements />} />
             <Route path="banned-words" element={<ForbiddenWords />} />
+            <Route path="chat-audit" element={<ChatAudit />} />
+            <Route path="feedback" element={<Feedback />} />
           </Route>
         </Routes>
       </BrowserRouter>

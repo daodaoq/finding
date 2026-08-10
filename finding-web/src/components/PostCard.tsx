@@ -1,5 +1,6 @@
 import type { Post } from '../types/post';
 import { formatRelativeTime } from '../utils/format';
+import { showToast } from './Toast';
 import './PostCard.css';
 
 interface Props {
@@ -13,6 +14,17 @@ interface Props {
 }
 
 export default function PostCard({ post, onLike, onClick, canManage, onEdit, onDelete }: Props) {
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/square/post/${post.id}`;
+    const text = `来看看这条动态：${post.content?.slice(0, 30) || ''}`;
+    if (navigator.share) {
+      navigator.share({ title: 'Finding', text, url }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => showToast('链接已复制')).catch(() => {});
+    }
+  };
+
   return (
     <div className="post-card" onClick={() => onClick(post.id)}>
       <div className="post-header">
@@ -56,6 +68,7 @@ export default function PostCard({ post, onLike, onClick, canManage, onEdit, onD
           {post.isLiked ? '❤️' : '🤍'} {post.likeCount}
         </button>
         <span>💬 {post.commentCount}</span>
+        <button className="share-btn" onClick={handleShare} title="分享">🔗</button>
       </div>
     </div>
   );

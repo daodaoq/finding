@@ -17,10 +17,14 @@ import com.finding.user.mapper.UserVerificationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -55,5 +59,38 @@ public class AdminDashboardController {
                 new LambdaQueryWrapper<Report>().eq(Report::getStatus, 0)));
         stats.put("groupCount", groupChatMapper.selectCount(null));
         return Result.ok(stats);
+    }
+
+    /** 近 N 天趋势(注册/动态/搭子/活跃用户) */
+    @GetMapping("/dashboard/trend")
+    public Result<Map<String, Object>> trend(@RequestParam(defaultValue = "7") int days) {
+        int n = Math.min(Math.max(days, 3), 30);
+        LocalDate today = LocalDate.now();
+        List<String> dates = new ArrayList<>();
+        List<Long> newUsers = new ArrayList<>();
+        List<Long> newPosts = new ArrayList<>();
+        List<Long> newMates = new ArrayList<>();
+        List<Long> activeUsers = new ArrayList<>();
+        for (int i = n - 1; i >= 0; i--) {
+            LocalDate d = today.minusDays(i);
+            LocalDateTime start = d.atStartOfDay();
+            LocalDateTime end = d.plusDays(1).atStartOfDay();
+            dates.add(d.toString());
+            newUsers.add(userMapper.selectCount(new LambdaQueryWrapper<User>()
+                    .ge(User::getCreatedAt, start).lt(User::getCreatedAt, end)));
+            newPosts.add(postMapper.selectCount(new LambdaQueryWrapper<Post>()
+                    .ge(Post::getCreatedAt, start).lt(Post::getCreatedAt, end)));
+            newMates.add(mateMapper.selectCount(new LambdaQueryWrapper<MateInvitation>()
+                    .ge(MateInvitation::getCreatedAt, start).lt(MateInvitation::getCreatedAt, end)));
+            activeUsers.add(userMapper.selectCount(new LambdaQueryWrapper<User>()
+                    .ge(User::getLastLoginAt, start).lt(User::getLastLoginAt, end)));
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("dates", dates);
+        result.put("newUsers", newUsers);
+        result.put("newPosts", newPosts);
+        result.put("newMates", newMates);
+        result.put("activeUsers", activeUsers);
+        return Result.ok(result);
     }
 }

@@ -17,17 +17,56 @@ interface DashboardStats {
   groupCount: number;
 }
 
+interface TrendData {
+  dates: string[];
+  newUsers: number[];
+  newPosts: number[];
+  newMates: number[];
+  activeUsers: number[];
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0, todayPosts: 0, todayMates: 0, pendingVerifications: 0,
     todayNewUsers: 0, totalMates: 0, pendingReports: 0, groupCount: 0,
   });
+  const [trend, setTrend] = useState<TrendData | null>(null);
 
   useEffect(() => {
     request.get('/admin/dashboard').then((res) => {
       if (res.data?.data) setStats(res.data.data);
     }).catch(() => {});
+    request.get('/admin/dashboard/trend', { params: { days: 7 } }).then((res) => {
+      if (res.data?.data) setTrend(res.data.data);
+    }).catch(() => {});
   }, []);
+
+  const renderBars = (values: number[], color: string) => {
+    const max = Math.max(1, ...(values || []));
+    return (
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
+        {values.map((v, i) => (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 11, color: '#666' }}>{v}</span>
+            <div
+              style={{
+                width: '100%', background: color, borderRadius: 3,
+                height: `${Math.round((v / max) * 90)}%`, minHeight: v > 0 ? 4 : 1,
+                opacity: v > 0 ? 1 : 0.25,
+              }}
+            />
+            <span style={{ fontSize: 10, color: '#999' }}>{trend?.dates?.[i]?.slice(5)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const trendCard = (title: string, values: number[], color: string) => (
+    <Card title={title} style={{ marginTop: 16 }}>
+      {renderBars(values || [], color)}
+    </Card>
+  );
 
   return (
     <div>
@@ -58,6 +97,18 @@ export default function Dashboard() {
           <Card><Statistic title="群聊总数" value={stats.groupCount} prefix={<UsergroupAddOutlined />} /></Card>
         </Col>
       </Row>
+      <Card title="近 7 天趋势" style={{ marginTop: 16 }}>
+        {trend ? (
+          <div>
+            {trendCard('新增用户', trend.newUsers, '#ff6b81')}
+            {trendCard('新增动态', trend.newPosts, '#52c41a')}
+            {trendCard('新增搭子', trend.newMates, '#1677ff')}
+            {trendCard('活跃用户(登录)', trend.activeUsers, '#faad14')}
+          </div>
+        ) : (
+          <p style={{ color: '#999', textAlign: 'center', padding: 20 }}>加载中...</p>
+        )}
+      </Card>
       <Card title="快速入口" style={{ marginTop: 16 }}>
         <p>📋 <a href="/verification">实名认证审核</a> — 待审核: {stats.pendingVerifications}条</p>
         <p>📝 <a href="/posts">动态内容管理</a> — 今日新增: {stats.todayPosts}条</p>

@@ -69,6 +69,11 @@ export default function MainLayout() {
       setBarRefreshKey((k) => k + 1);
       return;
     }
+    // 收到新站内通知 → 刷新未读角标
+    if (msg.type === 'new_notification') {
+      messageApi.unreadCount().then((res) => setUnreadCount(res.data.data.count)).catch(() => {});
+      return;
+    }
     if (msg.type !== 'info_share') return;
     if (msg.action === 'request') {
       setInfoSharePrompt({

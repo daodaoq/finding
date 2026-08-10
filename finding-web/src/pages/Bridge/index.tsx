@@ -20,6 +20,8 @@ import './index.css';
 
 export default function BridgePage() {
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [applyTarget, setApplyTarget] = useState<number | null>(null);
+  const [applyRemark, setApplyRemark] = useState('');
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const bridgePending = useBridgeStore((s) => s.pendingCount);
@@ -61,14 +63,22 @@ export default function BridgePage() {
   };
 
   const handleLike = (userId: number) => {
-    requireLogin(async () => {
-      try {
-        await bridgeApi.apply(userId);
-        setUsers((prev) =>
-          prev.map((u) => (u.userId === userId ? { ...u, isLiked: true } : u))
-        );
-      } catch { showToast('发送申请失败'); }
+    requireLogin(() => {
+      setApplyTarget(userId);
+      setApplyRemark('');
     });
+  };
+
+  const confirmApply = async () => {
+    if (applyTarget == null) return;
+    try {
+      await bridgeApi.apply(applyTarget, applyRemark.trim() || undefined);
+      setUsers((prev) =>
+        prev.map((u) => (u.userId === applyTarget ? { ...u, isLiked: true } : u))
+      );
+      showToast('申请已发送');
+    } catch { showToast('发送申请失败'); }
+    finally { setApplyTarget(null); }
   };
 
   const handleQuickAction = (key: string) => {
@@ -166,6 +176,34 @@ export default function BridgePage() {
           <p className="no-more">— 没有更多了 —</p>
         )}
       </div>
+
+      {/* 发送申请备注弹层 */}
+      {applyTarget != null && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          onClick={() => setApplyTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 480, background: '#fff', borderRadius: '16px 16px 0 0', padding: 16 }}
+          >
+            <h4 style={{ margin: '0 0 12px' }}>发送心动申请</h4>
+            <input
+              placeholder="写一句介绍/想说的话（选填）"
+              value={applyRemark}
+              onChange={(e) => setApplyRemark(e.target.value)}
+              maxLength={100}
+              style={{ width: '100%', border: '1px solid #eee', borderRadius: 8, padding: 10, fontSize: 14, boxSizing: 'border-box' }}
+            />
+            <button
+              onClick={confirmApply}
+              style={{ width: '100%', marginTop: 16, padding: 12, border: 'none', borderRadius: 22, background: '#ff6b81', color: '#fff', fontSize: 15 }}
+            >
+              发送申请
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 登录弹窗 */}
       <LoginModal

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '../../../components/Toast';
+import request from '../../../api/request';
 import '../subpage.css';
 import './help.css';
 
@@ -10,16 +11,23 @@ export default function HumanPage() {
   const [contact, setContact] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     if (!desc.trim()) { showToast('请描述你遇到的问题'); return; }
     setSubmitting(true);
-    // 本轮为前端提交,由客服人员后续跟进;正式版可对接工单系统
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await request.post('/feedback', {
+        type: 'other',
+        content: desc.trim(),
+        contact: contact.trim() || undefined,
+      });
       showToast('已提交，客服会尽快联系你');
       setDesc('');
       setContact('');
-    }, 600);
+    } catch (e: any) {
+      showToast(e?.message || '提交失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

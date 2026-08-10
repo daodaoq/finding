@@ -56,10 +56,12 @@ public class UploadServiceImpl implements UploadService {
         if (data.length > maxSize) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "文件大小超过限制(5MB)");
         }
-        // 校验类型
+        // 校验类型(Content-Type)
         if (!ALLOWED_TYPES.contains(contentType)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的文件类型，仅允许 JPEG/PNG/WebP");
         }
+        // 校验魔数(防伪造 Content-Type 上传任意文件)
+        validateMagic(data);
 
         String ext = getExtension(originalFilename);
         String objectName = UUID.randomUUID().toString().replace("-", "") + ext;
@@ -85,5 +87,19 @@ public class UploadServiceImpl implements UploadService {
     private String getExtension(String filename) {
         int dot = filename.lastIndexOf('.');
         return dot > 0 ? filename.substring(dot).toLowerCase() : ".jpg";
+    }
+
+    /** 校验文件魔数:JPEG(FF D8 FF) / PNG(89 50 4E 47) / WebP(RIFF....WEBP) */
+    private void validateMagic(byte[] data) {
+        if (data.length < 12) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的文件类型，仅允许 JPEG/PNG/WebP");
+        }
+        boolean jpeg = (data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8 && (data[2] & 0xFF) == 0xFF;
+        boolean png = (data[0] & 0xFF) == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47;
+        boolean webp = data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F'
+                && data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P';
+        if (!jpeg && !png && !webp) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的文件类型，仅允许 JPEG/PNG/WebP");
+        }
     }
 }

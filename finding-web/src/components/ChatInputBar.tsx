@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { uploadApi } from '../api/upload';
 import './ChatInputBar.css';
 
 interface MentionMember { userId: number; nickname: string; }
@@ -33,19 +34,12 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers }: Pr
     if (!file) return;
     onUploading?.(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/v1/upload/image', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
-        body: fd,
-      });
-      const json = await res.json();
-      if (json.code === 200 && json.data) {
-        onSend(json.data, 'image');
+      const res = await uploadApi.uploadImage(file);
+      if (res.data.data) {
+        onSend(res.data.data, 'image');
       }
     } catch {
-      // ignore
+      // 拦截器已提示
     } finally {
       onUploading?.(false);
       if (fileRef.current) fileRef.current.value = '';

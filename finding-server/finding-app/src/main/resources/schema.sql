@@ -616,3 +616,20 @@ CREATE TABLE IF NOT EXISTS `user_block` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_blocked` (`user_id`, `blocked_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 26. feedback - 用户反馈/客服工单
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `feedback` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `type` VARCHAR(20) DEFAULT 'other' COMMENT 'bug/feature/suggestion/other',
+    `content` VARCHAR(2000) NOT NULL,
+    `contact` VARCHAR(100) DEFAULT NULL,
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0=待处理 1=已处理',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `handled_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_user` (`user_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
