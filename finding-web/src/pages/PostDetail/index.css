@@ -1,13 +1,13 @@
 .post-detail-page {
-  background: #f8f8f8;
+  background: var(--paper);
   min-height: 100vh;
   padding-bottom: 120px; /* 输入栏 52px + 底部导航 56px + 安全区 */
 }
 
 .pd-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 14px 16px; background: var(--surface);
+  border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 10;
 }
 .pd-header h3 { margin: 0; font-size: 16px; flex: 1; }
