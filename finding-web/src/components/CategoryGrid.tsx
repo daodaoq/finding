@@ -11,7 +11,6 @@ export default function CategoryGrid({ categories, onSelect }: Props) {
     <div className="category-grid">
       {categories.map((cat) => (
         <button key={cat.code} className="category-item" onClick={() => onSelect(cat.code)}>
-          <span className="category-icon">{cat.icon}</span>
           <span className="category-name">{cat.name}</span>
         </button>
       ))}

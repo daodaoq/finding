@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatClockTime } from '../utils/format';
+import AppIcon from './AppIcon';
 import './ChatBubble.css';
 
 interface ChatMessage {
@@ -57,7 +58,7 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
         onContextMenu={(e) => { e.preventDefault(); setShowMenu(true); }}
       >
         <div className="chat-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
-          {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
+          {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={20} />}
         </div>
         <div className="chat-bubble-wrapper">
           {!isMine && <span className="chat-sender">{nickname}</span>}

@@ -1,5 +1,6 @@
 import type { Message } from '../types/message';
 import { formatSessionTime } from '../utils/format';
+import AppIcon from './AppIcon';
 import './MessageItem.css';
 
 interface Props {
@@ -17,7 +18,7 @@ export default function MessageItem({ message, onClick }: Props) {
         {message.fromUserAvatar ? (
           <img src={message.fromUserAvatar} alt="" />
         ) : (
-          <span>📢</span>
+          <AppIcon name="megaphone" size={22} />
         )}
       </div>
       <div className="msg-content">

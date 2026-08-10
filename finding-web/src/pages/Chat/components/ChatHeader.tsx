@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import AppIcon from '../../../components/AppIcon';
 import './ChatHeader.css';
 
 interface Props {
@@ -18,7 +19,7 @@ export default function ChatHeader({ title, avatar, onBack, extra, right }: Prop
       <button className="back-btn" onClick={onBack}>←</button>
       {avatar && (
         <div className="chat-avatar-sm">
-          {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
+          {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={18} />}
         </div>
       )}
       <span className="chat-header-name">{title}</span>

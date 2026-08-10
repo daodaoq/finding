@@ -1,6 +1,6 @@
 .main-layout {
   min-height: 100vh;
-  background: #f8f8f8;
+  background: var(--paper);
   max-width: 480px;
   margin: 0 auto;
   position: relative;
@@ -14,7 +14,7 @@
 /* Tablet & Desktop: centered with shadow */
 @media (min-width: 481px) {
   .main-layout {
-    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow);
     min-height: 100vh;
   }
 }

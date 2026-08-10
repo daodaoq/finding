@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { historyApi, type HistoryRecord } from '../../../api/history';
 import EmptyState from '../../../components/EmptyState';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
+import AppIcon from '../../../components/AppIcon';
 import { formatSessionTime } from '../../../utils/format';
 import '../subpage.css';
 import './index.css';
@@ -30,13 +31,13 @@ export default function HistoryPage() {
         <h2>浏览记录</h2>
       </div>
       {loading ? <LoadingSkeleton /> : records.length === 0 ? (
-        <EmptyState icon="🕐" message="暂无浏览记录，去逛逛广场吧" />
+        <EmptyState icon="clock" message="暂无浏览记录，去逛逛广场吧" />
       ) : (
         <div className="subpage-list">
           {records.map((r) => (
             <div key={`${r.targetType}-${r.targetId}`} className="history-row" onClick={() => go(r)}>
               <div className="history-avatar">
-                {r.image ? <img src={r.image} alt="" /> : (r.targetType === 'post' ? '📄' : '👤')}
+                {r.image ? <img src={r.image} alt="" /> : (r.targetType === 'post' ? <AppIcon name="file" size={18} /> : <AppIcon name="user" size={18} />)}
               </div>
               <div className="history-info">
                 <span className="history-title">{r.title}</span>

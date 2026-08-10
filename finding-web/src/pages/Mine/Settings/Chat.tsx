@@ -4,6 +4,7 @@ import { settingsApi } from '../../../api/settings';
 import { uploadApi } from '../../../api/upload';
 import { CHAT_BG_PRESETS, resolveChatBg } from '../../../utils/chatBackgrounds';
 import { showToast } from '../../../components/Toast';
+import AppIcon from '../../../components/AppIcon';
 import '../subpage.css';
 import './settings.css';
 
@@ -96,7 +97,7 @@ export default function ChatSettingsGlobal() {
           ))}
         </div>
         <button className="bg-upload-btn" onClick={() => fileRef.current?.click()}>
-          {uploading ? '上传中...' : '📷 上传图片背景'}
+          {uploading ? '上传中...' : <><AppIcon name="camera" size={16} /> 上传图片背景</>}
         </button>
         <button className="bg-reset" onClick={resetBg}>恢复默认背景</button>
         <input

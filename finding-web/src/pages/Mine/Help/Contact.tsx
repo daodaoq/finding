@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '../../../components/Toast';
+import AppIcon, { type AppIconName } from '../../../components/AppIcon';
 import '../subpage.css';
 import './help.css';
 
-const CONTACTS = [
-  { label: '官方邮箱', value: 'service@finding.edu.cn', icon: '📧', copyable: true },
-  { label: '客服 QQ', value: '1008610086', icon: '💬', copyable: true },
-  { label: '微信公众号', value: 'Finding 校园', icon: '💌' },
-  { label: '服务时间', value: '每天 9:00 - 21:00', icon: '🕘' },
+const CONTACTS: { label: string; value: string; icon: AppIconName; copyable?: boolean }[] = [
+  { label: '官方邮箱', value: 'service@finding.edu.cn', icon: 'mail', copyable: true },
+  { label: '客服 QQ', value: '1008610086', icon: 'message', copyable: true },
+  { label: '微信公众号', value: 'Finding 校园', icon: 'sparkles' },
+  { label: '服务时间', value: '每天 9:00 - 21:00', icon: 'clock' },
 ];
 
 export default function ContactPage() {
@@ -31,7 +32,7 @@ export default function ContactPage() {
       <div className="menu-list">
         {CONTACTS.map((c) => (
           <div key={c.label} className="menu-list-item" onClick={() => c.copyable && copy(c.value)}>
-            <span>{c.icon}</span>
+            <span><AppIcon name={c.icon} size={18} /></span>
             <span style={{ color: '#888', fontSize: 14 }}>{c.label}</span>
             <span style={{ marginLeft: 'auto', color: '#333' }}>{c.value}</span>
             {c.copyable && <span style={{ fontSize: 12, color: '#ff6b81' }}>复制</span>}

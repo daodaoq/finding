@@ -4,6 +4,7 @@ import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
 import ReportDialog from '../../components/ReportDialog';
+import AppIcon from '../../components/AppIcon';
 import type { GroupChat, GroupMember, InvitableUser } from '../../types/groupChat';
 import './index.css';
 
@@ -99,7 +100,7 @@ export default function GroupInfoPage() {
       {/* 群基本信息 */}
       <div className="gi-basic">
         <div className="gi-avatar">
-          {group.avatar ? <img src={group.avatar} alt="" /> : <span>👥</span>}
+          {group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={28} />}
         </div>
         <div className="gi-name">{group.name}</div>
         <div className="gi-count">{members.length} 名成员</div>
@@ -149,7 +150,7 @@ export default function GroupInfoPage() {
           return (
             <div key={m.userId} className="gi-member-item">
               <div className="gi-member-avatar" onClick={() => navigate(`/user/${m.userId}`)}>
-                {m.avatar ? <img src={m.avatar} alt="" /> : <span>👤</span>}
+                {m.avatar ? <img src={m.avatar} alt="" /> : <AppIcon name="user" size={18} />}
               </div>
               <div className="gi-member-info">
                 <span className="gi-member-name">

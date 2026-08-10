@@ -6,6 +6,7 @@ import MateCard from '../../components/MateCard';
 import LoginModal from '../../components/LoginModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import AppIcon from '../../components/AppIcon';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -69,7 +70,7 @@ export default function SquarePage() {
               className={`category-cell ${category === cat.code ? 'active' : ''}`}
               onClick={() => setCategory(category === cat.code ? '' : cat.code)}
             >
-              <span className="category-cell-icon">{cat.icon}</span>
+              <span className="category-cell-icon"><AppIcon name={cat.icon} size={16} /></span>
               <span className="category-cell-name">{cat.name}</span>
             </button>
           ))}
@@ -106,7 +107,7 @@ export default function SquarePage() {
         ))}
         {loading && <LoadingSkeleton />}
         {!loading && mates.length === 0 && (
-          <EmptyState icon="🔍" message={category ? `暂无"${MATE_CATEGORIES.find(c => c.code === category)?.name}"邀约` : '暂无搭子邀约'} />
+          <EmptyState icon="search" message={category ? `暂无"${MATE_CATEGORIES.find(c => c.code === category)?.name}"邀约` : '暂无搭子邀约'} />
         )}
         {!hasMore && mates.length > 0 && <p className="no-more">— 没有更多了 —</p>}
       </div>

@@ -55,7 +55,7 @@ export default function OrdersPage() {
           <MateCard key={m.id} mate={m} onJoin={() => {}} onClick={id => navigate(`/mate/${id}`)} />
         ))}
         {!loading && mates.length === 0 && (
-          <EmptyState message="还没有预约成功的搭子" icon="🧾" />
+          <EmptyState message="还没有预约成功的搭子" icon="receipt" />
         )}
       </div>
     </div>

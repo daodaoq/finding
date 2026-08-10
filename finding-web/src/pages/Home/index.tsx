@@ -12,6 +12,7 @@ import type { Post } from '../../types/post';
 import type { Mate } from '../../types/mate';
 import PostFeed from './components/PostFeed';
 import MateFeed from './components/MateFeed';
+import AppIcon from '../../components/AppIcon';
 import './index.css';
 
 const HOME_TABS = [
@@ -114,7 +115,7 @@ export default function HomePage() {
       <div className="home-top">
         <span className="home-school">{APP_CONFIG.SCHOOL_NAME}</span>
         <div className="home-search-wrapper" onClick={() => navigate('/search')}>
-          <span className="home-search-icon">🔍</span>
+          <AppIcon name="search" className="home-search-icon" size={17} />
           <input className="home-search-input" type="text" placeholder="搜索用户、动态、搭子..." readOnly />
         </div>
       </div>

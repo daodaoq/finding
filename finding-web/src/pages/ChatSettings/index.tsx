@@ -7,6 +7,7 @@ import { reportApi } from '../../api/report';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import AppIcon from '../../components/AppIcon';
 import type { ChatSettings } from '../../types/message';
 import SearchView from './components/SearchView';
 import BackgroundView from './components/BackgroundView';
@@ -146,14 +147,14 @@ export default function ChatSettingsPage() {
   return (
     <div className="cs-page">
       <div className="cs-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+        <button className="back-btn" onClick={() => navigate(-1)} aria-label="返回"><AppIcon name="left" size={20} /></button>
         <span>聊天信息</span>
       </div>
 
       {/* 对方名片 → 跳转情感简介 */}
       <div className="cs-contact-card" onClick={openProfile}>
         <div className="cs-contact-avatar">
-          {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
+          {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={24} />}
         </div>
         <div className="cs-contact-info">
           <span className="cs-contact-name">{nickname}</span>
@@ -164,13 +165,13 @@ export default function ChatSettingsPage() {
       {/* 设置项 */}
       <div className="cs-list">
         <button className="cs-item" onClick={() => { setResults(null); setKeyword(''); setView('search'); }}>
-          <span className="cs-item-icon">🔍</span>
+          <AppIcon name="search" className="cs-item-icon" size={19} />
           <span className="cs-item-label">查找聊天记录</span>
           <span className="cs-item-arrow">›</span>
         </button>
 
         <div className="cs-item">
-          <span className="cs-item-icon">📌</span>
+          <AppIcon name="pin" className="cs-item-icon" size={19} />
           <span className="cs-item-label">置顶聊天</span>
           <span
             className={`cs-switch ${settings?.pinned ? 'on' : ''}`}
@@ -181,7 +182,7 @@ export default function ChatSettingsPage() {
         </div>
 
         <div className="cs-item">
-          <span className="cs-item-icon">🔕</span>
+          <AppIcon name="mute" className="cs-item-icon" size={19} />
           <span className="cs-item-label">消息免打扰</span>
           <span
             className={`cs-switch ${settings?.muted ? 'on' : ''}`}
@@ -192,19 +193,19 @@ export default function ChatSettingsPage() {
         </div>
 
         <button className="cs-item" onClick={() => setView('background')}>
-          <span className="cs-item-icon">🎨</span>
+          <AppIcon name="palette" className="cs-item-icon" size={19} />
           <span className="cs-item-label">设置当前聊天背景</span>
           <span className="cs-item-arrow">›</span>
         </button>
 
         <button className="cs-item" onClick={() => setShowClearConfirm(true)}>
-          <span className="cs-item-icon">🗑️</span>
+          <AppIcon name="trash" className="cs-item-icon" size={19} />
           <span className="cs-item-label">清空聊天记录</span>
           <span className="cs-item-arrow">›</span>
         </button>
 
         <button className="cs-item" onClick={() => setShowReport(true)}>
-          <span className="cs-item-icon">⚠️</span>
+          <AppIcon name="flag" className="cs-item-icon" size={19} />
           <span className="cs-item-label">投诉</span>
           <span className="cs-item-arrow">›</span>
         </button>
@@ -254,4 +255,3 @@ export default function ChatSettingsPage() {
     </div>
   );
 }
-

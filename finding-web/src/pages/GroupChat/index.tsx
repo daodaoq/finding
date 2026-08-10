@@ -9,6 +9,7 @@ import ChatInputBar from '../../components/ChatInputBar';
 import ReportDialog from '../../components/ReportDialog';
 import ChatHeader from '../Chat/components/ChatHeader';
 import MessageList, { type MessageLike } from '../Chat/components/MessageList';
+import AppIcon from '../../components/AppIcon';
 import type { GroupMessage, GroupMember } from '../../types/groupChat';
 import '../Chat/index.css';
 
@@ -184,7 +185,7 @@ export default function GroupChatPage() {
             }}
             onClick={() => navigate(`/messages/group-chat/${groupId}/info?name=${encodeURIComponent(groupName)}`)}
           >
-            ℹ️
+            <AppIcon name="info" size={20} />
           </button>
         )}
       />
@@ -197,7 +198,7 @@ export default function GroupChatPage() {
         listRef={msgListRef}
         errorNode={loadError ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-            ⚠️ 加载失败，请确认已加入该群聊
+            <AppIcon name="alert" size={18} /> 加载失败，请确认已加入该群聊
           </div>
         ) : undefined}
         emptyNode={!loadError && messages.length === 0 ? (

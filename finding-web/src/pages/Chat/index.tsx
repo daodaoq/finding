@@ -8,6 +8,7 @@ import { useMessageStore } from '../../store/messageStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
+import AppIcon from '../../components/AppIcon';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import ReportDialog from '../../components/ReportDialog';
 import ChatHeader from './components/ChatHeader';
@@ -269,7 +270,7 @@ export default function ChatDetailPage() {
               );
             }}
           >
-            ⚙️
+            <AppIcon name="settings" size={20} />
           </button>
         )}
       />

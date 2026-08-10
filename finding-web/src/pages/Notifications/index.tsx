@@ -115,7 +115,7 @@ export default function NotificationsPage() {
           <MessageItem key={msg.id} message={msg} onClick={handleClick} />
         ))}
         {!loading && filtered.length === 0 && (
-          <EmptyState icon="🔔" message="暂无通知" />
+          <EmptyState icon="bell" message="暂无通知" />
         )}
         {!loading && hasMore && (
           <button

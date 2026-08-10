@@ -1,4 +1,5 @@
 import type { HomeFeedUser } from '../types/message';
+import AppIcon from './AppIcon';
 import './UserCard.css';
 
 interface Props {
@@ -11,7 +12,7 @@ export default function UserCard({ user, onLike }: Props) {
     <div className="user-card">
       <div className="user-card-header">
         <div className="user-card-avatar">
-          {user.avatar ? <img src={user.avatar} alt="" /> : <span>👤</span>}
+          {user.avatar ? <img src={user.avatar} alt="" /> : <AppIcon name="user" size={22} />}
         </div>
         <div className="user-card-info">
           <div className="user-card-name">
@@ -21,8 +22,8 @@ export default function UserCard({ user, onLike }: Props) {
             </span>
           </div>
           <div className="user-card-meta">
-            {user.school && <span>🎓 {user.school}</span>}
-            {user.city && <span>📍 {user.city}</span>}
+            {user.school && <span><AppIcon name="grad" size={13} /> {user.school}</span>}
+            {user.city && <span><AppIcon name="location" size={13} /> {user.city}</span>}
           </div>
         </div>
         <button className="more-btn">⋯</button>
@@ -34,7 +35,7 @@ export default function UserCard({ user, onLike }: Props) {
           className={`heart-btn ${user.isLiked ? 'liked' : ''}`}
           onClick={(e) => { e.stopPropagation(); onLike(user.userId); }}
         >
-          {user.isLiked ? '❤️' : '🤍'}
+          <AppIcon name="heart" size={20} />
         </button>
       </div>
     </div>

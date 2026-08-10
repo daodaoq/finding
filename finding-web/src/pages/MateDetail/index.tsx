@@ -7,6 +7,7 @@ import { useRequireLogin } from '../../hooks/useRequireLogin';
 import LoginModal from '../../components/LoginModal';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import AppIcon from '../../components/AppIcon';
 import { showToast } from '../../components/Toast';
 import type { Mate } from '../../types/mate';
 import './index.css';
@@ -114,21 +115,21 @@ export default function MateDetailPage() {
       {/* 活动信息 */}
       <div className="md-info-card">
         <div className="md-info-row">
-          <span className="md-info-icon">🕐</span>
+          <span className="md-info-icon"><AppIcon name="clock" size={18} /></span>
           <div>
             <span className="md-info-label">活动时间</span>
             <span className="md-info-value">{formatFullDate(mate.activityTime)}</span>
           </div>
         </div>
         <div className="md-info-row">
-          <span className="md-info-icon">📍</span>
+          <span className="md-info-icon"><AppIcon name="location" size={18} /></span>
           <div>
             <span className="md-info-label">活动地点</span>
             <span className="md-info-value">{mate.location || '未指定'}</span>
           </div>
         </div>
         <div className="md-info-row">
-          <span className="md-info-icon">👥</span>
+          <span className="md-info-icon"><AppIcon name="users" size={18} /></span>
           <div>
             <span className="md-info-label">参与人数</span>
             <span className="md-info-value">
@@ -139,7 +140,7 @@ export default function MateDetailPage() {
         </div>
         {mate.distanceKm != null && (
           <div className="md-info-row">
-            <span className="md-info-icon">📏</span>
+            <span className="md-info-icon"><AppIcon name="ruler" size={18} /></span>
             <div>
               <span className="md-info-label">距离</span>
               <span className="md-info-value">{mate.distanceKm.toFixed(1)} km</span>
@@ -162,7 +163,7 @@ export default function MateDetailPage() {
           <h4 className="md-section-title">发起人</h4>
           <div className="md-author-row">
             <div className="md-author-avatar">
-              {mate.author.avatar ? <img src={mate.author.avatar} alt="" /> : <span>👤</span>}
+              {mate.author.avatar ? <img src={mate.author.avatar} alt="" /> : <AppIcon name="user" size={20} />}
             </div>
             <div>
               <span className="md-author-name">{mate.author.nickname}</span>
@@ -186,7 +187,7 @@ export default function MateDetailPage() {
               <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0' }}>
                 {p.avatar
                   ? <img src={p.avatar} alt="" style={{ width: 36, height: 36, objectFit: 'cover' }} />
-                  : <span style={{ display: 'block', textAlign: 'center', lineHeight: '36px' }}>👤</span>}
+                  : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36 }}><AppIcon name="user" size={20} /></span>}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600 }}>{p.nickname || `用户${p.userId}`}</div>

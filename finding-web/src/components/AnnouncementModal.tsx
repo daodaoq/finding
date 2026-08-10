@@ -2,6 +2,7 @@ import './ConfirmDialog.css';
 import './AnnouncementModal.css';
 import { renderMarkdown } from '../utils/markdown';
 import { formatDateTime } from '../utils/format';
+import AppIcon from './AppIcon';
 
 export interface AnnouncementData {
   id: number;
@@ -45,7 +46,7 @@ export default function AnnouncementModal({ announcements, onClose }: Props) {
   return (
     <div className="confirm-overlay" onClick={handleClose}>
       <div className="confirm-card ann-card" onClick={(e) => e.stopPropagation()}>
-        <h4 className="confirm-title ann-title">📢 系统公告</h4>
+        <h4 className="confirm-title ann-title"><AppIcon name="megaphone" size={20} /> 系统公告</h4>
         <div className="ann-list">
           {announcements.map((a) => (
             <div key={a.id} className="ann-item">

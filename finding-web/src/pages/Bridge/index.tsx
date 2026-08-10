@@ -16,6 +16,7 @@ import { useBridgeStore } from '../../store/bridgeStore';
 import { QUICK_ACTIONS } from '../../utils/constants';
 import type { BridgeRecommendUser } from '../../types/bridge';
 import type { Banner } from '../../types/message';
+import AppIcon from '../../components/AppIcon';
 import './index.css';
 
 export default function BridgePage() {
@@ -113,7 +114,7 @@ export default function BridgePage() {
             {currentUser?.avatar ? (
               <img src={currentUser.avatar} alt="" />
             ) : (
-              <span>👤</span>
+              <AppIcon name="user" size={18} />
             )}
           </div>
           <span className="bridge-nav-nickname">
@@ -122,11 +123,11 @@ export default function BridgePage() {
         </div>
         <div className="bridge-nav-right">
           <button className="bridge-nav-icon-btn" onClick={handleRefresh}>
-            🔄
+            <AppIcon name="refresh" size={19} />
           </button>
-          <button className="bridge-nav-icon-btn">🔍</button>
+          <button className="bridge-nav-icon-btn" aria-label="搜索"><AppIcon name="search" size={19} /></button>
           <button className="bridge-nav-icon-btn" onClick={handleNotificationClick}>
-            🔔
+            <AppIcon name="bell" size={19} />
           </button>
         </div>
       </div>
@@ -149,7 +150,7 @@ export default function BridgePage() {
               onClick={() => handleQuickAction(action.key)}
             >
               <span className="bridge-quick-icon">
-                {action.icon}
+                <AppIcon name={action.icon} size={22} />
                 {action.key === 'letter' && bridgePending > 0 && (
                   <span className="bridge-quick-badge">
                     {bridgePending > 99 ? '99+' : bridgePending}
@@ -170,7 +171,7 @@ export default function BridgePage() {
         ))}
         {loading && <LoadingSkeleton />}
         {!loading && users.length === 0 && (
-          <EmptyState icon="💕" message="暂无推荐用户，换个时间再来看看吧" />
+          <EmptyState icon="heart" message="暂无推荐用户，换个时间再来看看吧" />
         )}
         {!hasMore && users.length > 0 && (
           <p className="no-more">— 没有更多了 —</p>

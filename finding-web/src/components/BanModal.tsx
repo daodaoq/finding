@@ -1,5 +1,6 @@
 import './ConfirmDialog.css';
 import './AnnouncementModal.css';
+import AppIcon from './AppIcon';
 
 interface Props {
   /** 封禁提示文案(含原因/到期时间);null 时不显示 */
@@ -16,7 +17,7 @@ export default function BanModal({ message, onClose }: Props) {
   return (
     <div className="confirm-overlay" onClick={onClose}>
       <div className="confirm-card ann-card" onClick={(e) => e.stopPropagation()}>
-        <h4 className="confirm-title ann-title">🚫 账号已被封禁</h4>
+        <h4 className="confirm-title ann-title"><AppIcon name="ban" size={20} /> 账号已被封禁</h4>
         <div className="ban-body">{message}</div>
         <div className="confirm-buttons">
           <button className="confirm-btn primary" onClick={onClose}>知道了</button>

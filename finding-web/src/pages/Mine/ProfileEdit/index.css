@@ -115,6 +115,7 @@
 /* 定位按钮 */
 .pe-locate-btn {
   flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 3px;
   border: 1px solid #ff6b81;
   background: #fff;
   color: #ff6b81;

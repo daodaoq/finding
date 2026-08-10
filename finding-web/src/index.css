@@ -18,11 +18,21 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: #f8f8f8;
-  color: #333;
+  background: #f6f1e8;
+  color: #29241f;
   font-size: 14px;
   line-height: 1.5;
   overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+/* Every route shares the same paper canvas. Content panels opt into --surface. */
+:where(.main-layout, [class$='-page'], .re-page) {
+  background: var(--paper) !important;
 }
 
 a {
@@ -32,6 +42,20 @@ a {
 
 button {
   font-family: inherit;
+}
+
+:root {
+  --paper: #f6f1e8;
+  --surface: #fffdf8;
+  --ink: #29241f;
+  --muted: #746d63;
+  --line: #ded5c8;
+  --primary: #943b45;
+  --primary-soft: #f4e4e1;
+  --success: #486b5a;
+  --accent: #9b6a2a;
+  --radius: 7px;
+  --shadow: 0 2px 12px rgba(74, 52, 40, .08);
 }
 
 img {

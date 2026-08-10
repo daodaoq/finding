@@ -1,75 +1,25 @@
 import type { Post } from '../types/post';
 import { formatRelativeTime } from '../utils/format';
 import { showToast } from './Toast';
+import AppIcon from './AppIcon';
 import './PostCard.css';
 
-interface Props {
-  post: Post;
-  onLike: (id: number) => void;
-  onClick: (id: number) => void;
-  /** 当前用户是否可管理该动态(作者本人),显示编辑/删除 */
-  canManage?: boolean;
-  onEdit?: (id: number) => void;
-  onDelete?: (id: number) => void;
-}
+interface Props { post: Post; onLike: (id: number) => void; onClick: (id: number) => void; canManage?: boolean; onEdit?: (id: number) => void; onDelete?: (id: number) => void; }
 
 export default function PostCard({ post, onLike, onClick, canManage, onEdit, onDelete }: Props) {
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleShare = (event: React.MouseEvent) => {
+    event.stopPropagation();
     const url = `${window.location.origin}/square/post/${post.id}`;
-    const text = `来看看这条动态：${post.content?.slice(0, 30) || ''}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Finding', text, url }).catch(() => {});
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(() => showToast('链接已复制')).catch(() => {});
-    }
+    if (navigator.share) navigator.share({ title: 'Finding', text: post.content?.slice(0, 30) || '', url }).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => showToast('链接已复制')).catch(() => {});
   };
-
-  return (
-    <div className="post-card" onClick={() => onClick(post.id)}>
-      <div className="post-header">
-        <div className="post-author">
-          <div className="post-avatar">
-            {post.author?.avatar ? (
-              <img src={post.author.avatar} alt="" />
-            ) : (
-              <span>👤</span>
-            )}
-          </div>
-          <div className="post-author-info">
-            <span className="post-nickname">{post.author?.nickname || '匿名用户'}</span>
-            <span className="post-time">{formatRelativeTime(post.createdAt)}</span>
-          </div>
-        </div>
-        <div className="post-header-right">
-          {canManage && (
-            <div className="post-manage" onClick={(e) => e.stopPropagation()}>
-              <button className="post-manage-btn" onClick={() => onEdit?.(post.id)}>编辑</button>
-              <button className="post-manage-btn danger" onClick={() => onDelete?.(post.id)}>删除</button>
-            </div>
-          )}
-          {post.location && <span className="post-location">📍 {post.location}</span>}
-        </div>
-      </div>
-      <div className="post-body">{post.content}</div>
-      {post.images && post.images.length > 0 && (
-        <div className={`post-images images-${Math.min(post.images.length, 3)}`}>
-          {post.images.slice(0, 3).map((url, i) => (
-            <img key={i} src={url} alt="" loading="lazy" />
-          ))}
-        </div>
-      )}
-      <div className="post-footer">
-        <span>👁 {post.viewCount}</span>
-        <button
-          className={`like-btn ${post.isLiked ? 'liked' : ''}`}
-          onClick={(e) => { e.stopPropagation(); onLike(post.id); }}
-        >
-          {post.isLiked ? '❤️' : '🤍'} {post.likeCount}
-        </button>
-        <span>💬 {post.commentCount}</span>
-        <button className="share-btn" onClick={handleShare} title="分享">🔗</button>
-      </div>
-    </div>
-  );
+  const initial = (post.author?.nickname || '匿').slice(0, 1);
+  return <article className="post-card" onClick={() => onClick(post.id)}>
+    <header className="post-header"><div className="post-author"><div className="post-avatar">{post.author?.avatar ? <img src={post.author.avatar} alt="" /> : <span>{initial}</span>}</div><div className="post-author-info"><span className="post-nickname">{post.author?.nickname || '匿名用户'}</span><span className="post-time">{formatRelativeTime(post.createdAt)}{post.location ? ` · ${post.location}` : ''}</span></div></div>
+      {canManage && <div className="post-manage" onClick={(event) => event.stopPropagation()}><button className="post-manage-btn" onClick={() => onEdit?.(post.id)}>编辑</button><button className="post-manage-btn danger" onClick={() => onDelete?.(post.id)}>删除</button></div>}
+    </header>
+    <div className="post-body">{post.content}</div>
+    {post.images?.length ? <div className={`post-images images-${Math.min(post.images.length, 3)}`}>{post.images.slice(0, 3).map((url, index) => <img key={index} src={url} alt="" loading="lazy" />)}</div> : null}
+    <footer className="post-footer"><span><AppIcon name="eye" size={15} />{post.viewCount}</span><button className={`like-btn ${post.isLiked ? 'liked' : ''}`} onClick={(event) => { event.stopPropagation(); onLike(post.id); }}><AppIcon name="heart" size={15} />{post.likeCount}</button><span><AppIcon name="message" size={15} />{post.commentCount}</span><button className="share-btn" onClick={handleShare} title="分享"><AppIcon name="share" size={15} /></button></footer>
+  </article>;
 }

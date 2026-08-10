@@ -4,6 +4,7 @@ import request from '../../api/request';
 import { showToast } from '../../components/Toast';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import AppIcon from '../../components/AppIcon';
 import './index.css';
 
 interface SearchResult {
@@ -86,7 +87,7 @@ export default function SearchPage() {
         {loading && <><LoadingSkeleton /><LoadingSkeleton /></>}
 
         {!loading && results && !hasAnyResult && (
-          <EmptyState icon="🔍" message="未找到相关内容" />
+          <EmptyState icon="search" message="未找到相关内容" />
         )}
 
         {!loading && results && (
@@ -96,7 +97,7 @@ export default function SearchPage() {
               <div key={u.id} className="search-item"
                 onClick={() => navigate(`/messages/chat?userId=${u.id}&name=${encodeURIComponent(u.nickname || '')}&avatar=${encodeURIComponent(u.avatar || '')}`)}>
                 <div className="sr-avatar">
-                  {u.avatar ? <img src={u.avatar} alt="" /> : <span>👤</span>}
+                  {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={20} />}
                 </div>
                 <div className="sr-info">
                   <div className="sr-name">{u.nickname}</div>
@@ -111,7 +112,7 @@ export default function SearchPage() {
               <div key={p.id} className="search-item"
                 onClick={() => navigate(`/square/post/${p.id}`)}>
                 <div className="sr-avatar">
-                  {p.userAvatar ? <img src={p.userAvatar} alt="" /> : <span>📝</span>}
+                  {p.userAvatar ? <img src={p.userAvatar} alt="" /> : <AppIcon name="pen" size={20} />}
                 </div>
                 <div className="sr-info">
                   <div className="sr-name">{p.userNickname}</div>
@@ -125,7 +126,7 @@ export default function SearchPage() {
             {showTab('mates') && results.mates.records.map((m: any) => (
               <div key={m.id} className="search-item"
                 onClick={() => navigate(`/mate/${m.id}`)}>
-                <div className="sr-avatar"><span>🎯</span></div>
+                <div className="sr-avatar"><AppIcon name="target" size={20} /></div>
                 <div className="sr-info">
                   <div className="sr-name">{m.title}</div>
                   <div className="sr-sub">{m.location || ''} · {m.activityTime || ''}</div>

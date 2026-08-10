@@ -34,9 +34,9 @@
   border-color: #ff6b81;
 }
 
-.category-cell-icon { font-size: 18px; flex-shrink: 0; }
+.category-cell-icon { display: inline-flex; flex-shrink: 0; color: var(--muted); }
 .category-cell-name { font-size: 13px; color: #444; font-weight: 500; }
-.category-cell.active .category-cell-name { color: #ff6b81; font-weight: 600; }
+.category-cell.active .category-cell-name { color: var(--primary); font-weight: 600; }
 
 /* 排序栏 */
 .square-sort-bar {

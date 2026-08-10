@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { uploadApi } from '../api/upload';
+import AppIcon from './AppIcon';
 import './ChatInputBar.css';
 
 interface MentionMember { userId: number; nickname: string; }
@@ -54,7 +55,7 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers }: Pr
           <div className="input-panel-mask" onClick={() => setPanelOpen(false)} />
           <div className="input-panel">
             <div className="panel-item" onClick={handlePickImage}>
-              <span className="panel-icon">🖼️</span>
+              <span className="panel-icon"><AppIcon name="image" size={28} /></span>
               <span className="panel-label">图片</span>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { uploadApi } from '../../../api/upload';
 import { showToast } from '../../../components/Toast';
 import { APP_CONFIG } from '../../../utils/config';
 import { locateCity } from '../../../utils/geocode';
+import AppIcon from '../../../components/AppIcon';
 import './index.css';
 
 const GENDER_OPTIONS = [
@@ -121,7 +122,7 @@ export default function ProfileEditPage() {
           {avatar ? (
             <img src={avatar} alt="" />
           ) : (
-            <span>👤</span>
+            <AppIcon name="user" size={32} />
           )}
           <div className="pe-avatar-overlay">更换头像</div>
           {uploading && <div className="pe-avatar-loading">上传中...</div>}
@@ -204,7 +205,7 @@ export default function ProfileEditPage() {
             maxLength={20}
           />
           <button className="pe-locate-btn" onClick={handleLocateCity} disabled={locating}>
-            {locating ? '定位中...' : '📍 定位'}
+            {locating ? '定位中...' : <><AppIcon name="location" size={13} /> 定位</>}
           </button>
         </div>
       </div>

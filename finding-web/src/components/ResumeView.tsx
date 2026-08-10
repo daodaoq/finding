@@ -1,4 +1,5 @@
 import type { UserResume } from '../types/resume';
+import AppIcon, { type AppIconName } from './AppIcon';
 import './ResumeView.css';
 
 interface Props {
@@ -28,16 +29,16 @@ export default function ResumeView({ resume, avatar }: Props) {
 
   return (
     <div className="resume-view">
-      <Section icon="💁" title="基础信息栏" rows={basicRows}>
+      <Section icon="user" title="基础信息栏" rows={basicRows}>
         <div className="resume-avatar-row">
           <div className="resume-avatar">
-            {avatar ? <img src={avatar} alt="" /> : <span>👤</span>}
+            {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={28} />}
           </div>
           <span className="resume-avatar-label">照片</span>
         </div>
       </Section>
 
-      <Section icon="🎨" title="自我画像" rows={[
+      <Section icon="palette" title="自我画像" rows={[
         ['性格优点', resume.personalityTraits],
         ['小缺点', resume.flaws],
         ['个人三观', resume.worldview],
@@ -46,7 +47,7 @@ export default function ResumeView({ resume, avatar }: Props) {
         ['恋爱中的样子', resume.inLoveLook],
       ]} />
 
-      <Section icon="💭" title="过往恋爱复盘" rows={[
+      <Section icon="thought" title="过往恋爱复盘" rows={[
         ['恋爱次数', resume.relationshipCount],
         ['分手核心原因', resume.breakupReason],
         ['恋爱短板', resume.loveShortcoming],
@@ -54,14 +55,14 @@ export default function ResumeView({ resume, avatar }: Props) {
         ['自己在感情里的成长', resume.loveGrowth],
       ]} />
 
-      <Section icon="🤝" title="恋爱相处模式" rows={[
+      <Section icon="handshake" title="恋爱相处模式" rows={[
         ['日常陪伴', resume.dailyCompany],
         ['吵架模式', resume.fightMode],
         ['表达爱意方式', resume.loveExpression],
         ['与异性边界', resume.oppositeBoundary],
       ]} />
 
-      <Section icon="🌱" title="个人生活与规划" rows={[
+      <Section icon="sprout" title="个人生活与规划" rows={[
         ['爱好与日常', resume.hobbies],
         ['日常状态', resume.dailyStatus],
         ['生活习惯', resume.lifeHabits],
@@ -69,23 +70,23 @@ export default function ResumeView({ resume, avatar }: Props) {
         ['长期婚恋规划', resume.marriagePlan],
       ]} />
 
-      <Section icon="💘" title="理想另一半" rows={[
+      <Section icon="heart" title="理想另一半" rows={[
         ['硬性条件', resume.hardConditions],
         ['软性期待', resume.softExpectations],
       ]} />
 
-      <Section icon="⭐" title="加分项" rows={[
+      <Section icon="star" title="加分项" rows={[
         ['我能为恋爱带来什么', resume.bonusPoints],
       ]} />
 
-      <Section icon="💌" title="走心宣言" rows={[
+      <Section icon="mail" title="走心宣言" rows={[
         ['对爱情的期待', resume.loveExpectation],
         ['对新恋情的态度及承诺', resume.loveAttitude],
       ]} />
 
       {resume.photoAlbum && resume.photoAlbum.length > 0 && (
         <section className="resume-card">
-          <h3 className="resume-card-title">📷 生活相册</h3>
+          <h3 className="resume-card-title"><AppIcon name="image" size={18} />生活相册</h3>
           <div className="resume-album">
             {resume.photoAlbum.map((url, i) => (
               <img key={i} src={url} alt="" className="resume-album-img" />
@@ -98,15 +99,15 @@ export default function ResumeView({ resume, avatar }: Props) {
 }
 
 function Section({
-  icon, title, rows, children,
+  icon = 'book', title, rows, children,
 }: {
-  icon: string; title: string; rows: [string, any][]; children?: React.ReactNode;
+  icon?: AppIconName; title: string; rows: [string, any][]; children?: React.ReactNode;
 }) {
   const list = rows.filter(([, v]) => v !== undefined && v !== null && String(v) !== '');
   if (list.length === 0 && !children) return null;
   return (
     <section className="resume-card">
-      <h3 className="resume-card-title">{icon} {title}</h3>
+      <h3 className="resume-card-title"><AppIcon name={icon} size={18} />{title}</h3>
       {children}
       {list.map(([label, value]) => (
         <div key={label} className="resume-row">

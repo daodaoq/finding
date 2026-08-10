@@ -1,5 +1,5 @@
 .subpage {
-  background: #f8f8f8;
+  background: var(--paper);
   min-height: 100vh;
 }
 .subpage-header {
@@ -7,8 +7,8 @@
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 10;
 }
 .subpage-header h2 { margin: 0; font-size: 17px; }
@@ -22,7 +22,7 @@
 
 .subpage-tabs {
   display: flex;
-  background: #fff;
+  background: var(--surface);
   border-bottom: 1px solid #f0f0f0;
 }
 .subpage-tabs .tab {
@@ -32,7 +32,7 @@
 }
 .subpage-tabs .tab.active { color: #ff6b81; border-bottom-color: #ff6b81; font-weight: 600; }
 
-.subpage-list { background: #fff; }
+.subpage-list { background: var(--surface); }
 
 /* 二级菜单列表(帮助/设置等) */
 .menu-list { background: #fff; }

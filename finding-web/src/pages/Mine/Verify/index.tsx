@@ -6,6 +6,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { showToast } from '../../../components/Toast';
 import { APP_CONFIG } from '../../../utils/config';
 import { formatDateTime } from '../../../utils/format';
+import AppIcon from '../../../components/AppIcon';
 import './index.css';
 
 export default function VerifyPage() {
@@ -141,7 +142,7 @@ export default function VerifyPage() {
           <span className="ver-title">学生认证</span>
         </div>
         <div className="ver-status-card approved">
-          <div className="ver-status-icon">✅</div>
+          <div className="ver-status-icon"><AppIcon name="check" size={44} /></div>
           <div className="ver-status-title">认证已通过</div>
           <div className="ver-status-desc">你是{APP_CONFIG.SCHOOL_NAME}已认证学生，可使用全部功能</div>
         </div>
@@ -159,7 +160,7 @@ export default function VerifyPage() {
           <span className="ver-title">学生认证</span>
         </div>
         <div className="ver-status-card pending">
-          <div className="ver-status-icon">⏳</div>
+          <div className="ver-status-icon"><AppIcon name="clock" size={44} /></div>
           <div className="ver-status-title">审核中</div>
           <div className="ver-status-desc">你的认证申请正在审核中，请耐心等待。审核通过后即可使用全部功能。</div>
         </div>
@@ -180,7 +181,7 @@ export default function VerifyPage() {
 
       {isRejected && (
         <div className="ver-status-card rejected">
-          <div className="ver-status-icon">❌</div>
+          <div className="ver-status-icon"><AppIcon name="close" size={44} /></div>
           <div className="ver-status-title">认证未通过</div>
           <div className="ver-status-desc">
             {verification?.reviewComment
@@ -242,7 +243,7 @@ export default function VerifyPage() {
               <img src={studentCard} alt="学生证" />
             ) : (
               <div className="ver-upload-placeholder">
-                <span>{uploading ? '⏳' : '📷'}</span>
+                <span><AppIcon name={uploading ? 'loader' : 'camera'} size={28} /></span>
                 {uploading ? '上传中...' : '点击上传学生证照片'}
               </div>
             )}
@@ -258,7 +259,7 @@ export default function VerifyPage() {
       </div>
 
       <p className="ver-hint">
-        💡 认证信息需与学籍信息一致，管理员将在 24 小时内审核。<br />
+        <AppIcon name="lightbulb" size={14} /> 认证信息需与学籍信息一致，管理员将在 24 小时内审核。<br />
         审核通过后即可使用发帖、评论、搭子、私信等全部功能。
       </p>
 

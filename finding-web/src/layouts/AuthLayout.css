@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #ff6b81 0%, #ff9a76 100%);
+  background: var(--paper);
   padding: 20px;
 }
 .auth-container {

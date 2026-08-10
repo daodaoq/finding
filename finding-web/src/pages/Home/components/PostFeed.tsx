@@ -1,6 +1,7 @@
 import PostCard from '../../../components/PostCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import AppIcon from '../../../components/AppIcon';
 import type { Post } from '../../../types/post';
 // 共享信息流样式（含 .no-more 分页尾部）
 import '../../../components/Feed.css';
@@ -39,7 +40,7 @@ export default function PostFeed({
       {/* 游客限制提示 */}
       {showGuestLimit && posts.length >= guestMaxPosts && hasMore && !loading && (
         <div className="guest-limit-banner" onClick={onGuestLimitClick}>
-          <span>🔒</span>
+          <span><AppIcon name="lock" size={20} /></span>
           <div>
             <p className="guest-limit-title">登录查看更多动态</p>
             <p className="guest-limit-sub">登录后即可无限制浏览全部内容</p>

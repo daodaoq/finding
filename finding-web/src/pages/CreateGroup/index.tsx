@@ -4,6 +4,7 @@ import { groupChatApi } from '../../api/groupChat';
 import { userApi } from '../../api/user';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
+import AppIcon from '../../components/AppIcon';
 import type { InvitableUser } from '../../types/groupChat';
 import './index.css';
 
@@ -90,7 +91,7 @@ export default function CreateGroupPage() {
             onClick={() => toggleUser(u.userId)}
           >
             <div className="user-avatar">
-              {u.avatar ? <img src={u.avatar} alt="" /> : <span>👤</span>}
+              {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={18} />}
             </div>
             <span className="user-name">{u.nickname}</span>
             <div className={`checkbox ${selected.has(u.userId) ? 'checked' : ''}`}>

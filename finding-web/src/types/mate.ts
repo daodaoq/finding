@@ -24,5 +24,4 @@ export interface Mate {
 export interface MateCategory {
   code: string;
   name: string;
-  icon: string;
 }

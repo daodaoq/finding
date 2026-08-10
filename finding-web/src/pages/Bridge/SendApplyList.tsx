@@ -4,6 +4,7 @@ import { bridgeApi } from '../../api/bridge';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
+import AppIcon from '../../components/AppIcon';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
 
@@ -88,7 +89,7 @@ export default function SendApplyList() {
               {apply.toUserAvatar ? (
                 <img src={apply.toUserAvatar} alt="" />
               ) : (
-                <span>👤</span>
+                <AppIcon name="user" size={20} />
               )}
             </div>
             <div className="apply-info">
@@ -102,7 +103,7 @@ export default function SendApplyList() {
         ))}
 
         {!loading && filtered.length === 0 && (
-          <EmptyState icon="💌" message="还没有发出过申请" />
+          <EmptyState icon="send" message="还没有发出过申请" />
         )}
       </div>
     </div>

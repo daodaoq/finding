@@ -1,3 +1,4 @@
+import AppIcon, { type AppIconName } from './AppIcon';
 import './CreateActionSheet.css';
 
 interface Props {
@@ -8,8 +9,8 @@ interface Props {
 }
 
 const OPTIONS = [
-  { key: 'post', icon: '📝', label: '发帖子', desc: '分享校园生活动态' },
-  { key: 'mate', icon: '🤝', label: '找搭子', desc: '发布搭子邀约' },
+  { key: 'post', icon: 'pen' as AppIconName, label: '发帖子', desc: '分享校园生活动态' },
+  { key: 'mate', icon: 'handshake' as AppIconName, label: '找搭子', desc: '发布搭子邀约' },
 ] as const;
 
 export default function CreateActionSheet({ visible, onClose, onCreatePost, onCreateMate }: Props) {
@@ -28,7 +29,7 @@ export default function CreateActionSheet({ visible, onClose, onCreatePost, onCr
         <div className="action-sheet-options">
           {OPTIONS.map(opt => (
             <button key={opt.key} className="as-option" onClick={() => handleSelect(opt.key)}>
-              <span className="as-option-icon">{opt.icon}</span>
+              <span className="as-option-icon"><AppIcon name={opt.icon} size={26} /></span>
               <div className="as-option-info">
                 <span className="as-option-label">{opt.label}</span>
                 <span className="as-option-desc">{opt.desc}</span>

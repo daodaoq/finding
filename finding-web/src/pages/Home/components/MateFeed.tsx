@@ -1,6 +1,7 @@
 import MateCard from '../../../components/MateCard';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import AppIcon from '../../../components/AppIcon';
 import { MATE_CATEGORIES } from '../../../utils/constants';
 import type { Mate } from '../../../types/mate';
 // 共享信息流样式（分类网格 + 排序栏 + 搭子列表 + .no-more）
@@ -46,7 +47,7 @@ export default function MateFeed({
               className={`category-cell ${category === cat.code ? 'active' : ''}`}
               onClick={() => onCategoryChange(cat.code)}
             >
-              <span className="category-cell-icon">{cat.icon}</span>
+              <span className="category-cell-icon"><AppIcon name={cat.icon} size={16} /></span>
               <span className="category-cell-name">{cat.name}</span>
             </button>
           ))}
@@ -79,7 +80,7 @@ export default function MateFeed({
         {loading && <LoadingSkeleton />}
         {!loading && mates.length === 0 && (
           <EmptyState
-            icon="🔍"
+            icon="search"
             message={
               category
                 ? `暂无"${MATE_CATEGORIES.find((c) => c.code === category)?.name}"邀约`

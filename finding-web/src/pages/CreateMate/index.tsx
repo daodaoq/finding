@@ -5,6 +5,7 @@ import LoginModal from '../../components/LoginModal';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import { showToast } from '../../components/Toast';
+import AppIcon from '../../components/AppIcon';
 import './index.css';
 
 export default function CreateMatePage() {
@@ -60,7 +61,7 @@ export default function CreateMatePage() {
                 className={`cm-cat-cell ${category === cat.code ? 'active' : ''}`}
                 onClick={() => setCategory(category === cat.code ? '' : cat.code)}
               >
-                <span>{cat.icon}</span>
+                <AppIcon name={cat.icon} size={16} />
                 <span>{cat.name}</span>
               </button>
             ))}
@@ -88,7 +89,7 @@ export default function CreateMatePage() {
 
         {/* 时间 */}
         <div className="cm-field">
-          <span className="cm-field-icon">🕐</span>
+          <span className="cm-field-icon"><AppIcon name="clock" size={18} /></span>
           <input
             className="cm-field-input"
             type="datetime-local"
@@ -99,7 +100,7 @@ export default function CreateMatePage() {
 
         {/* 地点 */}
         <div className="cm-field">
-          <span className="cm-field-icon">📍</span>
+          <span className="cm-field-icon"><AppIcon name="location" size={18} /></span>
           <input
             className="cm-field-input"
             type="text"
@@ -111,7 +112,7 @@ export default function CreateMatePage() {
 
         {/* 人数 */}
         <div className="cm-field">
-          <span className="cm-field-icon">👥</span>
+          <span className="cm-field-icon"><AppIcon name="users" size={18} /></span>
           <select
             className="cm-field-input"
             value={maxParticipants}
@@ -126,7 +127,7 @@ export default function CreateMatePage() {
 
       {!isLoggedIn && (
         <div className="cm-login-hint" onClick={() => requireLogin(() => {})}>
-          🔒 登录后即可发布搭子邀约
+          <AppIcon name="lock" size={14} /> 登录后即可发布搭子邀约
         </div>
       )}
 

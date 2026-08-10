@@ -4,6 +4,7 @@ import { resumeApi } from '../../api/resume';
 import { uploadApi } from '../../api/upload';
 import { showToast } from '../../components/Toast';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import AppIcon, { type AppIconName } from '../../components/AppIcon';
 import type { UserResume } from '../../types/resume';
 import './index.css';
 
@@ -118,7 +119,7 @@ export default function ResumeEditPage() {
 
       <div className="re-body">
         {/* 板块1 基础信息栏 */}
-        <Card title="💁 基础信息栏">
+        <Card icon="user" title="基础信息栏">
           <div className="re-field">
             <label className="re-field-label">性别</label>
             <select
@@ -146,7 +147,7 @@ export default function ResumeEditPage() {
         </Card>
 
         {/* 板块2 自我画像 */}
-        <Card title="🎨 自我画像 · 我是一个什么样的人">
+        <Card icon="palette" title="自我画像 · 我是一个什么样的人">
           <Field label="性格优点" textarea value={form.personalityTraits ?? ''} onChange={(v) => set('personalityTraits', v)} placeholder="如：共情力、细心、情绪稳定、有责任感、粘人程度、微拖延等（真实不完美）" />
           <Field label="小缺点" textarea value={form.flaws ?? ''} onChange={(v) => set('flaws', v)} placeholder="如：慢热、偶尔敏感、不会主动、轻微拖延" />
           <Field label="个人三观" textarea value={form.worldview ?? ''} onChange={(v) => set('worldview', v)} placeholder="金钱观、消费观、婚恋观、家庭观念、吵架处理方式" />
@@ -156,7 +157,7 @@ export default function ResumeEditPage() {
         </Card>
 
         {/* 板块3 过往恋爱复盘 */}
-        <Card title="💭 过往恋爱复盘 · 核心亮点，不吐槽前任">
+        <Card icon="thought" title="过往恋爱复盘 · 核心亮点，不吐槽前任">
           <Field label="恋爱次数" value={form.relationshipCount ?? ''} onChange={(v) => set('relationshipCount', v)} placeholder="如 2次 / 0次" />
           <Field label="分手核心原因" textarea value={form.breakupReason ?? ''} onChange={(v) => set('breakupReason', v)} placeholder="客观描述，不诋毁" />
           <Field label="恋爱短板" textarea value={form.loveShortcoming ?? ''} onChange={(v) => set('loveShortcoming', v)} placeholder="自己在这段关系里的不足" />
@@ -165,7 +166,7 @@ export default function ResumeEditPage() {
         </Card>
 
         {/* 板块4 恋爱相处模式 */}
-        <Card title="🤝 恋爱相处模式 · 对方最关心的部分">
+        <Card icon="handshake" title="恋爱相处模式 · 对方最关心的部分">
           <Field label="日常陪伴" textarea value={form.dailyCompany ?? ''} onChange={(v) => set('dailyCompany', v)} placeholder="空闲时间怎么分配？能不能秒回？忙的时候怎么报备？" />
           <Field label="吵架模式" textarea value={form.fightMode ?? ''} onChange={(v) => set('fightMode', v)} placeholder="不冷战、愿意低头沟通、当天矛盾当天解决" />
           <Field label="表达爱意方式" textarea value={form.loveExpression ?? ''} onChange={(v) => set('loveExpression', v)} placeholder="行动派 / 语言浪漫？擅长送礼物？喜欢见面陪伴？" />
@@ -173,7 +174,7 @@ export default function ResumeEditPage() {
         </Card>
 
         {/* 板块5 个人生活与规划 */}
-        <Card title="🌱 个人生活与规划 · 展示长期稳定性">
+        <Card icon="sprout" title="个人生活与规划 · 展示长期稳定性">
           <Field label="爱好与日常" textarea value={form.hobbies ?? ''} onChange={(v) => set('hobbies', v)} placeholder="休闲娱乐、运动、美食、追剧、旅行、学习提升" />
           <Field label="日常状态" textarea value={form.dailyStatus ?? ''} onChange={(v) => set('dailyStatus', v)} placeholder="平时的一天大致怎么过" />
           <Field label="生活习惯" textarea value={form.lifeHabits ?? ''} onChange={(v) => set('lifeHabits', v)} placeholder="作息、爱好、习惯" />
@@ -182,24 +183,24 @@ export default function ResumeEditPage() {
         </Card>
 
         {/* 板块6 理想另一半 */}
-        <Card title="💘 理想另一半 · 择偶要求">
+        <Card icon="heart" title="理想另一半 · 择偶要求">
           <Field label="硬性条件（底线）" textarea value={form.hardConditions ?? ''} onChange={(v) => set('hardConditions', v)} placeholder="年龄范围、城市、是否同城、有无不良嗜好（酗酒、冷暴力、暧昧不清）" />
           <Field label="软性期待（灵魂契合）" textarea value={form.softExpectations ?? ''} onChange={(v) => set('softExpectations', v)} placeholder="性格、情绪稳定性、沟通习惯、对待感情的态度、三观契合点" />
         </Card>
 
         {/* 板块7 加分项 */}
-        <Card title="⭐ 加分项 · 我能为恋爱带来什么">
+        <Card icon="star" title="加分项 · 我能为恋爱带来什么">
           <Field label="情绪价值" textarea value={form.bonusPoints ?? ''} onChange={(v) => set('bonusPoints', v)} placeholder="永远站在对方这边、倾听烦恼、缓解焦虑；实际付出：会做饭、擅长规划旅行、细心记住纪念日；未来规划：愿意把对方规划进自己的人生" />
         </Card>
 
         {/* 板块8 走心宣言 */}
-        <Card title="💌 走心宣言">
+        <Card icon="mail" title="走心宣言">
           <Field label="对爱情的期待" textarea value={form.loveExpectation ?? ''} onChange={(v) => set('loveExpectation', v)} placeholder="期待一段怎样的感情" />
           <Field label="对新恋情的态度及承诺" textarea value={form.loveAttitude ?? ''} onChange={(v) => set('loveAttitude', v)} placeholder="承诺不养鱼、认真专一" />
         </Card>
 
         {/* 板块9 生活相册 */}
-        <Card title="📷 生活相册">
+        <Card icon="image" title="生活相册">
           <p className="re-album-hint">展示生活随拍，可拖拽排序或点箭头调整顺序，点击 ✕ 删除</p>
           <div className="re-album">
             {(form.photoAlbum || []).map((url, i) => (
@@ -235,10 +236,10 @@ export default function ResumeEditPage() {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ icon = 'book', title, children }: { icon?: AppIconName; title: string; children: React.ReactNode }) {
   return (
     <section className="re-card">
-      <h3 className="re-card-title">{title}</h3>
+      <h3 className="re-card-title"><AppIcon name={icon} size={18} />{title}</h3>
       {children}
     </section>
   );

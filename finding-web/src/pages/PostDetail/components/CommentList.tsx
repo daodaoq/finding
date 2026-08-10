@@ -1,4 +1,5 @@
 import EmptyState from '../../../components/EmptyState';
+import AppIcon from '../../../components/AppIcon';
 import { formatRelativeTime } from '../../../utils/format';
 import type { Comment } from '../../../types/comment';
 import './CommentList.css';
@@ -24,11 +25,11 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
 
       {/* 评论列表 */}
       <div className="pd-comment-list">
-        {comments.length === 0 && <EmptyState icon="💬" message="暂无评论，来说点什么吧" />}
+        {comments.length === 0 && <EmptyState icon="message" message="暂无评论，来说点什么吧" />}
         {comments.map((comment) => (
           <div key={comment.id} className="comment-item">
             <div className="comment-avatar">
-              {comment.avatar ? <img src={comment.avatar} alt="" /> : <span>👤</span>}
+              {comment.avatar ? <img src={comment.avatar} alt="" /> : <AppIcon name="user" size={16} />}
             </div>
             <div className="comment-body">
               <div className="comment-top">
@@ -40,8 +41,8 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
                 {comment.content}
               </div>
               <div className="comment-actions">
-                <button onClick={() => onLike(comment.id)}>
-                  {comment.isLiked ? '❤️' : '🤍'} {comment.likeCount || ''}
+                <button className={`comment-like ${comment.isLiked ? 'liked' : ''}`} onClick={() => onLike(comment.id)}>
+                  <AppIcon name="heart" size={14} />{comment.likeCount || ''}
                 </button>
                 <button onClick={() => onReply(comment)}>回复</button>
                 {comment.userId === currentUserId && (
@@ -56,7 +57,7 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
                   {comment.replies.map((reply) => (
                     <div key={reply.id} className="reply-item">
                       <div className="comment-avatar small">
-                        {reply.avatar ? <img src={reply.avatar} alt="" /> : <span>👤</span>}
+                        {reply.avatar ? <img src={reply.avatar} alt="" /> : <AppIcon name="user" size={14} />}
                       </div>
                       <div className="comment-body">
                         <div className="comment-top">

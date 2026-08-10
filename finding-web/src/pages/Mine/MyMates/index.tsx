@@ -4,6 +4,7 @@ import { userApi } from '../../../api/user';
 import { useAuthStore } from '../../../store/authStore';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import EmptyState from '../../../components/EmptyState';
+import AppIcon from '../../../components/AppIcon';
 import { showToast } from '../../../components/Toast';
 import type { User } from '../../../types/user';
 import '../subpage.css';
@@ -98,7 +99,7 @@ export default function MyMatesPage() {
         {!loading && users.map(u => (
           <div key={u.id} className="user-row">
             <div className="user-row-avatar">
-              {u.avatar ? <img src={u.avatar} alt="" /> : <span>👤</span>}
+              {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={20} />}
             </div>
             <div className="user-row-info">
               <span className="user-row-name">{u.nickname}</span>

@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import ResumeView from '../../components/ResumeView';
 import ReportDialog from '../../components/ReportDialog';
+import AppIcon from '../../components/AppIcon';
 import type { ResumeView as ResumeViewType } from '../../types/resume';
 import './index.css';
 
@@ -119,20 +120,20 @@ export default function UserProfilePage() {
 
       <div className="up-card">
         <div className="up-avatar">
-          {profile.avatar ? <img src={profile.avatar} alt="" /> : <span>👤</span>}
+          {profile.avatar ? <img src={profile.avatar} alt="" /> : <AppIcon name="user" size={34} />}
         </div>
         <div className="up-name">{profile.nickname}</div>
         {profile.signature && <div className="up-bio">{profile.signature}</div>}
 
         <div className="up-meta">
           {profile.school && (
-            <div className="up-meta-item"><span>🏫</span> {profile.school}</div>
+            <div className="up-meta-item"><AppIcon name="grad" size={14} /> {profile.school}</div>
           )}
           {profile.city && (
-            <div className="up-meta-item"><span>📍</span> {profile.city}</div>
+            <div className="up-meta-item"><AppIcon name="location" size={14} /> {profile.city}</div>
           )}
           <div className="up-meta-item">
-            <span>{profile.gender === 1 ? '♂️' : profile.gender === 2 ? '♀️' : '❓'}</span>
+            {profile.gender === 1 ? <AppIcon name="mars" size={14} /> : profile.gender === 2 ? <AppIcon name="venus" size={14} /> : null}
             {profile.gender === 1 ? '男' : profile.gender === 2 ? '女' : '未设置'}
           </div>
         </div>
@@ -179,7 +180,7 @@ export default function UserProfilePage() {
           <ResumeView resume={resumeView.resume} avatar={profile?.avatar} />
         ) : (
           <div className="up-resume-locked">
-            <span className="up-lock-icon">🔒</span>
+            <span className="up-lock-icon"><AppIcon name="lock" size={36} /></span>
             <p className="up-lock-main">情感简历未解锁</p>
             <p className="up-lock-hint">
               去聊天里和TA互换详细信息后，就能看到这份专属档案啦

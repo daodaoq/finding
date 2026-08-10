@@ -5,6 +5,7 @@ import { uploadApi } from '../../api/upload';
 import LoginModal from '../../components/LoginModal';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { showToast } from '../../components/Toast';
+import AppIcon from '../../components/AppIcon';
 import './index.css';
 
 const MAX_IMAGES = 9;
@@ -140,7 +141,7 @@ export default function CreatePostPage() {
         </div>
 
         <div className="cp-location-row" style={{ marginTop: 12 }}>
-          <span>📍</span>
+          <AppIcon name="location" size={16} />
           <input
             className="cp-location-input"
             type="text"
@@ -157,7 +158,7 @@ export default function CreatePostPage() {
 
       {!isLoggedIn && (
         <div className="cp-login-hint" onClick={() => requireLogin(() => {})}>
-          🔒 登录后即可发布动态
+          <AppIcon name="lock" size={14} /> 登录后即可发布动态
         </div>
       )}
 

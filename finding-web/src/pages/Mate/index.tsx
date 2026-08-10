@@ -6,6 +6,7 @@ import CategoryGrid from '../../components/CategoryGrid';
 import MateCard from '../../components/MateCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import AppIcon from '../../components/AppIcon';
 import { showToast } from '../../components/Toast';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -55,7 +56,7 @@ export default function MatePage() {
         <span className="filter-item">类型</span>
         <span className="filter-item">时间</span>
         <span className="filter-item">地点</span>
-        <button className="filter-search">🔍</button>
+        <button className="filter-search"><AppIcon name="search" size={18} /></button>
       </div>
 
       {/* Categories */}

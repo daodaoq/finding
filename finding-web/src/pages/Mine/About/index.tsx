@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG } from '../../../utils/config';
+import AppIcon from '../../../components/AppIcon';
 import '../subpage.css';
 import '../Settings/settings.css';
 
@@ -19,7 +20,9 @@ export default function AboutPage() {
       </div>
 
       <div className="set-card" style={{ textAlign: 'center', padding: '28px 16px' }}>
-        <div style={{ fontSize: 40 }}>💗</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <AppIcon name="heart" size={40} color="#ff6b81" fill="#ff6b81" />
+        </div>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#ff6b81', margin: '8px 0 4px' }}>
           Finding
         </div>
