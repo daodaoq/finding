@@ -21,7 +21,11 @@ public class Report {
     private Long targetId;
     private String contentSnapshot; // 被投诉内容快照
     private String reason;
+    private String evidence;        // 证据附件(逗号分隔URL)
     private Integer status;         // 0=待处理 1=已处理 2=驳回
+    private Long handleBy;          // 处理人
+    private String handleNote;      // 处理结果/意见
+    private LocalDateTime handleTime; // 处理时间
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

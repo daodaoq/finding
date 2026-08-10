@@ -22,6 +22,7 @@ const ProfileEditPage = lazy(() => import('../pages/Mine/ProfileEdit'));
 const VerifyPage = lazy(() => import('../pages/Mine/Verify'));
 const ResumeEditPage = lazy(() => import('../pages/Resume'));
 const HistoryPage = lazy(() => import('../pages/Mine/History'));
+const MyReportsPage = lazy(() => import('../pages/Mine/MyReports'));
 const OrdersPage = lazy(() => import('../pages/Mine/Orders'));
 const HelpPage = lazy(() => import('../pages/Mine/Help'));
 const FAQPage = lazy(() => import('../pages/Mine/Help/FAQ'));
@@ -100,6 +101,7 @@ const router = createBrowserRouter([
       { path: 'mine/verify', element: withSuspense(<VerifyPage />) },
       { path: 'mine/resume', element: withSuspense(<ResumeEditPage />) },
       { path: 'mine/history', element: withSuspense(<HistoryPage />) },
+      { path: 'mine/reports', element: withSuspense(<MyReportsPage />) },
       { path: 'mine/orders', element: withSuspense(<OrdersPage />) },
       { path: 'mine/help', element: withSuspense(<HelpPage />) },
       { path: 'mine/help/faq', element: withSuspense(<FAQPage />) },

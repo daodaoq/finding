@@ -27,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -55,6 +57,8 @@ public class ReportController {
         Long targetId = body.get("targetId") != null ? Long.valueOf(body.get("targetId").toString()) : null;
         String reason = body.get("reason") != null ? body.get("reason").toString() : null;
         Long roomId = body.get("roomId") != null ? Long.valueOf(body.get("roomId").toString()) : null;
+        List<String> evidence = body.get("evidence") != null && body.get("evidence") instanceof List<?> ev
+                ? ev.stream().map(String::valueOf).toList() : List.of();
 
         if (!StringUtils.hasText(targetType)) throw new BusinessException(ResultCode.PARAM_ERROR, "投诉类型必填");
         if (targetId == null) throw new BusinessException(ResultCode.PARAM_ERROR, "targetId 必填");
@@ -123,9 +127,33 @@ public class ReportController {
         r.setTargetId(targetId);
         r.setContentSnapshot(snapshot);
         r.setReason(reason);
+        r.setEvidence(evidence.isEmpty() ? null : String.join(",", evidence));
         r.setStatus(0);
         reportMapper.insert(r);
         return Result.ok();
+    }
+
+    /** 我提交的投诉记录(含处理状态/意见),普通用户仅可见自己的 */
+    @GetMapping("/mine")
+    public Result<List<Map<String, Object>>> myReports() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        List<Report> reports = reportMapper.selectList(new LambdaQueryWrapper<Report>()
+                .eq(Report::getFromUserId, userId)
+                .orderByDesc(Report::getCreatedAt));
+        return Result.ok(reports.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", r.getId());
+            m.put("targetType", r.getTargetType());
+            m.put("targetId", r.getTargetId());
+            m.put("reason", r.getReason());
+            m.put("contentSnapshot", r.getContentSnapshot());
+            m.put("status", r.getStatus());
+            m.put("handleNote", r.getHandleNote());
+            m.put("handleTime", r.getHandleTime());
+            m.put("createdAt", r.getCreatedAt());
+            return m;
+        }).toList());
     }
 
     /** 用户/情感卡片的资料快照 */

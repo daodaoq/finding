@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Tag, Tabs, Popconfirm, Avatar, Modal, Input, InputNumber, message } from 'antd';
+import { Table, Space, Tag, Tabs, Avatar, Modal, Input, InputNumber, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -12,12 +12,18 @@ interface ReportRecord {
   targetNickname: string;
   targetAvatar?: string;
   reason: string;
+  evidence?: string;
   status: number;
+  handleBy?: number;
+  handleNote?: string;
+  handleTime?: string;
   roomId?: number;
   targetType?: string;
   targetId?: number;
   contentSnapshot?: string;
   createdAt: string;
+  targetReportCount?: number;
+  fromReportCount?: number;
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -63,12 +69,29 @@ export default function Reports() {
 
   useEffect(() => { fetchData(1, activeTab); }, [activeTab]);
 
-  const updateStatus = async (id: number, status: number) => {
+  // 处理/驳回弹窗(带处理意见)
+  const [handleTarget, setHandleTarget] = useState<{ id: number; action: 1 | 2; nickname: string } | null>(null);
+  const [handleNote, setHandleNote] = useState('');
+  const [handleLoading, setHandleLoading] = useState(false);
+
+  const openHandle = (record: ReportRecord, action: 1 | 2) => {
+    setHandleTarget({ id: record.id, action, nickname: record.fromNickname });
+    setHandleNote('');
+  };
+
+  const confirmHandle = async () => {
+    if (!handleTarget) return;
+    setHandleLoading(true);
     try {
-      await request.put(`/admin/reports/${id}/status`, { status });
-      message.success('已更新');
+      await request.put(`/admin/reports/${handleTarget.id}/status`, {
+        status: handleTarget.action,
+        note: handleNote.trim() || undefined,
+      });
+      message.success(handleTarget.action === 1 ? '已处理并通知投诉人' : '已驳回并通知投诉人');
+      setHandleTarget(null);
       fetchData(page, activeTab);
     } catch { message.error('操作失败'); }
+    finally { setHandleLoading(false); }
   };
 
   // 详情弹窗
@@ -128,12 +151,8 @@ export default function Reports() {
           <a onClick={() => setDetailTarget(record)}>查看</a>
           {record.status === 0 && (
             <>
-              <Popconfirm title="标记该投诉为已处理？" onConfirm={() => updateStatus(record.id, 1)}>
-                <a>处理</a>
-              </Popconfirm>
-              <Popconfirm title="驳回该投诉？" onConfirm={() => updateStatus(record.id, 2)}>
-                <a style={{ color: '#888' }}>驳回</a>
-              </Popconfirm>
+              <a onClick={() => openHandle(record, 1)}>处理</a>
+              <a style={{ color: '#888' }} onClick={() => openHandle(record, 2)}>驳回</a>
             </>
           )}
           <a style={{ color: 'red' }} onClick={() => openBan(record)}>封禁</a>
@@ -197,6 +216,26 @@ export default function Reports() {
         </p>
       </Modal>
 
+      {/* 处理/驳回弹窗(带处理意见) */}
+      <Modal
+        title={handleTarget ? (handleTarget.action === 1 ? '处理投诉' : '驳回投诉') : ''}
+        open={handleTarget != null}
+        onOk={confirmHandle}
+        onCancel={() => setHandleTarget(null)}
+        okText={handleTarget?.action === 1 ? '确认处理' : '确认驳回'}
+        okButtonProps={handleTarget?.action === 2 ? { danger: true } : undefined}
+        confirmLoading={handleLoading}
+        width={420}
+      >
+        <p style={{ marginBottom: 8 }}>处理对象：{handleTarget?.nickname}</p>
+        <Input.TextArea
+          rows={3}
+          placeholder="处理意见（选填，会通知给投诉人）"
+          value={handleNote}
+          onChange={(e) => setHandleNote(e.target.value)}
+        />
+      </Modal>
+
       {/* 投诉详情弹窗 */}
       <Modal
         title="投诉详情"
@@ -207,11 +246,32 @@ export default function Reports() {
       >
         {detailTarget && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div><b>投诉人：</b>{detailTarget.fromNickname}</div>
-            <div><b>被投诉人：</b>{detailTarget.targetNickname}</div>
+            <div><b>投诉人：</b>{detailTarget.fromNickname}
+              {detailTarget.fromReportCount != null && detailTarget.fromReportCount > 0 && (
+                <Tag color="orange" style={{ marginLeft: 8 }}>累计投诉 {detailTarget.fromReportCount} 次</Tag>
+              )}
+            </div>
+            <div><b>被投诉人：</b>{detailTarget.targetNickname}
+              {detailTarget.targetReportCount != null && detailTarget.targetReportCount > 0 && (
+                <Tag color="red" style={{ marginLeft: 8 }}>累计被投诉 {detailTarget.targetReportCount} 次</Tag>
+              )}
+            </div>
             <div><b>投诉类型：</b>{detailTarget.targetType ? TYPE_LABEL[detailTarget.targetType] || detailTarget.targetType : '用户'}</div>
             <div><b>投诉原因：</b>{detailTarget.reason}</div>
             <div><b>提交时间：</b>{detailTarget.createdAt?.replace('T', ' ')}</div>
+
+            {/* 证据图片 */}
+            {detailTarget.evidence ? (
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>证据附件：</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {detailTarget.evidence.split(',').filter(Boolean).map((url, i) => (
+                    <img key={i} src={url} alt="证据" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div style={{ marginTop: 8 }}>
               <div style={{ fontWeight: 600, marginBottom: 6 }}>被投诉内容：</div>
               <div style={{
@@ -221,6 +281,16 @@ export default function Reports() {
                 {detailTarget.contentSnapshot || '（旧投诉无内容快照）'}
               </div>
             </div>
+
+            {/* 处理记录 */}
+            {detailTarget.status !== 0 && (
+              <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid #f0f0f0', fontSize: 13, color: '#555' }}>
+                <div><b>处理结果：</b>{detailTarget.status === 1 ? '已处理' : '已驳回'}</div>
+                {detailTarget.handleNote && <div><b>处理意见：</b>{detailTarget.handleNote}</div>}
+                <div><b>处理时间：</b>{detailTarget.handleTime?.replace('T', ' ')}</div>
+                <div><b>处理人ID：</b>{detailTarget.handleBy ?? '—'}</div>
+              </div>
+            )}
           </div>
         )}
       </Modal>

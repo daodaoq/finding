@@ -1,0 +1,48 @@
+.myreport-item {
+  background: #fff;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.myreport-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.myreport-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+.myreport-status {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+.myreport-status.pending { background: #fff3e0; color: #f59e0b; }
+.myreport-status.handled { background: #e8f5e9; color: #4caf50; }
+.myreport-status.rejected { background: #f5f5f5; color: #999; }
+.myreport-reason {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.myreport-snapshot {
+  font-size: 12px;
+  color: #999;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.myreport-handle {
+  font-size: 12px;
+  color: #ff6b81;
+  margin-bottom: 4px;
+}
+.myreport-time {
+  font-size: 11px;
+  color: #bbb;
+}

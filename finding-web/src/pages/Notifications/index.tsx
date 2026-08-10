@@ -78,6 +78,8 @@ export default function NotificationsPage() {
       if (msg.fromUserId) navigate(`/user/${msg.fromUserId}`);
     } else if (msg.type.startsWith('info_share')) {
       if (msg.fromUserId) navigate(`/user/${msg.fromUserId}`);
+    } else if (msg.type === 'report_handled' || msg.type === 'report_rejected') {
+      navigate('/mine/reports');
     }
     // system 类型不做跳转
   };
