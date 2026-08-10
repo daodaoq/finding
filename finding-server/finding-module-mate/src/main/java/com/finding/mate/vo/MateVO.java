@@ -31,6 +31,12 @@ public class MateVO {
     private Double distanceKm;
     private Boolean hasJoined;
     private Boolean isFull;
+    /** 当前用户的报名状态:0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补;未报名为 null */
+    private Integer myApplicationStatus;
+    /** 是否已过期(activityTime 已过) */
+    private Boolean isExpired;
+    /** 剩余名额(max - current) */
+    private Integer remainingSlots;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

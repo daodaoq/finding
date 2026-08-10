@@ -17,6 +17,10 @@ export interface Mate {
   distanceKm: number;
   hasJoined: boolean;
   isFull: boolean;
+  isExpired?: boolean;
+  remainingSlots?: number;
+  /** 当前用户报名状态:0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补;未报名为 null */
+  myApplicationStatus?: number | null;
   createdAt: string;
   updatedAt: string;
 }

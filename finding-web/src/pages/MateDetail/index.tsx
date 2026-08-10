@@ -41,12 +41,8 @@ export default function MateDetailPage() {
     requireLogin(async () => {
       try {
         await mateApi.join(mateId);
-        setMate(prev => prev ? {
-          ...prev,
-          hasJoined: true,
-          currentParticipants: prev.currentParticipants + 1
-        } : null);
         showToast('申请已发送');
+        loadDetail(); // 刷新剩余名额/报名状态(满员时可能进入候补)
       } catch { showToast('加入失败'); }
     });
   };
@@ -108,7 +104,7 @@ export default function MateDetailPage() {
         <span className="md-category-badge">{mate.categoryDesc || mate.category}</span>
         <h2 className="md-title">{mate.title}</h2>
         <span className={`md-status-tag status-${mate.status}`}>
-          {mate.status === 2 ? '已关闭' : mate.isFull ? '已满员' : '招募中'}
+          {mate.status === 0 ? '已取消' : mate.status === 2 ? '已关闭' : mate.isExpired ? '已过期' : mate.isFull ? '已满员' : '招募中'}
         </span>
       </div>
 
@@ -118,7 +114,7 @@ export default function MateDetailPage() {
           <span className="md-info-icon"><AppIcon name="clock" size={18} /></span>
           <div>
             <span className="md-info-label">活动时间</span>
-            <span className="md-info-value">{formatFullDate(mate.activityTime)}</span>
+            <span className="md-info-value">{formatFullDate(mate.activityTime)}（截止报名）</span>
           </div>
         </div>
         <div className="md-info-row">
@@ -133,8 +129,8 @@ export default function MateDetailPage() {
           <div>
             <span className="md-info-label">参与人数</span>
             <span className="md-info-value">
-              {mate.currentParticipants}/{mate.maxParticipants} 人
-              {mate.isFull && <span className="md-full-badge">已满</span>}
+              {mate.currentParticipants}/{mate.maxParticipants} 人 · 剩余 {mate.remainingSlots ?? 0} 名
+              {mate.isFull && <span className="md-full-badge">已满·可候补</span>}
             </span>
           </div>
         </div>
@@ -178,7 +174,7 @@ export default function MateDetailPage() {
       {isOwner && (
         <div className="md-section">
           <h4 className="md-section-title">
-            申请管理（{participants.filter(p => p.status === 0).length} 待处理）
+            申请管理（{participants.filter(p => p.status === 0 || p.status === 4).length} 待处理）
           </h4>
           {participants.length === 0 ? (
             <p className="md-desc" style={{ color: '#999' }}>暂无申请</p>
@@ -197,8 +193,9 @@ export default function MateDetailPage() {
                   </div>
                 )}
               </div>
-              {p.status === 0 ? (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              {p.status === 0 || p.status === 4 ? (
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  {p.status === 4 && <span style={{ fontSize: 11, color: '#f59e0b', flexShrink: 0 }}>候补</span>}
                   <button
                     onClick={() => handleJoinRequest(p.participantId, true)} disabled={managing}
                     style={{ border: 'none', background: '#52c41a', color: '#fff', padding: '4px 12px', borderRadius: 14, fontSize: 13 }}
@@ -210,7 +207,7 @@ export default function MateDetailPage() {
                 </div>
               ) : (
                 <span style={{ fontSize: 12, flexShrink: 0, color: p.status === 1 ? '#52c41a' : '#999' }}>
-                  {p.status === 1 ? '已通过' : '已拒绝'}
+                  {p.status === 1 ? '已通过' : p.status === 3 ? '已退出' : '已拒绝'}
                 </span>
               )}
             </div>
@@ -218,23 +215,35 @@ export default function MateDetailPage() {
         </div>
       )}
 
-      {/* 底部操作栏 */}
+      {/* 底部操作栏:按我的报名状态/活动状态渲染 */}
       <div className="md-bottom-bar">
         {isOwner ? (
           <button className="md-btn md-btn-disabled" disabled>这是我发布的搭子</button>
-        ) : mate.hasJoined ? (
-          <button className="md-btn md-btn-leave" onClick={handleLeave} disabled={leaving}>
-            {leaving ? '退出中...' : '退出搭子活动'}
-          </button>
-        ) : mate.status === 1 && !mate.isFull ? (
-          <button className="md-btn md-btn-join" onClick={handleJoin}>
-            申请加入
-          </button>
-        ) : (
-          <button className="md-btn md-btn-disabled" disabled>
-            {mate.status === 2 ? '活动已关闭' : '人数已满'}
-          </button>
-        )}
+        ) : (() => {
+          const my = mate.myApplicationStatus;
+          if (mate.status !== 1 || mate.isExpired) {
+            return (
+              <button className="md-btn md-btn-disabled" disabled>
+                {mate.status === 0 ? '活动已取消' : mate.status === 2 ? '活动已关闭' : mate.isExpired ? '活动已过期' : '不可加入'}
+              </button>
+            );
+          }
+          if (my === 0) return <button className="md-btn md-btn-disabled" disabled>待审核中</button>;
+          if (my === 4) return <button className="md-btn md-btn-disabled" disabled>候补中</button>;
+          if (my === 2 || my === 3) return <button className="md-btn md-btn-disabled" disabled>已申请过，无法重复加入</button>;
+          if (my === 1) {
+            return (
+              <button className="md-btn md-btn-leave" onClick={handleLeave} disabled={leaving}>
+                {leaving ? '退出中...' : '退出搭子活动'}
+              </button>
+            );
+          }
+          return (
+            <button className="md-btn md-btn-join" onClick={handleJoin}>
+              {mate.isFull ? '加入候补' : '申请加入'}
+            </button>
+          );
+        })()}
       </div>
 
       <LoginModal visible={showLogin} onClose={handleClose} onSuccess={handleLoginSuccess} />

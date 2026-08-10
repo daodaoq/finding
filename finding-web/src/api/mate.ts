@@ -51,7 +51,8 @@ export interface Participant {
   avatar?: string;
   school?: string;
   message?: string;
-  status: number;   // 0=待审核 1=已通过 2=已拒绝
+  status: number;   // 0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补
+  statusDesc?: string;
   applyTime: string;
 }
 
