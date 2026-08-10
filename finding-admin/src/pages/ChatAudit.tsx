@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Table, Input, Space, Tag, Popconfirm, message, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
@@ -18,9 +18,21 @@ const recalledTag = (r: boolean) => (r ? <Tag color="orange">已撤回</Tag> : n
 export default function ChatAudit() {
   const [tab, setTab] = useState('private');
 
-  // ── 私聊审查状态 ──
-  const [keyword, setKeyword] = useState('');
-  const [userOptions, setUserOptions] = useState<any[]>([]);
+  // ── 用户列表(私聊审查) ──
+  const [userList, setUserList] = useState<any[]>([]);
+  const [userListLoading, setUserListLoading] = useState(false);
+  const [userListPage, setUserListPage] = useState(1);
+  const [userListTotal, setUserListTotal] = useState(0);
+  const [userKeyword, setUserKeyword] = useState('');
+
+  // ── 群列表(群聊审查) ──
+  const [groupList, setGroupList] = useState<any[]>([]);
+  const [groupListLoading, setGroupListLoading] = useState(false);
+  const [groupListPage, setGroupListPage] = useState(1);
+  const [groupListTotal, setGroupListTotal] = useState(0);
+  const [groupKeyword, setGroupKeyword] = useState('');
+
+  // ── 私聊消息 ──
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState('');
   const [otherKeyword, setOtherKeyword] = useState('');
@@ -31,30 +43,36 @@ export default function ChatAudit() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
 
-  // ── 群聊审查状态 ──
-  const [gKeyword, setGKeyword] = useState('');
-  const [groupOptions, setGroupOptions] = useState<any[]>([]);
+  // ── 群消息 ──
   const [selectedGroup, setSelectedGroup] = useState<{ id: number; name: string } | null>(null);
   const [gData, setGData] = useState<GroupMsg[]>([]);
   const [gLoading, setGLoading] = useState(false);
   const [gTotal, setGTotal] = useState(0);
   const [gPage, setGPage] = useState(1);
 
-  // ── 私聊 ──
-  const searchUsers = async (kw: string) => {
-    if (!kw.trim()) { message.warning('请输入用户昵称/手机号'); return; }
-    const res = await request.get('/admin/users', { params: { page: 1, size: 10, keyword: kw.trim() } });
-    const records = res.data?.data?.records || [];
-    if (records.length === 0) { message.info('未找到用户'); setUserOptions([]); return; }
-    setUserOptions(records);
+  useEffect(() => {
+    fetchUserList(1);
+    fetchGroupList(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── 用户列表 ──
+  const fetchUserList = (p = 1, kw?: string) => {
+    setUserListLoading(true);
+    request.get('/admin/users', { params: { page: p, size: 10, keyword: kw || userKeyword } })
+      .then((res) => { setUserList(res.data.data.records); setUserListTotal(res.data.data.total); setUserListPage(p); })
+      .catch(() => {})
+      .finally(() => setUserListLoading(false));
   };
 
-  const pickUser = (u: any) => {
+  const selectUser = (u: any) => {
     setSelectedUserId(u.id);
     setSelectedUser(u.nickname || `用户${u.id}`);
-    setUserOptions([]);
+    setOtherUserId(null);
+    setOtherOptions([]);
+    setOtherKeyword('');
     setPage(1);
-    fetchMessages(u.id, otherUserId, 1);
+    fetchMessages(u.id, null, 1);
   };
 
   const searchOther = async (kw: string) => {
@@ -86,18 +104,17 @@ export default function ChatAudit() {
     } catch { message.error('操作失败'); }
   };
 
-  // ── 群聊 ──
-  const searchGroups = async (kw: string) => {
-    if (!kw.trim()) { message.warning('请输入群名关键词'); return; }
-    const res = await request.get('/admin/groups', { params: { page: 1, size: 10, keyword: kw.trim() } });
-    const records = res.data?.data?.records || [];
-    if (records.length === 0) { message.info('未找到群聊'); setGroupOptions([]); return; }
-    setGroupOptions(records);
+  // ── 群列表 ──
+  const fetchGroupList = (p = 1, kw?: string) => {
+    setGroupListLoading(true);
+    request.get('/admin/groups', { params: { page: p, size: 10, keyword: kw || groupKeyword } })
+      .then((res) => { setGroupList(res.data.data.records); setGroupListTotal(res.data.data.total); setGroupListPage(p); })
+      .catch(() => {})
+      .finally(() => setGroupListLoading(false));
   };
 
-  const pickGroup = (g: any) => {
+  const selectGroup = (g: any) => {
     setSelectedGroup({ id: g.id, name: g.name || `群${g.id}` });
-    setGroupOptions([]);
     setGPage(1);
     fetchGroupMessages(g.id, 1);
   };
@@ -118,15 +135,27 @@ export default function ChatAudit() {
     } catch { message.error('操作失败'); }
   };
 
+  // ── 表格列 ──
+  const userColumns: ColumnsType<any> = [
+    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '昵称', dataIndex: 'nickname' },
+    { title: '手机号', dataIndex: 'phone', width: 130 },
+    { title: '学校', dataIndex: 'school' },
+  ];
+
+  const groupColumns: ColumnsType<any> = [
+    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '群名', dataIndex: 'name' },
+    { title: '成员', dataIndex: 'memberCount', width: 80 },
+    { title: '创建时间', dataIndex: 'createdAt', render: (v: string) => v?.replace('T', ' ') },
+  ];
+
   const chatColumns: ColumnsType<ChatMsg> = [
     { title: 'ID', dataIndex: 'id', width: 70 },
     { title: '发送方', dataIndex: 'fromUserId', width: 80 },
     { title: '接收方', dataIndex: 'toUserId', width: 80 },
     { title: '类型', dataIndex: 'messageType', width: 70, render: (v: string) => (v === 'image' ? '图片' : '文字') },
-    {
-      title: '内容', dataIndex: 'content', ellipsis: true,
-      render: (v: string, r: ChatMsg) => <span>{recalledTag(r.isRecalled === 1)}{v}</span>,
-    },
+    { title: '内容', dataIndex: 'content', ellipsis: true, render: (v: string, r: ChatMsg) => <span>{recalledTag(r.isRecalled === 1)}{v}</span> },
     { title: '时间', dataIndex: 'createdAt', width: 160, render: (v: string) => v?.replace('T', ' ') },
     { title: '操作', render: (_, r) => (
       <Popconfirm title="确定删除这条消息？" onConfirm={() => handleDeleteChat(r.id)}>
@@ -135,15 +164,12 @@ export default function ChatAudit() {
     )},
   ];
 
-  const groupColumns: ColumnsType<GroupMsg> = [
+  const groupMsgColumns: ColumnsType<GroupMsg> = [
     { title: 'ID', dataIndex: 'id', width: 70 },
     { title: '群', dataIndex: 'groupName', width: 120 },
     { title: '发送人', dataIndex: 'senderName', width: 100, render: (v: string, r: GroupMsg) => <span>{v}（{r.fromUserId}）</span> },
     { title: '类型', dataIndex: 'messageType', width: 70, render: (v: string) => (v === 'image' ? '图片' : '文字') },
-    {
-      title: '内容', dataIndex: 'content', ellipsis: true,
-      render: (v: string, r: GroupMsg) => <span>{recalledTag(r.isRecalled === 1)}{v}</span>,
-    },
+    { title: '内容', dataIndex: 'content', ellipsis: true, render: (v: string, r: GroupMsg) => <span>{recalledTag(r.isRecalled === 1)}{v}</span> },
     { title: '时间', dataIndex: 'createdAt', width: 160, render: (v: string) => v?.replace('T', ' ') },
     { title: '操作', render: (_, r) => (
       <Popconfirm title="确定删除这条消息？" onConfirm={() => handleDeleteGroup(r.id)}>
@@ -161,15 +187,41 @@ export default function ChatAudit() {
           label: '私聊审查',
           children: (
             <div>
-              <Space style={{ marginBottom: 16 }} wrap>
+              {/* 用户选择列表 */}
+              <Space style={{ marginBottom: 12 }}>
                 <Input.Search
-                  placeholder="搜索用户昵称/手机号"
+                  placeholder="按昵称/手机号过滤"
                   style={{ width: 260 }}
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  onSearch={searchUsers}
+                  value={userKeyword}
+                  onChange={(e) => setUserKeyword(e.target.value)}
+                  onSearch={(v) => fetchUserList(1, v)}
+                  allowClear
                 />
-                {selectedUserId != null && (
+              </Space>
+              <Table
+                size="small"
+                columns={userColumns}
+                dataSource={userList}
+                rowKey="id"
+                loading={userListLoading}
+                rowClassName="cursor-pointer"
+                onRow={(r) => ({
+                  onClick: () => selectUser(r),
+                  style: { cursor: 'pointer', background: r.id === selectedUserId ? '#fff1f3' : undefined },
+                })}
+                pagination={{
+                  current: userListPage, total: userListTotal, pageSize: 10, size: 'small',
+                  onChange: (p) => fetchUserList(p),
+                  showTotal: (t) => `共 ${t} 人`,
+                }}
+              />
+              <p style={{ color: '#999', margin: '12px 0 4px', fontSize: 13 }}>
+                👆 点击上方某个用户，查看 TA 的私聊（可再选「只看和谁的对话」）
+              </p>
+              {/* 私聊消息 */}
+              {selectedUser && (
+                <Space style={{ marginBottom: 12 }}>
+                  <span style={{ fontWeight: 600 }}>用户「{selectedUser}」的私聊</span>
                   <Input.Search
                     placeholder="只看和谁的对话（选填）"
                     style={{ width: 220 }}
@@ -177,14 +229,7 @@ export default function ChatAudit() {
                     onChange={(e) => setOtherKeyword(e.target.value)}
                     onSearch={searchOther}
                   />
-                )}
-              </Space>
-              {userOptions.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  {userOptions.map((u) => (
-                    <a key={u.id} onClick={() => pickUser(u)} style={{ marginRight: 12 }}>{u.nickname}（{u.id}）</a>
-                  ))}
-                </div>
+                </Space>
               )}
               {otherOptions.length > 0 && (
                 <div style={{ marginBottom: 8 }}>
@@ -192,11 +237,6 @@ export default function ChatAudit() {
                     <a key={u.id} onClick={() => pickOther(u)} style={{ marginRight: 12 }}>{u.nickname}（{u.id}）</a>
                   ))}
                 </div>
-              )}
-              {selectedUser && (
-                <p style={{ color: '#666', marginBottom: 8 }}>
-                  用户「{selectedUser}」的私聊{otherUserId ? ' 与对方' : ''}（含收发，撤回也保留原文）
-                </p>
               )}
               <Table
                 columns={chatColumns} dataSource={data} rowKey="id" loading={loading}
@@ -214,27 +254,39 @@ export default function ChatAudit() {
           label: '群聊审查',
           children: (
             <div>
-              <Space style={{ marginBottom: 16 }}>
+              {/* 群选择列表 */}
+              <Space style={{ marginBottom: 12 }}>
                 <Input.Search
-                  placeholder="搜索群名"
+                  placeholder="按群名过滤"
                   style={{ width: 260 }}
-                  value={gKeyword}
-                  onChange={(e) => setGKeyword(e.target.value)}
-                  onSearch={searchGroups}
+                  value={groupKeyword}
+                  onChange={(e) => setGroupKeyword(e.target.value)}
+                  onSearch={(v) => fetchGroupList(1, v)}
+                  allowClear
                 />
               </Space>
-              {groupOptions.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  {groupOptions.map((g) => (
-                    <a key={g.id} onClick={() => pickGroup(g)} style={{ marginRight: 12 }}>{g.name}（{g.id}）</a>
-                  ))}
-                </div>
-              )}
+              <Table
+                size="small"
+                columns={groupColumns}
+                dataSource={groupList}
+                rowKey="id"
+                loading={groupListLoading}
+                onRow={(r) => ({
+                  onClick: () => selectGroup(r),
+                  style: { cursor: 'pointer', background: r.id === selectedGroup?.id ? '#fff1f3' : undefined },
+                })}
+                pagination={{
+                  current: groupListPage, total: groupListTotal, pageSize: 10, size: 'small',
+                  onChange: (p) => fetchGroupList(p),
+                  showTotal: (t) => `共 ${t} 个群`,
+                }}
+              />
+              <p style={{ color: '#999', margin: '12px 0 4px', fontSize: 13 }}>👆 点击上方某个群，查看群内全部消息</p>
               {selectedGroup && (
-                <p style={{ color: '#666', marginBottom: 8 }}>群「{selectedGroup.name}」的全部消息（撤回保留原文）</p>
+                <p style={{ fontWeight: 600, marginBottom: 8 }}>群「{selectedGroup.name}」的消息（撤回保留原文）</p>
               )}
               <Table
-                columns={groupColumns} dataSource={gData} rowKey="id" loading={gLoading}
+                columns={groupMsgColumns} dataSource={gData} rowKey="id" loading={gLoading}
                 pagination={{
                   current: gPage, total: gTotal, pageSize: 20,
                   onChange: (p) => selectedGroup && fetchGroupMessages(selectedGroup.id, p),
