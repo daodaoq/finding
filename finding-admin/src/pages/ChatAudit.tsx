@@ -137,21 +137,21 @@ export default function ChatAudit() {
 
   // ── 表格列 ──
   const userColumns: ColumnsType<any> = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '序号', width: 70, render: (_, __, i) => (userListPage - 1) * 10 + i + 1 },
     { title: '昵称', dataIndex: 'nickname' },
     { title: '手机号', dataIndex: 'phone', width: 130 },
     { title: '学校', dataIndex: 'school' },
   ];
 
   const groupColumns: ColumnsType<any> = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '序号', width: 70, render: (_, __, i) => (groupListPage - 1) * 10 + i + 1 },
     { title: '群名', dataIndex: 'name' },
     { title: '成员', dataIndex: 'memberCount', width: 80 },
     { title: '创建时间', dataIndex: 'createdAt', render: (v: string) => v?.replace('T', ' ') },
   ];
 
   const chatColumns: ColumnsType<ChatMsg> = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '序号', width: 70, render: (_, __, i) => (page - 1) * 20 + i + 1 },
     { title: '发送方', dataIndex: 'fromUserId', width: 80 },
     { title: '接收方', dataIndex: 'toUserId', width: 80 },
     { title: '类型', dataIndex: 'messageType', width: 70, render: (v: string) => (v === 'image' ? '图片' : '文字') },
@@ -165,7 +165,7 @@ export default function ChatAudit() {
   ];
 
   const groupMsgColumns: ColumnsType<GroupMsg> = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '序号', width: 70, render: (_, __, i) => (gPage - 1) * 20 + i + 1 },
     { title: '群', dataIndex: 'groupName', width: 120 },
     { title: '发送人', dataIndex: 'senderName', width: 100, render: (v: string, r: GroupMsg) => <span>{v}（{r.fromUserId}）</span> },
     { title: '类型', dataIndex: 'messageType', width: 70, render: (v: string) => (v === 'image' ? '图片' : '文字') },
