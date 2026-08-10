@@ -6,7 +6,6 @@ import ToastContainer, { showToast } from '../components/Toast';
 import InfoShareModal from '../components/InfoShareModal';
 import AnnouncementModal, { getLastSeenAnnouncementId } from '../components/AnnouncementModal';
 import type { AnnouncementData } from '../components/AnnouncementModal';
-import PermanentAnnouncementBar from '../components/PermanentAnnouncementBar';
 import BanModal from '../components/BanModal';
 import { useAuthStore } from '../store/authStore';
 import { useMessageStore } from '../store/messageStore';
@@ -34,8 +33,6 @@ export default function MainLayout() {
 
   // 系统公告:全部未读公告(WS 推送 + 启动补拉),一次滚动展示
   const [announcements, setAnnouncements] = useState<AnnouncementData[]>([]);
-  // 永久展示公告横条:管理员增删改(WS)时递增触发重拉
-  const [barRefreshKey, setBarRefreshKey] = useState(0);
   // 封禁提示(收到 ban 推送后弹出,关闭即强制退出)
   const [banMessage, setBanMessage] = useState<string | null>(null);
 
@@ -62,11 +59,6 @@ export default function MainLayout() {
         content: msg.content || '',
         createdAt: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
       });
-      return;
-    }
-    // 管理员变更永久公告(发布/下架/上架/撤回)→ 刷新顶部横条
-    if (msg.type === 'permanent_announcement_changed') {
-      setBarRefreshKey((k) => k + 1);
       return;
     }
     // 收到新站内通知 → 刷新未读角标
@@ -126,7 +118,6 @@ export default function MainLayout() {
 
   return (
     <div className="main-layout">
-      <PermanentAnnouncementBar refreshKey={barRefreshKey} />
       <div className="main-content">
         <Outlet context={{ openCreateSheet: () => setShowCreate(true) }} />
       </div>
