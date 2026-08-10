@@ -3,6 +3,7 @@ package com.finding.app.service.impl;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.framework.config.MinioConfig;
+import com.finding.app.service.ImageSafetyService;
 import com.finding.app.service.UploadService;
 import io.minio.*;
 import jakarta.annotation.PostConstruct;
@@ -25,9 +26,14 @@ public class UploadServiceImpl implements UploadService {
 
     private final MinioClient minioClient;
     private final MinioConfig minioConfig;
+    private final ImageSafetyService imageSafetyService;
 
     @Value("${finding.upload.max-size:5242880}")
     private long maxSize;
+
+    /** 图片公网访问域名(如 https://api.example.com),为空则跳过鉴黄(本地开发) */
+    @Value("${finding.image-safety.public-base-url:}")
+    private String publicBaseUrl;
 
     /** 允许的图片类型 */
     private static final Set<String> ALLOWED_TYPES = Set.of(
@@ -74,10 +80,24 @@ public class UploadServiceImpl implements UploadService {
                     .contentType(contentType)
                     .build());
 
+            // 图片内容安全:鉴黄(公网URL)+ OCR 提取文字过违禁词;违规则删除已上传对象并拒绝
+            try {
+                String publicUrl = org.springframework.util.StringUtils.hasText(publicBaseUrl)
+                        ? publicBaseUrl + "/api/v1/images/" + objectName
+                        : null;
+                imageSafetyService.check(data, publicUrl);
+            } catch (BusinessException be) {
+                minioClient.removeObject(RemoveObjectArgs.builder()
+                        .bucket(minioConfig.getBucket()).object(objectName).build());
+                throw be;
+            }
+
             // 返回后端代理 URL（浏览器不直接访问 MinIO，避免 403）
             String url = "/api/v1/images/" + objectName;
             log.info("图片已上传至 MinIO: {} -> {}", originalFilename, url);
             return url;
+        } catch (BusinessException be) {
+            throw be;
         } catch (Exception e) {
             log.error("上传 MinIO 失败", e);
             throw new BusinessException(ResultCode.INTERNAL_ERROR, "文件上传失败");

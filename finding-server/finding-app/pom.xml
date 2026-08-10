@@ -80,6 +80,19 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
+        <!-- 阿里云内容安全(图片审核/鉴黄) -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>green20220302</artifactId>
+            <version>2.20.5</version>
+        </dependency>
+        <!-- 阿里云 OCR(图片文字识别) -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>ocr_api20210707</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+
         <!-- MySQL driver -->
         <dependency>
             <groupId>com.mysql</groupId>
