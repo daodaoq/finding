@@ -16,6 +16,7 @@ public class PostComment {
     private Long parentId;          // NULL for top-level
     private String content;
     private Integer likeCount;
+    private Integer status;         // 0=正常 1=已删除
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

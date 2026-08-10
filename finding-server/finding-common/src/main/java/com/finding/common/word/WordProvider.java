@@ -11,6 +11,6 @@ import java.util.List;
 @FunctionalInterface
 public interface WordProvider {
 
-    /** 返回当前启用的违禁词列表。 */
-    List<String> enabledWords();
+    /** 返回当前启用的违禁词规则列表(词 + 动作:0=拦截, 1=送审)。 */
+    List<SensitiveWordRule> enabledRules();
 }

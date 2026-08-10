@@ -69,7 +69,7 @@ export default function NotificationsPage() {
   };
 
   const handleClick = async (msg: Message) => {
-    if (msg.type === 'like' || msg.type === 'comment') {
+    if (msg.type === 'like' || msg.type === 'comment' || msg.type === 'post_rejected') {
       navigate(`/square/post/${msg.relatedId}`);
     } else if (msg.type === 'mate_request' || msg.type === 'mate_accepted' || msg.type === 'mate_rejected' || msg.type === 'mate_cancelled') {
       navigate(`/mate/${msg.relatedId}`);

@@ -7,6 +7,7 @@ import Users from './pages/Users';
 import Verification from './pages/Verification';
 import Reports from './pages/Reports';
 import Posts from './pages/Posts';
+import PostReview from './pages/PostReview';
 import Comments from './pages/Comments';
 import Mates from './pages/Mates';
 import Groups from './pages/Groups';
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="verification" element={<Verification />} />
             <Route path="reports" element={<Reports />} />
             <Route path="posts" element={<Posts />} />
+            <Route path="post-review" element={<PostReview />} />
             <Route path="comments" element={<Comments />} />
             <Route path="mates" element={<Mates />} />
             <Route path="groups" element={<Groups />} />

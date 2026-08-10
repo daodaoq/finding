@@ -11,11 +11,11 @@ public interface ForbiddenWordService {
     /** 分页查询,keyword 对违禁词做模糊匹配,status 精确筛选 */
     PageVO<ForbiddenWord> page(int page, int size, String keyword, Integer status);
 
-    /** 新增(默认启用) */
-    void create(String word);
+    /** 新增(默认启用,action 0=拦截 1=送审) */
+    void create(String word, Integer action);
 
     /** 修改违禁词 */
-    void update(Long id, String word);
+    void update(Long id, String word, Integer action);
 
     /** 删除 */
     void delete(Long id);

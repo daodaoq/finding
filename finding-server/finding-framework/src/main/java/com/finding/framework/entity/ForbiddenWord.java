@@ -25,6 +25,9 @@ public class ForbiddenWord {
     /** 1=启用 0=禁用 */
     private Integer status;
 
+    /** 0=拦截 1=送审(进入审核队列) */
+    private Integer action;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

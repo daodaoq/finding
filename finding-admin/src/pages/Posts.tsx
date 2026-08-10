@@ -5,7 +5,8 @@ import request from '../api/request';
 
 interface PostRecord {
   id: number; content: string; userId: number; userNickname: string;
-  likeCount: number; commentCount: number; status: number; createdAt: string;
+  likeCount: number; commentCount: number; status: number;
+  reviewStatus?: number; reviewReason?: string; createdAt: string;
 }
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
@@ -87,6 +88,13 @@ export default function Posts() {
       title: '状态', dataIndex: 'status', render: (v: number) => (
         <Tag color={STATUS_MAP[v]?.color}>{STATUS_MAP[v]?.label}</Tag>
       ),
+    },
+    {
+      title: '审核', dataIndex: 'reviewStatus', width: 110, render: (v: number | undefined, record) => {
+        const rv = v ?? 0;
+        const tag = rv === 0 ? <Tag>已发布</Tag> : rv === 1 ? <Tag color="warning">待审</Tag> : <Tag color="error">已拒绝</Tag>;
+        return <span>{tag}{rv === 2 && record.reviewReason ? <span style={{ fontSize: 11, color: '#999' }} title={record.reviewReason}>原因</span> : null}</span>;
+      },
     },
     { title: '发布时间', dataIndex: 'createdAt', render: (v: string) => v?.replace('T', ' ') },
     {

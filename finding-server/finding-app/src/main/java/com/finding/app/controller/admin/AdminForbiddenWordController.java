@@ -38,17 +38,19 @@ public class AdminForbiddenWordController {
         return Result.ok(forbiddenWordService.page(page, size, keyword, status));
     }
 
-    /** 新增(默认启用) */
+    /** 新增(默认启用;action 0=拦截 1=送审) */
     @PostMapping("/forbidden-words")
-    public Result<Void> create(@RequestBody Map<String, String> body) {
-        forbiddenWordService.create(body.get("word"));
+    public Result<Void> create(@RequestBody Map<String, Object> body) {
+        Integer action = body.get("action") != null ? ((Number) body.get("action")).intValue() : 0;
+        forbiddenWordService.create(String.valueOf(body.get("word")), action);
         return Result.ok();
     }
 
     /** 修改违禁词 */
     @PutMapping("/forbidden-words/{id}")
-    public Result<Void> update(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        forbiddenWordService.update(id, body.get("word"));
+    public Result<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        Integer action = body.get("action") != null ? ((Number) body.get("action")).intValue() : null;
+        forbiddenWordService.update(id, String.valueOf(body.get("word")), action);
         return Result.ok();
     }
 

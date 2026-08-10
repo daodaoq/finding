@@ -24,6 +24,10 @@ public class PostVO {
     private Integer shareCount;
     private Integer isHot;
     private Integer isTop;
+    /** 审核状态:0=已发布 1=待审 2=拒绝(作者可见) */
+    private Integer reviewStatus;
+    /** 审核拒绝原因 */
+    private String reviewReason;
 
     // Author info
     private UserVO author;

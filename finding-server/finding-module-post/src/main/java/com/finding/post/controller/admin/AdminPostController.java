@@ -9,11 +9,14 @@ import com.finding.post.dto.PostCreateDTO;
 import com.finding.post.entity.Post;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.security.JwtInterceptor;
+import com.finding.message.service.MessageService;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -26,6 +29,7 @@ public class AdminPostController {
 
     private final PostMapper postMapper;
     private final UserMapper userMapper;
+    private final MessageService messageService;
 
     @GetMapping("/posts")
     public Result<PageVO<Map<String, Object>>> listPosts(
@@ -57,6 +61,8 @@ public class AdminPostController {
             map.put("likeCount", p.getLikeCount());
             map.put("commentCount", p.getCommentCount());
             map.put("status", p.getStatus());
+            map.put("reviewStatus", p.getReviewStatus() != null ? p.getReviewStatus() : 0);
+            map.put("reviewReason", p.getReviewReason());
             map.put("createdAt", p.getCreatedAt());
             return map;
         }).toList();
@@ -95,6 +101,59 @@ public class AdminPostController {
         Post post = postMapper.selectById(id);
         if (post == null) throw new BusinessException(ResultCode.PARAM_ERROR, "动态不存在");
         postMapper.deleteById(id);
+        return Result.ok();
+    }
+
+    /** 待审核队列(review_status=1) */
+    @GetMapping("/posts/review")
+    public Result<PageVO<Map<String, Object>>> reviewQueue(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<Post> result = postMapper.selectPage(new Page<>(page, size),
+                new LambdaQueryWrapper<Post>()
+                        .eq(Post::getStatus, 1)
+                        .eq(Post::getReviewStatus, 1)
+                        .orderByAsc(Post::getCreatedAt));
+
+        Set<Long> userIds = result.getRecords().stream().map(Post::getUserId)
+                .filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> nicknameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            userMapper.selectBatchIds(userIds).forEach(u -> nicknameMap.put(u.getId(), u.getNickname()));
+        }
+
+        List<Map<String, Object>> records = result.getRecords().stream().map(p -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", p.getId());
+            map.put("content", p.getContent());
+            map.put("images", p.getImages() != null ? List.of(p.getImages().split(",")) : List.of());
+            map.put("userId", p.getUserId());
+            map.put("userNickname", nicknameMap.getOrDefault(p.getUserId(), "用户" + p.getUserId()));
+            map.put("createdAt", p.getCreatedAt());
+            return map;
+        }).toList();
+        return Result.ok(PageVO.of(records, result.getTotal(), page, size));
+    }
+
+    /** 审核处理:pass=true 通过(发布),false 拒绝(需 reason);记录审核人/时间/原因,拒绝时通知作者 */
+    @PutMapping("/posts/{id}/review")
+    public Result<Void> reviewPost(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        Post post = postMapper.selectById(id);
+        if (post == null) throw new BusinessException(ResultCode.PARAM_ERROR, "动态不存在");
+        Boolean pass = body.get("pass") != null ? Boolean.parseBoolean(body.get("pass").toString()) : true;
+        String reason = body.get("reason") != null ? body.get("reason").toString() : null;
+
+        post.setReviewStatus(pass ? 0 : 2);
+        post.setReviewReason(pass ? null : reason);
+        post.setReviewBy(JwtInterceptor.getCurrentUserId());
+        post.setReviewTime(LocalDateTime.now());
+        postMapper.updateById(post);
+
+        // 拒绝时通知作者(可看到原因)
+        if (!pass && post.getUserId() != null) {
+            String content = reason != null && !reason.isBlank() ? "你的动态审核未通过：" + reason : "你的动态审核未通过";
+            messageService.notify(JwtInterceptor.getCurrentUserId(), post.getUserId(), "post_rejected", content, post.getId());
+        }
         return Result.ok();
     }
 }

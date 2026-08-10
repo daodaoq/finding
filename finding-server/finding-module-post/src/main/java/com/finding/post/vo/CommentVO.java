@@ -16,6 +16,7 @@ public class CommentVO {
     private Long parentId;
     private String content;
     private Integer likeCount;
+    private Integer status;   // 0=正常 1=已删除
     private Boolean isLiked;
     private LocalDateTime createdAt;
 

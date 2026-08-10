@@ -6,6 +6,7 @@ import com.finding.common.BusinessException;
 import com.finding.common.PageVO;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
+import com.finding.common.word.SensitiveWordRule;
 import com.finding.common.word.WordProvider;
 import com.finding.framework.entity.ForbiddenWord;
 import com.finding.framework.mapper.ForbiddenWordMapper;
@@ -42,20 +43,22 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService, WordProvi
     }
 
     @Override
-    public void create(String word) {
+    public void create(String word, Integer action) {
         requireWord(word);
         ForbiddenWord entity = new ForbiddenWord();
         entity.setWord(word.trim());
         entity.setStatus(1);
+        entity.setAction(action != null && action == 1 ? 1 : 0);
         forbiddenWordMapper.insert(entity);
         sensitiveWordFilter.reloadFromSource();
     }
 
     @Override
-    public void update(Long id, String word) {
+    public void update(Long id, String word, Integer action) {
         requireWord(word);
         ForbiddenWord existing = requireExists(id);
         existing.setWord(word.trim());
+        if (action != null) existing.setAction(action == 1 ? 1 : 0);
         forbiddenWordMapper.updateById(existing);
         sensitiveWordFilter.reloadFromSource();
     }
@@ -76,11 +79,11 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService, WordProvi
     }
 
     @Override
-    public List<String> enabledWords() {
+    public List<SensitiveWordRule> enabledRules() {
         return forbiddenWordMapper.selectList(
                         new LambdaQueryWrapper<ForbiddenWord>().eq(ForbiddenWord::getStatus, 1))
                 .stream()
-                .map(ForbiddenWord::getWord)
+                .map(f -> new SensitiveWordRule(f.getWord(), f.getAction() != null ? f.getAction() : 0))
                 .collect(Collectors.toList());
     }
 

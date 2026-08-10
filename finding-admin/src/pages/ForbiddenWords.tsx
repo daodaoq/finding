@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch } from 'antd';
+import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch, Radio } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
 interface ForbiddenWordRecord {
-  id: number; word: string; status: number; createdAt: string;
+  id: number; word: string; status: number; action: number; createdAt: string;
 }
 
 export default function ForbiddenWords() {
@@ -15,7 +15,7 @@ export default function ForbiddenWords() {
   const [keyword, setKeyword] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ForbiddenWordRecord | null>(null);
-  const [form, setForm] = useState({ word: '', status: 1 });
+  const [form, setForm] = useState({ word: '', status: 1, action: 0 });
 
   const fetchData = (p = 1, kw?: string) => {
     setLoading(true);
@@ -33,13 +33,13 @@ export default function ForbiddenWords() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ word: '', status: 1 });
+    setForm({ word: '', status: 1, action: 0 });
     setModalOpen(true);
   };
 
   const openEdit = (record: ForbiddenWordRecord) => {
     setEditing(record);
-    setForm({ word: record.word, status: record.status });
+    setForm({ word: record.word, status: record.status, action: record.action ?? 0 });
     setModalOpen(true);
   };
 
@@ -47,10 +47,10 @@ export default function ForbiddenWords() {
     if (!form.word.trim()) { message.warning('请输入违禁词'); return; }
     try {
       if (editing) {
-        await request.put(`/admin/forbidden-words/${editing.id}`, { word: form.word.trim() });
+        await request.put(`/admin/forbidden-words/${editing.id}`, { word: form.word.trim(), action: form.action });
         message.success('已更新');
       } else {
-        await request.post('/admin/forbidden-words', { word: form.word.trim() });
+        await request.post('/admin/forbidden-words', { word: form.word.trim(), action: form.action });
         message.success('已新增');
       }
       setModalOpen(false);
@@ -78,6 +78,9 @@ export default function ForbiddenWords() {
   const columns: ColumnsType<ForbiddenWordRecord> = [
     { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '违禁词', dataIndex: 'word' },
+    { title: '动作', dataIndex: 'action', width: 80, render: (v: number) => (
+      <Tag color={v === 1 ? 'warning' : 'error'}>{v === 1 ? '送审' : '拦截'}</Tag>
+    )},
     { title: '状态', dataIndex: 'status', render: (v: number) => (
       <Tag color={v === 1 ? 'success' : 'default'}>{v === 1 ? '启用' : '禁用'}</Tag>
     )},
@@ -143,6 +146,17 @@ export default function ForbiddenWords() {
             <span style={{ fontSize: 12, color: '#bbb', marginLeft: 8 }}>
               禁用的词不会拦截用户内容
             </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span>动作:</span>
+            <Radio.Group
+              value={form.action}
+              onChange={(e) => setForm({ ...form, action: e.target.value })}
+              options={[
+                { label: '拦截(命中即拒绝发布)', value: 0 },
+                { label: '送审(命中进入审核队列)', value: 1 },
+              ]}
+            />
           </div>
         </div>
       </Modal>

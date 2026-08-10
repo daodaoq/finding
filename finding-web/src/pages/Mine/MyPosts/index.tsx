@@ -51,15 +51,27 @@ export default function MyPostsPage() {
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
         {!loading && posts.map(p => (
-          <PostCard
-            key={p.id}
-            post={p}
-            onLike={handleLike}
-            onClick={id => navigate(`/square/post/${id}`)}
-            canManage={p.userId === currentUser?.id}
-            onEdit={id => navigate(`/create-post?id=${id}`)}
+          <div key={p.id}>
+            {(p.reviewStatus === 1 || p.reviewStatus === 2) && (
+              <div style={{
+                background: p.reviewStatus === 2 ? '#fff1f0' : '#fff7e6',
+                color: p.reviewStatus === 2 ? '#f5222d' : '#d46b08',
+                fontSize: 12, padding: '6px 16px',
+              }}>
+                {p.reviewStatus === 1
+                  ? '审核中，暂不对他人可见'
+                  : `审核未通过：${p.reviewReason || '未通过'}`}
+              </div>
+            )}
+            <PostCard
+              post={p}
+              onLike={handleLike}
+              onClick={id => navigate(`/square/post/${id}`)}
+              canManage={p.userId === currentUser?.id}
+              onEdit={id => navigate(`/create-post?id=${id}`)}
             onDelete={id => setDeleteTarget(id)}
-          />
+            />
+          </div>
         ))}
         {!loading && posts.length === 0 && <EmptyState message="还没有发布过动态" />}
         {hasMore && posts.length > 0 && (

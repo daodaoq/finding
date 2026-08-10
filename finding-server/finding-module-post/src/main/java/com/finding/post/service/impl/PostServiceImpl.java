@@ -13,6 +13,7 @@ import com.finding.user.service.UserService;
 import com.finding.post.vo.CommentVO;
 import com.finding.common.PageVO;
 import com.finding.common.util.XssUtil;
+import com.finding.common.word.ReviewResult;
 import com.finding.common.word.SensitiveWordFilter;
 import com.finding.post.vo.PostVO;
 import com.finding.user.vo.UserVO;
@@ -56,8 +57,10 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId) {
+        // 只返回已发布(审核通过)的动态
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<Post>()
-                .eq(Post::getStatus, 1);
+                .eq(Post::getStatus, 1)
+                .eq(Post::getReviewStatus, 0);
 
         switch (query.getTab()) {
             case "hot" -> {
@@ -95,10 +98,12 @@ public class PostServiceImpl implements PostService {
         Page<Post> page = new Page<>(query.getPage(), query.getSize());
         Page<Post> result = postMapper.selectPage(page, wrapper);
 
-        // 同步评论数
+        // 同步评论数(仅正常评论)
         result.getRecords().forEach(p -> {
             Long c = commentMapper.selectCount(
-                    new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, p.getId()));
+                    new LambdaQueryWrapper<PostComment>()
+                            .eq(PostComment::getPostId, p.getId())
+                            .eq(PostComment::getStatus, 0));
             if (!c.equals((long) p.getCommentCount())) {
                 p.setCommentCount(c.intValue());
                 postMapper.updateById(p);
@@ -117,6 +122,11 @@ public class PostServiceImpl implements PostService {
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ResultCode.POST_NOT_FOUND);
         }
+        // 审核可见性:待审/拒绝仅作者可看,他人视为不存在
+        Integer rs = post.getReviewStatus() != null ? post.getReviewStatus() : 0;
+        if (rs != 0 && (currentUserId == null || !post.getUserId().equals(currentUserId))) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
         // 自动同步实际评论数
         Long realCount = commentMapper.selectCount(
                 new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, postId));
@@ -131,7 +141,9 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostVO createPost(Long userId, PostCreateDTO dto) {
         String content = XssUtil.clean(dto.getContent());
-        sensitiveWordFilter.assertClean(content);
+        // 拦截词 → 拒绝发布;送审词 → 进入审核队列;干净 → 直接发布
+        ReviewResult review = sensitiveWordFilter.classifyReview(content);
+        throwIfBlocked(review);
         Post post = new Post();
         post.setUserId(userId);
         post.setContent(content);
@@ -141,6 +153,7 @@ public class PostServiceImpl implements PostService {
         post.setLatitude(dto.getLatitude());
         post.setLongitude(dto.getLongitude());
         post.setStatus(1);
+        post.setReviewStatus(review.hasReview() ? 1 : 0);
         postMapper.insert(post);
         return toVO(post, userId);
     }
@@ -160,7 +173,11 @@ public class PostServiceImpl implements PostService {
         post.setCity(dto.getCity());
         if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
         if (dto.getLongitude() != null) post.setLongitude(dto.getLongitude());
-        sensitiveWordFilter.assertClean(XssUtil.clean(dto.getContent()));
+        // 编辑后重新审核:拦截词拒绝;送审词回到待审;干净则发布并清除拒绝原因
+        ReviewResult review = sensitiveWordFilter.classifyReview(post.getContent());
+        throwIfBlocked(review);
+        post.setReviewStatus(review.hasReview() ? 1 : 0);
+        post.setReviewReason(null);
         postMapper.updateById(post);
         return toVO(post, userId);
     }
@@ -258,14 +275,16 @@ public class PostServiceImpl implements PostService {
         return toCommentVO(comment, userId);
     }
 
-    /** 评论转 VO，含作者信息 + 前3条子回复 */
+    /** 评论转 VO，含作者信息 + 前3条子回复；已删除评论显示占位文案 */
     private CommentVO toCommentVO(PostComment comment, Long currentUserId) {
         CommentVO vo = new CommentVO();
         vo.setId(comment.getId());
         vo.setPostId(comment.getPostId());
         vo.setUserId(comment.getUserId());
         vo.setParentId(comment.getParentId());
-        vo.setContent(comment.getContent());
+        boolean deleted = comment.getStatus() != null && comment.getStatus() == 1;
+        vo.setStatus(deleted ? 1 : 0);
+        vo.setContent(deleted ? "该评论已删除" : comment.getContent());
         vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
         vo.setCreatedAt(comment.getCreatedAt());
 
@@ -276,14 +295,14 @@ public class PostServiceImpl implements PostService {
             vo.setAvatar(author.getAvatar());
         }
 
-        // 评论点赞状态
-        if (currentUserId != null) {
+        // 评论点赞状态(已删除不展示)
+        if (currentUserId != null && !deleted) {
             vo.setIsLiked(commentLikeMapper.selectCount(new LambdaQueryWrapper<PostCommentLike>()
                     .eq(PostCommentLike::getCommentId, comment.getId())
                     .eq(PostCommentLike::getUserId, currentUserId)) > 0);
         }
 
-        // 加载子回复（最多3条）
+        // 加载子回复（最多3条；父评论已删除仍展示其下的子回复）
         List<PostComment> children = commentMapper.selectList(
                 new LambdaQueryWrapper<PostComment>()
                         .eq(PostComment::getParentId, comment.getId())
@@ -295,7 +314,8 @@ public class PostServiceImpl implements PostService {
                     .collect(Collectors.toList()));
             Long total = commentMapper.selectCount(
                     new LambdaQueryWrapper<PostComment>()
-                            .eq(PostComment::getParentId, comment.getId()));
+                            .eq(PostComment::getParentId, comment.getId())
+                            .eq(PostComment::getStatus, 0));
             vo.setReplyCount(total.intValue());
         }
 
@@ -311,7 +331,9 @@ public class PostServiceImpl implements PostService {
         if (!comment.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "只能删除自己的评论");
         }
-        commentMapper.deleteById(commentId);
+        // 软删除:保留记录与审计,前端展示"该评论已删除"占位
+        comment.setStatus(1);
+        commentMapper.updateById(comment);
     }
 
     @Override
@@ -388,11 +410,20 @@ public class PostServiceImpl implements PostService {
                 new LambdaQueryWrapper<Post>()
                         .eq(Post::getUserId, userId)
                         .eq(Post::getStatus, 1)
+                        .eq(Post::getReviewStatus, 0)
                         .orderByDesc(Post::getCreatedAt));
         List<PostVO> records = result.getRecords().stream()
                 .map(p -> toVO(p, viewerId))
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), page, size);
+    }
+
+    /** 命中「拦截」动作的违禁词 → 拒绝发布(提示具体词) */
+    private void throwIfBlocked(ReviewResult review) {
+        if (review.hasBlocking()) {
+            String joined = review.blocking().stream().map(w -> "「" + w + "」").collect(Collectors.joining());
+            throw new BusinessException(ResultCode.CONTENT_BLOCKED, "内容包含违禁词:" + joined);
+        }
     }
 
     private PostVO toVO(Post post, Long currentUserId) {
@@ -411,6 +442,8 @@ public class PostServiceImpl implements PostService {
         vo.setShareCount(post.getShareCount());
         vo.setIsHot(post.getIsHot());
         vo.setIsTop(post.getIsTop());
+        vo.setReviewStatus(post.getReviewStatus() != null ? post.getReviewStatus() : 0);
+        vo.setReviewReason(post.getReviewReason());
         vo.setCreatedAt(post.getCreatedAt());
         vo.setUpdatedAt(post.getUpdatedAt());
 

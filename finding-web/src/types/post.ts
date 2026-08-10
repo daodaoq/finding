@@ -13,6 +13,8 @@ export interface Post {
   shareCount: number;
   isHot: number;
   isTop: number;
+  reviewStatus?: number;
+  reviewReason?: string;
   author: import('./user').User | null;
   isLiked: boolean;
   createdAt: string;

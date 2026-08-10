@@ -92,15 +92,13 @@ public class AdminCommentController {
         return Result.ok();
     }
 
-    /** 物理删除评论，顺带清理其点赞记录 */
+    /** 软删除评论(保留审计,前端显示占位) */
     @DeleteMapping("/comments/{id}")
-    @Transactional
     public Result<Void> deleteComment(@PathVariable Long id) {
         PostComment comment = commentMapper.selectById(id);
         if (comment == null) throw new BusinessException(ResultCode.COMMENT_NOT_FOUND);
-        commentLikeMapper.delete(new LambdaQueryWrapper<PostCommentLike>()
-                .eq(PostCommentLike::getCommentId, id));
-        commentMapper.deleteById(id);
+        comment.setStatus(1);
+        commentMapper.updateById(comment);
         return Result.ok();
     }
 }
