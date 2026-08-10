@@ -439,7 +439,7 @@ public class ChatServiceImpl implements ChatService {
         PrivateChat update = new PrivateChat();
         update.setId(messageId);
         update.setIsRecalled(1);
-        update.setContent("该消息已撤回");
+        // 保留原 content,仅标记撤回,便于管理员审计原文
         privateChatMapper.updateById(update);
 
         // WS 通知双方刷新该消息

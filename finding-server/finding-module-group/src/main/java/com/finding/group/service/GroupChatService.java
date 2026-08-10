@@ -318,7 +318,7 @@ public class GroupChatService {
         GroupMessage update = new GroupMessage();
         update.setId(messageId);
         update.setIsRecalled(1);
-        update.setContent("该消息已撤回");
+        // 保留原 content,仅标记撤回,便于管理员审计原文
         messageMapper.updateById(update);
 
         // WS 通知群内所有成员刷新该消息
