@@ -11,6 +11,8 @@ import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
+import com.finding.user.security.JwtInterceptor;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
@@ -28,6 +30,7 @@ public class SearchController {
     private final PostMapper postMapper;
     private final MateInvitationMapper mateMapper;
     private final UserSettingsMapper userSettingsMapper;
+    private final UserRelationshipService relationshipService;
 
     @GetMapping
     public Result<Map<String, Object>> search(
@@ -46,13 +49,18 @@ public class SearchController {
 
         String kw = "%" + keyword + "%";
 
-        // 用户：按昵称或手机号模糊匹配(排除关闭"允许被搜索"的用户)
+        // 用户：按昵称或手机号模糊匹配(排除关闭"允许被搜索"、自己、与当前用户双向拉黑的用户)
+        Long currentUserId = JwtInterceptor.getCurrentUserId();
         List<Long> hiddenIds = userSettingsMapper.selectList(
                         new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getSearchable, 0))
                 .stream().map(UserSettings::getUserId).toList();
+        Set<Long> blockedIds = currentUserId != null ? relationshipService.blockedUserIds(currentUserId) : Set.of();
         Page<User> userPage = userMapper.selectPage(new Page<>(page, size),
                 new LambdaQueryWrapper<User>()
+                        .eq(User::getStatus, 1)
+                        .ne(currentUserId != null, User::getId, currentUserId)
                         .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds)
+                        .notIn(!blockedIds.isEmpty(), User::getId, blockedIds)
                         .and(w -> w.like(User::getNickname, keyword).or().like(User::getPhone, keyword))
                         .orderByDesc(User::getLastLoginAt));
         List<Map<String, Object>> users = userPage.getRecords().stream().map(u -> {
@@ -61,7 +69,7 @@ public class SearchController {
             m.put("nickname", u.getNickname());
             m.put("avatar", u.getAvatar());
             m.put("school", u.getSchool());
-            m.put("signature", u.getSignature());
+            m.put("signature", relationshipService.canViewDetailedProfile(currentUserId, u.getId()) ? u.getSignature() : null);
             return m;
         }).toList();
 

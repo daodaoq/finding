@@ -6,14 +6,15 @@ import '../subpage.css';
 import './settings.css';
 
 const MODES = [
-  { value: 0, label: '所有人可申请', desc: '任何人申请后自动通过，直接建立聊天' },
-  { value: 1, label: '需验证（默认）', desc: '对方申请后需要你同意' },
-  { value: 2, label: '不允许申请', desc: '拒绝所有人的好友申请' },
+  { value: 0, label: '自动同意', desc: '任何人申请后自动通过，直接建立聊天' },
+  { value: 1, label: '需对方同意（默认）', desc: '对方申请后需要你同意' },
+  { value: 2, label: '拒绝新的聊天申请', desc: '拒绝所有人的申请，已有会话不受影响' },
 ];
 
 export default function FriendSetting() {
   const navigate = useNavigate();
   const [mode, setMode] = useState(1);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     settingsApi.get()
@@ -21,12 +22,21 @@ export default function FriendSetting() {
       .catch(() => {});
   }, []);
 
+  /** 保存设置;失败回滚到旧值,并防止连点并发提交 */
   const pick = async (value: number) => {
+    if (saving) return;
+    const prev = mode;
     setMode(value);
+    setSaving(true);
     try {
       await settingsApi.update({ friendAddMode: value });
       showToast('已保存');
-    } catch { showToast('保存失败'); }
+    } catch {
+      setMode(prev);
+      showToast('保存失败');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

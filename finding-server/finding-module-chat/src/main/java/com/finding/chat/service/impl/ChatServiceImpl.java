@@ -38,14 +38,13 @@ import com.finding.chat.entity.Report;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.RoomFriend;
 import com.finding.user.entity.User;
-import com.finding.user.entity.UserBlock;
 import com.finding.user.entity.UserSettings;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.mapper.RoomMapper;
-import com.finding.user.mapper.UserBlockMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
 
@@ -68,7 +67,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserSettingsMapper userSettingsMapper;
     private final RabbitTemplate rabbitTemplate;
     private final SensitiveWordFilter sensitiveWordFilter;
-    private final UserBlockMapper userBlockMapper;
+    private final UserRelationshipService relationshipService;
     private final WebSocketServer webSocketServer;
 
     @Override
@@ -87,6 +86,10 @@ public class ChatServiceImpl implements ChatService {
                         .eq(RoomFriend::getRoomKey, roomKey));
 
         if (rf == null) {
+            // 无既有会话 → 新建私聊:与被拉黑者不能建立新会话
+            if (relationshipService.isBlockedEitherWay(userId, targetUserId)) {
+                throw new BusinessException(ResultCode.RELATION_BLOCKED);
+            }
             // 创建 Room
             Room room = new Room();
             room.setType(1); // 单聊
@@ -207,15 +210,8 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public ConversationVO sendMessage(Long userId, MessageSendDTO dto) {
         // 拉黑拦截:任一方拉黑对方都禁止私聊
-        if (userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
-                .eq(UserBlock::getUserId, userId)
-                .eq(UserBlock::getBlockedUserId, dto.getToUserId())) > 0) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "你已拉黑对方，无法发送消息");
-        }
-        if (userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
-                .eq(UserBlock::getUserId, dto.getToUserId())
-                .eq(UserBlock::getBlockedUserId, userId)) > 0) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "对方已拉黑你，无法发送消息");
+        if (relationshipService.isBlockedEitherWay(userId, dto.getToUserId())) {
+            throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
         // 获取或创建房间
         ConversationVO convVO = getOrCreateConversation(userId, dto.getToUserId());

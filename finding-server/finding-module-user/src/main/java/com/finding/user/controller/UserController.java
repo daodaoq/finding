@@ -51,23 +51,23 @@ public class UserController {
 
     @GetMapping("/{id}/followers")
     public Result<PageVO<UserVO>> followers(@PathVariable Long id, @Valid PageQueryDTO query) {
-        return Result.ok(userService.getFollowers(id, query));
+        return Result.ok(userService.getFollowers(id, query, JwtInterceptor.getCurrentUserId()));
     }
 
     @GetMapping("/{id}/following")
     public Result<PageVO<UserVO>> following(@PathVariable Long id, @Valid PageQueryDTO query) {
-        return Result.ok(userService.getFollowing(id, query));
+        return Result.ok(userService.getFollowing(id, query, JwtInterceptor.getCurrentUserId()));
     }
 
     @GetMapping("/{id}/mutual-follows")
     public Result<PageVO<UserVO>> mutualFollows(@PathVariable Long id, @Valid PageQueryDTO query) {
-        return Result.ok(userService.getMutualFollows(id, query));
+        return Result.ok(userService.getMutualFollows(id, query, JwtInterceptor.getCurrentUserId()));
     }
 
     @GetMapping("/search")
     public Result<PageVO<UserVO>> search(@RequestParam(required = false) String keyword,
                                           @Valid PageQueryDTO query) {
-        return Result.ok(userService.searchUsers(keyword, query));
+        return Result.ok(userService.searchUsers(keyword, query, JwtInterceptor.getCurrentUserId()));
     }
 
     /** 拉黑用户 */

@@ -55,6 +55,10 @@ public enum ResultCode {
     CHAT_APPLY_NOT_FOUND(6002, "申请记录不存在"),
     CHAT_APPLY_ALREADY_HANDLED(6003, "申请已处理，不能重复操作"),
 
+    // Relationship errors (9xxx)
+    RELATION_BLOCKED(9101, "你与对方存在拉黑关系，无法执行此操作"),
+    CONTACT_PERMISSION_DENIED(9102, "对方暂不允许新的联系"),
+
     // Common errors (9xxx)
     FORBIDDEN(9004, "无权限访问"),
     PARAM_ERROR(9001, "参数错误"),

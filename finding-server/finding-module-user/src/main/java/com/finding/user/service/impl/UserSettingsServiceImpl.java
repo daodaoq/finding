@@ -2,6 +2,8 @@ package com.finding.user.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.finding.common.BusinessException;
+import com.finding.common.ResultCode;
 import com.finding.user.dto.UserSettingsDTO;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.mapper.UserSettingsMapper;
@@ -32,6 +34,7 @@ public class UserSettingsServiceImpl implements UserSettingsService {
 
     @Override
     public void updateSettings(Long userId, UserSettingsDTO dto) {
+        validateEnums(dto);
         // 显式 set 写列:updateById 默认忽略 null 字段,chatBg 清空需显式置 null
         LambdaUpdateWrapper<UserSettings> wrapper = new LambdaUpdateWrapper<UserSettings>()
                 .eq(UserSettings::getUserId, userId);
@@ -51,6 +54,22 @@ public class UserSettingsServiceImpl implements UserSettingsService {
             s.setProfileVisible(dto.getProfileVisible() != null ? dto.getProfileVisible() : 1);
             s.setSearchable(dto.getSearchable() != null ? dto.getSearchable() : 1);
             settingsMapper.insert(s);
+        }
+    }
+
+    /** 枚举/取值校验:非法值拒绝落库,返回参数校验错误 */
+    private void validateEnums(UserSettingsDTO dto) {
+        if (dto.getFriendAddMode() != null && (dto.getFriendAddMode() < 0 || dto.getFriendAddMode() > 2)) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "friendAddMode 仅允许 0/1/2");
+        }
+        if (dto.getProfileVisible() != null && (dto.getProfileVisible() < 1 || dto.getProfileVisible() > 2)) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "profileVisible 仅允许 1/2");
+        }
+        if (dto.getSearchable() != null && dto.getSearchable() != 0 && dto.getSearchable() != 1) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "searchable 仅允许 0/1");
+        }
+        if (dto.getChatMuted() != null && dto.getChatMuted() != 0 && dto.getChatMuted() != 1) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "chatMuted 仅允许 0/1");
         }
     }
 }

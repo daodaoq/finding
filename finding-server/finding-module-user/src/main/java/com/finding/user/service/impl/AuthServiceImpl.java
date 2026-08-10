@@ -240,7 +240,12 @@ public class AuthServiceImpl implements AuthService {
         if (vo.getAvatar() != null) user.setAvatar(vo.getAvatar());
         if (vo.getSignature() != null) user.setSignature(vo.getSignature());
         if (vo.getSchool() != null) user.setSchool(vo.getSchool());
-        if (vo.getGender() != null) user.setGender(vo.getGender());
+        if (vo.getGender() != null) {
+            if (vo.getGender() < 0 || vo.getGender() > 2) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "gender 仅允许 0/1/2");
+            }
+            user.setGender(vo.getGender());
+        }
         if (vo.getCity() != null) user.setCity(vo.getCity());
         // XSS 清洗 + 违禁词拦截
         vo.setNickname(XssUtil.clean(vo.getNickname()));

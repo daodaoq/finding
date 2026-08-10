@@ -10,17 +10,16 @@ import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Room;
 import com.finding.user.entity.User;
-import com.finding.user.entity.UserBlock;
 import com.finding.user.entity.UserFollow;
 import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomMapper;
-import com.finding.user.mapper.UserBlockMapper;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.service.ChatService;
 import com.finding.message.service.MessageService;
@@ -57,7 +56,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final VerificationGuard verificationGuard;
     private final UserSettingsMapper userSettingsMapper;
     private final SensitiveWordFilter sensitiveWordFilter;
-    private final UserBlockMapper userBlockMapper;
+    private final UserRelationshipService relationshipService;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -76,36 +75,41 @@ public class BridgeServiceImpl implements BridgeService {
             List<UserFollow> follows = followMapper.selectList(
                     new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId));
             follows.forEach(f -> excludeIds.add(f.getFolloweeId()));
+
+            // 排除与当前用户双向拉黑的用户
+            excludeIds.addAll(relationshipService.blockedUserIds(userId));
         }
 
+        // 排除关闭"允许被搜索"的用户(关闭搜索同时不出现在相亲推荐)
+        List<Long> hiddenIds = userSettingsMapper.selectList(
+                        new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getSearchable, 0))
+                .stream().map(UserSettings::getUserId).toList();
+
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
-                .eq(User::getStatus, 1);
+                .eq(User::getStatus, 1)
+                .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds);
         if (!excludeIds.isEmpty()) {
             wrapper.notIn(User::getId, excludeIds);
         }
-        // 基础排序：已认证优先 → 最近活跃
-        wrapper.orderByDesc(User::getRealNameVerified)
-               .orderByDesc(User::getLastLoginAt);
 
-        // 取 3 倍数据，内存打分后再取 top-N
-        Page<User> pg = new Page<>(page, Math.min(size * 3, 100));
-        Page<User> result = userMapper.selectPage(pg, wrapper);
-
-        // ── 相亲评分算法 ──
+        // ── 候选全量过滤 → 打分 → 稳定排序 → 分页 ──
+        // 全量候选(校园规模可控)在内存中按得分稳定排序,保证翻页不跳不重、total 准确
+        List<User> candidates = userMapper.selectList(wrapper);
         final User me = currentUser;
-        List<User> scoredRecords = new ArrayList<>(result.getRecords());
-        scoredRecords.sort((a, b) -> Integer.compare(
-                matchScore(b, me), matchScore(a, me))); // 降序
+        candidates.sort((a, b) -> {
+            int cmp = Integer.compare(matchScore(b, me), matchScore(a, me)); // 得分降序
+            return cmp != 0 ? cmp : Long.compare(b.getId(), a.getId());     // 同分按 id 降序(稳定)
+        });
 
-        // 截取当前页
-        int from = Math.min((page - 1) * size, scoredRecords.size());
-        int to = Math.min(from + size, scoredRecords.size());
-        List<User> paged = scoredRecords.subList(from, to);
+        int total = candidates.size();
+        int from = Math.min((page - 1) * size, total);
+        int to = Math.min(from + size, total);
+        List<User> paged = candidates.subList(from, to);
 
         List<HomeFeedVO> records = paged.stream()
                 .map(u -> toFeedVO(u, lat, lng, userId))
                 .collect(Collectors.toList());
-        return PageVO.of(records, (long) scoredRecords.size(), page, size);
+        return PageVO.of(records, (long) total, page, size);
     }
 
     /**
@@ -173,13 +177,8 @@ public class BridgeServiceImpl implements BridgeService {
         verificationGuard.checkVerified(fromUserId);
 
         // 拉黑拦截:任一方拉黑对方都无法发送申请
-        if (userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
-                .eq(UserBlock::getUserId, fromUserId)
-                .eq(UserBlock::getBlockedUserId, toUserId)) > 0
-                || userBlockMapper.selectCount(new LambdaQueryWrapper<UserBlock>()
-                .eq(UserBlock::getUserId, toUserId)
-                .eq(UserBlock::getBlockedUserId, fromUserId)) > 0) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "无法向该用户发送申请");
+        if (relationshipService.isBlockedEitherWay(fromUserId, toUserId)) {
+            throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
 
         // Check if target user exists
@@ -194,7 +193,7 @@ public class BridgeServiceImpl implements BridgeService {
         int friendMode = targetSettings != null && targetSettings.getFriendAddMode() != null
                 ? targetSettings.getFriendAddMode() : 1;
         if (friendMode == 2) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "对方暂不允许添加");
+            throw new BusinessException(ResultCode.CONTACT_PERMISSION_DENIED);
         }
 
         // Check duplicate application
@@ -340,9 +339,10 @@ public class BridgeServiceImpl implements BridgeService {
                 "你的聊天申请已通过" + (handler != null ? "（" + handler.getNickname() + "）" : ""), apply.getId());
     }
 
-    /** 若未关注则插入一条关注关系(自动互关用) */
+    /** 若未关注则插入一条关注关系(自动互关用);双向拉黑时跳过 */
     private void insertFollowIfAbsent(Long followerId, Long followeeId) {
         if (followerId.equals(followeeId)) return;
+        if (relationshipService.isBlockedEitherWay(followerId, followeeId)) return;
         Long count = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
                 .eq(UserFollow::getFollowerId, followerId)
                 .eq(UserFollow::getFolloweeId, followeeId));
@@ -380,10 +380,12 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
-        vo.setGender(user.getGender());
+        // 资料可见性投影:不可查看详细资料时只返回公开字段(学校公开,性别/签名/城市隐藏)
+        boolean detailed = relationshipService.canViewDetailedProfile(currentUserId, user.getId());
+        vo.setGender(detailed ? user.getGender() : null);
         vo.setSchool(user.getSchool());
-        vo.setSignature(user.getSignature());
-        vo.setCity(user.getCity());
+        vo.setSignature(detailed ? user.getSignature() : null);
+        vo.setCity(detailed ? user.getCity() : null);
         vo.setLastLoginAt(user.getLastLoginAt());
 
         // Distance calculation

@@ -11,8 +11,8 @@ import com.finding.user.entity.UserSettings;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
-import com.finding.user.service.InfoShareQuery;
 import com.finding.user.service.UserPostStatsQuery;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserService;
 import com.finding.common.PageVO;
 import com.finding.user.vo.UserVO;
@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,7 +33,7 @@ public class UserServiceImpl implements UserService {
     private final UserFollowMapper followMapper;
     private final UserPostStatsQuery userPostStatsQuery;
     private final UserSettingsMapper userSettingsMapper;
-    private final InfoShareQuery infoShareQuery;
+    private final UserRelationshipService relationshipService;
 
     @Override
     public UserVO getUserProfile(Long userId, Long currentUserId) {
@@ -55,29 +54,26 @@ public class UserServiceImpl implements UserService {
             vo.setIsFollowed(isFollowing(currentUserId, userId));
         }
 
-        // 主页可见性:设置"仅已互换"时,未互换信息的访问者隐藏签名/城市
+        // 资料可见性 + 拉黑:不可查看详细资料时,隐藏性别/城市/签名(仅保留公开资料)
         if (currentUserId != null && !userId.equals(currentUserId)) {
-            UserSettings s = userSettingsMapper.selectOne(
-                    new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, userId));
-            if (s != null && s.getProfileVisible() != null && s.getProfileVisible() == 2
-                    && infoShareQuery.getShareStatus(currentUserId, userId) != InfoShareQuery.STATUS_APPROVED) {
-                vo.setSignature(null);
-                vo.setCity(null);
-            }
+            relationshipService.projectDetailedFields(currentUserId, userId, vo);
         }
 
         return vo;
     }
 
     @Override
-    public PageVO<UserVO> searchUsers(String keyword, PageQueryDTO pageQuery) {
-        // 排除关闭"允许被搜索"的用户
+    public PageVO<UserVO> searchUsers(String keyword, PageQueryDTO pageQuery, Long currentUserId) {
+        // 排除关闭"允许被搜索"的用户 + 与当前用户存在拉黑关系的用户 + 自己
         List<Long> hiddenIds = userSettingsMapper.selectList(
                         new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getSearchable, 0))
                 .stream().map(UserSettings::getUserId).toList();
+        Set<Long> blockedIds = currentUserId != null ? relationshipService.blockedUserIds(currentUserId) : Set.of();
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
                 .eq(User::getStatus, 1)
-                .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds);
+                .ne(currentUserId != null, User::getId, currentUserId)
+                .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds)
+                .notIn(!blockedIds.isEmpty(), User::getId, blockedIds);
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like(User::getNickname, keyword)
                     .or().like(User::getSchool, keyword));
@@ -87,8 +83,11 @@ public class UserServiceImpl implements UserService {
         Page<User> page = new Page<>(pageQuery.getPage(), pageQuery.getSize());
         Page<User> result = userMapper.selectPage(page, wrapper);
 
-        List<UserVO> records = result.getRecords().stream()
-                .map(this::toVO).collect(Collectors.toList());
+        List<UserVO> records = result.getRecords().stream().map(u -> {
+            UserVO vo = toVO(u);
+            relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
+            return vo;
+        }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
     }
 
@@ -100,6 +99,9 @@ public class UserServiceImpl implements UserService {
         }
         if (userMapper.selectById(followeeId) == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        if (!relationshipService.canFollow(followerId, followeeId)) {
+            throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
 
         // 已关注 → 取消关注；未关注 → 关注
@@ -125,44 +127,57 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public PageVO<UserVO> getFollowers(Long userId, PageQueryDTO pageQuery) {
+    public PageVO<UserVO> getFollowers(Long userId, PageQueryDTO pageQuery, Long currentUserId) {
         Page<UserFollow> page = new Page<>(pageQuery.getPage(), pageQuery.getSize());
         Page<UserFollow> result = followMapper.selectPage(page,
                 new LambdaQueryWrapper<UserFollow>()
                         .eq(UserFollow::getFolloweeId, userId)
                         .orderByDesc(UserFollow::getCreatedAt));
 
-        Set<Long> followerIds = result.getRecords().stream()
-                .map(UserFollow::getFollowerId).collect(Collectors.toSet());
+        List<Long> followerIds = result.getRecords().stream()
+                .map(UserFollow::getFollowerId).collect(Collectors.toList());
         if (followerIds.isEmpty()) {
             return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
         }
 
-        List<User> users = userMapper.selectBatchIds(followerIds);
+        // 按当前访问者过滤被拉黑对象
+        List<Long> visibleIds = relationshipService.filterNotBlocked(currentUserId, followerIds);
+        if (visibleIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
+        }
+
+        List<User> users = userMapper.selectBatchIds(visibleIds);
         List<UserVO> records = users.stream().map(u -> {
             UserVO vo = toVO(u);
             // 检查我是否也关注了ta → 互关
             vo.setIsFollowed(isFollowing(userId, u.getId()));
+            relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
     }
 
     @Override
-    public PageVO<UserVO> getFollowing(Long userId, PageQueryDTO pageQuery) {
+    public PageVO<UserVO> getFollowing(Long userId, PageQueryDTO pageQuery, Long currentUserId) {
         Page<UserFollow> page = new Page<>(pageQuery.getPage(), pageQuery.getSize());
         Page<UserFollow> result = followMapper.selectPage(page,
                 new LambdaQueryWrapper<UserFollow>()
                         .eq(UserFollow::getFollowerId, userId)
                         .orderByDesc(UserFollow::getCreatedAt));
 
-        Set<Long> followeeIds = result.getRecords().stream()
-                .map(UserFollow::getFolloweeId).collect(Collectors.toSet());
+        List<Long> followeeIds = result.getRecords().stream()
+                .map(UserFollow::getFolloweeId).collect(Collectors.toList());
         if (followeeIds.isEmpty()) {
             return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
         }
 
-        List<User> users = userMapper.selectBatchIds(followeeIds);
+        // 按当前访问者过滤被拉黑对象
+        List<Long> visibleIds = relationshipService.filterNotBlocked(currentUserId, followeeIds);
+        if (visibleIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
+        }
+
+        List<User> users = userMapper.selectBatchIds(visibleIds);
         List<UserVO> records = users.stream().map(u -> {
             UserVO vo = toVO(u);
             // 检查对方是否也关注了我 → 互关
@@ -171,13 +186,14 @@ public class UserServiceImpl implements UserService {
                             .eq(UserFollow::getFollowerId, u.getId())
                             .eq(UserFollow::getFolloweeId, userId)) > 0;
             vo.setIsFollowed(mutual); // true=互关 false=仅我关注ta
+            relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
     }
 
     @Override
-    public PageVO<UserVO> getMutualFollows(Long userId, PageQueryDTO pageQuery) {
+    public PageVO<UserVO> getMutualFollows(Long userId, PageQueryDTO pageQuery, Long currentUserId) {
         // 我关注的人
         List<UserFollow> following = followMapper.selectList(new LambdaQueryWrapper<UserFollow>()
                 .eq(UserFollow::getFollowerId, userId));
@@ -198,7 +214,11 @@ public class UserServiceImpl implements UserService {
             return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
         }
 
-        List<Long> mutualIds = new ArrayList<>(followingIds);
+        // 按当前访问者过滤被拉黑对象
+        List<Long> mutualIds = relationshipService.filterNotBlocked(currentUserId, followingIds);
+        if (mutualIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, pageQuery.getPage(), pageQuery.getSize());
+        }
         int total = mutualIds.size();
         int from = Math.min((pageQuery.getPage() - 1) * pageQuery.getSize(), total);
         int to = Math.min(from + pageQuery.getSize(), total);
@@ -208,6 +228,7 @@ public class UserServiceImpl implements UserService {
         List<UserVO> records = users.stream().map(u -> {
             UserVO vo = toVO(u);
             vo.setIsFollowed(true); // 列表里的都是互相关注
+            relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, (long) total, pageQuery.getPage(), pageQuery.getSize());
