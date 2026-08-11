@@ -1,6 +1,6 @@
 import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
-import type { Conversation, ChatSettings } from '../types/message';
+import type { Conversation, ChatSettings, StrangerMessage } from '../types/message';
 
 export const chatApi = {
   /** 会话列表 */
@@ -10,6 +10,24 @@ export const chatApi = {
   /** 已隐藏会话列表(用于手动恢复) */
   listHiddenConversations: () =>
     request.get<ApiResponse<Conversation[]>>('/chat/conversations/hidden'),
+
+  /** 发送陌生人打招呼消息(未建立会话前,同一对象仅一条) */
+  sendStrangerMessage: (toUserId: number, content: string) =>
+    request.post<ApiResponse<null>>('/chat/stranger/send', null, { params: { toUserId, content } }),
+
+  /** 我的陌生人消息合集(我发出的待确认 + 我收到的待确认) */
+  listStrangerMessages: () =>
+    request.get<ApiResponse<StrangerMessage[]>>('/chat/stranger/messages'),
+
+  /** 确认聊天:转为正式会话 */
+  acceptStrangerMessage: (id: number) =>
+    request.post<ApiResponse<null>>(`/chat/stranger/${id}/accept`),
+
+  /** 与某用户的陌生人消息状态 */
+  strangerStatus: (toUserId: number) =>
+    request.get<ApiResponse<{ hasConversation: boolean; sent: boolean; received: boolean }>>('/chat/stranger/status', {
+      params: { toUserId }
+    }),
 
   /** 创建或获取会话 */
   getOrCreateConversation: (targetUserId: number) =>

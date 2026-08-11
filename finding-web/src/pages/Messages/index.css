@@ -14,3 +14,21 @@
   flex-shrink: 0;
 }
 .conv-restore:active { background: #f5f5f5; }
+
+/* ── 陌生人消息页 ── */
+.sm-hint { color: #999; font-size: 12px; padding: 12px 16px 4px; margin: 0; }
+.sm-list { padding: 0 0 24px; }
+.sm-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid #f5f5f5;
+}
+.sm-info { flex: 1; min-width: 0; }
+.sm-content { font-size: 13px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-action { flex-shrink: 0; }
+.sm-accept {
+  padding: 6px 14px; border: none; border-radius: 16px;
+  background: #29241f; color: #fff; font-size: 12px; cursor: pointer;
+}
+.sm-accept:active { opacity: 0.9; }
+.sm-accept:disabled { opacity: 0.6; cursor: default; }
+.sm-waiting { color: #bbb; font-size: 12px; }

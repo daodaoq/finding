@@ -25,6 +25,18 @@ export interface Conversation {
   muted?: boolean;
 }
 
+/** 陌生人打招呼消息 */
+export interface StrangerMessage {
+  id: number;
+  otherUserId: number;
+  otherNickname: string;
+  otherAvatar: string;
+  content: string;
+  /** sent=我发出的待确认 received=我收到的待确认 */
+  direction: 'sent' | 'received';
+  createdAt: string;
+}
+
 /** 会话设置(聊天信息页) */
 export interface ChatSettings {
   roomId: number;

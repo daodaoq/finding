@@ -26,6 +26,8 @@ export default function UserProfilePage() {
   const [showReport, setShowReport] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [blockedBy, setBlockedBy] = useState(false);
+  // 陌生人消息状态:hasConversation=已有会话 sent=我已打招呼 received=对方打招呼
+  const [stranger, setStranger] = useState<{ hasConversation: boolean; sent: boolean; received: boolean }>({ hasConversation: true, sent: false, received: false });
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const navigate = useNavigate();
@@ -46,6 +48,12 @@ export default function UserProfilePage() {
       setBlocked(res.data.data.blocked);
       setBlockedBy(res.data.data.blockedBy);
     }).catch(() => {});
+  }, [userId, myId]);
+
+  // 陌生人消息状态(决定按钮是 发消息/打招呼/已打招呼)
+  useEffect(() => {
+    if (!myId || userId === myId) return;
+    chatApi.strangerStatus(userId).then((res) => setStranger(res.data.data)).catch(() => {});
   }, [userId, myId]);
 
   // 对方公开动态
@@ -108,6 +116,28 @@ export default function UserProfilePage() {
     navigate(`/messages/chat?userId=${userId}&name=${name}&avatar=${avatar}`);
   };
 
+  /** 发送陌生人打招呼消息(对方确认后即可正常聊天) */
+  const handleStranger = async () => {
+    const content = window.prompt('打个招呼吧（对方确认后即可聊天）', '你好，认识一下');
+    if (content === null) return;
+    if (!content.trim()) { showToast('消息不能为空'); return; }
+    try {
+      await chatApi.sendStrangerMessage(userId, content.trim());
+      setStranger((prev) => ({ ...prev, sent: true }));
+      showToast('已发送打招呼消息，等待对方确认');
+    } catch (e: any) {
+      showToast(e?.message || '发送失败');
+    }
+  };
+
+  /** 主操作按钮:有会话→发消息;对方打招呼→去确认;已打招呼→等待;否则→打招呼 */
+  const handleMainAction = () => {
+    if (blockedBy) return;
+    if (stranger.hasConversation) { handleChat(); return; }
+    if (stranger.received) { navigate('/messages/strangers'); return; }
+    handleStranger();
+  };
+
   return (
     <div className="up-page">
       <div className="up-header">
@@ -155,7 +185,13 @@ export default function UserProfilePage() {
           >
             {profile.isFollowed ? '已关注' : '+ 关注'}
           </button>
-          <button className="up-chat-btn" onClick={handleChat} disabled={blockedBy}>{blockedBy ? '对方已拉黑你' : '发消息'}</button>
+          <button className="up-chat-btn" onClick={handleMainAction} disabled={blockedBy || stranger.sent}>
+            {blockedBy ? '对方已拉黑你'
+              : stranger.hasConversation ? '发消息'
+              : stranger.sent ? '已打招呼，等待确认'
+              : stranger.received ? '去确认打招呼'
+              : '打招呼'}
+          </button>
           <button
             className="up-block-btn"
             onClick={handleBlock}
