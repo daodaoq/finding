@@ -14,6 +14,7 @@ const MatePage = lazy(() => import('../pages/Mate'));
 const MessagesPage = lazy(() => import('../pages/Messages'));
 const NotificationsPage = lazy(() => import('../pages/Notifications'));
 const StrangerMessagesPage = lazy(() => import('../pages/Messages/StrangerMessages'));
+const HiddenConversationsPage = lazy(() => import('../pages/Messages/HiddenConversations'));
 const MinePage = lazy(() => import('../pages/Mine'));
 const MyPostsPage = lazy(() => import('../pages/Mine/MyPosts'));
 const MyLikesPage = lazy(() => import('../pages/Mine/MyLikes'));
@@ -91,6 +92,7 @@ const router = createBrowserRouter([
       { path: 'messages', element: withSuspense(<MessagesPage />) },
       { path: 'messages/notifications', element: withSuspense(<NotificationsPage />) },
       { path: 'messages/strangers', element: withSuspense(<StrangerMessagesPage />) },
+      { path: 'messages/hidden', element: withSuspense(<HiddenConversationsPage />) },
       { path: 'messages/chat', element: withSuspense(<ChatDetailPage />) },
       { path: 'messages/chat-settings', element: withSuspense(<ChatSettingsPage />) },
       { path: 'messages/group-chat/:id', element: withSuspense(<GroupChatPage />) },
