@@ -34,6 +34,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -99,6 +100,14 @@ class PostServiceImplTest {
     }
 
     @Test
+    void updatePost_frozenUser_rejected() {
+        doThrow(new BusinessException(ResultCode.ACCOUNT_FROZEN)).when(userWriteGuard).checkWritable(1L);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updatePost(1L, 1L, dto("新内容")));
+        assertEquals(ResultCode.ACCOUNT_FROZEN.getCode(), ex.getCode());
+    }
+
+    @Test
     void getPostDetail_pending_othersNotFound() {
         Post post = post(1L, 1L, 1); // 作者=1,待审
         when(postMapper.selectById(1L)).thenReturn(post);
@@ -121,15 +130,55 @@ class PostServiceImplTest {
     void deleteComment_softDelete() {
         PostComment comment = new PostComment();
         comment.setId(10L);
+        comment.setPostId(1L);
         comment.setUserId(1L);
         comment.setStatus(0);
-        when(commentMapper.selectById(10L)).thenReturn(comment);
+        when(commentMapper.selectOne(any())).thenReturn(comment);
 
-        service.deleteComment(1L, 10L);
+        service.deleteComment(1L, 1L, 10L); // userId, postId, commentId
 
         ArgumentCaptor<PostComment> cap = ArgumentCaptor.forClass(PostComment.class);
         verify(commentMapper).updateById(cap.capture());
         assertEquals(1, cap.getValue().getStatus());
+    }
+
+    @Test
+    void deleteComment_crossPost_rejected() {
+        // 评论属于其他动态 → 限定 postId 后查不到 → 不存在
+        when(commentMapper.selectOne(any())).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteComment(1L, 1L, 10L));
+        assertEquals(ResultCode.COMMENT_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void toggleCommentLike_crossPost_rejected() {
+        Post post = post(1L, 2L, 0); // 已发布,作者=2
+        when(postMapper.selectById(1L)).thenReturn(post);
+        when(commentMapper.selectOne(any())).thenReturn(null); // 评论不属于动态1
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.toggleCommentLike(1L, 1L, 10L));
+        assertEquals(ResultCode.COMMENT_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void addComment_crossParent_rejected() {
+        Post post = post(1L, 2L, 0); // 已发布
+        when(postMapper.selectById(1L)).thenReturn(post);
+        when(commentMapper.selectOne(any())).thenReturn(null); // 父评论不属于动态1
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.addComment(1L, 1L, 99L, "回复"));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void listComments_invisiblePost_rejected() {
+        Post post = post(1L, 1L, 1); // 待审,作者=1
+        when(postMapper.selectById(1L)).thenReturn(post);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.listComments(1L, 1, 10, 2L)); // 他人查评论
+        assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
     }
 
     private PostCreateDTO dto(String content) {

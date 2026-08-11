@@ -84,7 +84,7 @@ public class PostController {
     public Result<Void> likeComment(@PathVariable Long id, @PathVariable Long commentId) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
-        postService.toggleCommentLike(userId, commentId);
+        postService.toggleCommentLike(userId, id, commentId);
         return Result.ok();
     }
 
@@ -92,7 +92,7 @@ public class PostController {
     public Result<Void> deleteComment(@PathVariable Long id, @PathVariable Long commentId) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
-        postService.deleteComment(userId, commentId);
+        postService.deleteComment(userId, id, commentId);
         return Result.ok();
     }
 

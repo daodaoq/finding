@@ -120,15 +120,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostVO getPostDetail(Long postId, Long currentUserId) {
-        Post post = postMapper.selectById(postId);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ResultCode.POST_NOT_FOUND);
-        }
-        // 审核可见性:待审/拒绝仅作者可看,他人视为不存在
-        Integer rs = post.getReviewStatus() != null ? post.getReviewStatus() : 0;
-        if (rs != 0 && (currentUserId == null || !post.getUserId().equals(currentUserId))) {
-            throw new BusinessException(ResultCode.POST_NOT_FOUND);
-        }
+        Post post = assertPostVisible(postId, currentUserId);
         // 自动同步实际评论数
         Long realCount = commentMapper.selectCount(
                 new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, postId));
@@ -137,6 +129,22 @@ public class PostServiceImpl implements PostService {
         post.setViewCount(post.getViewCount() + 1);
         postMapper.updateById(post);
         return toVO(post, currentUserId);
+    }
+
+    /**
+     * 动态可见性校验:存在 / 未删除 / 审核通过(待审或拒绝仅作者可见,他人视为不存在)。
+     * 评论列表、评论、点赞等接口统一复用,防止通过评论接口读取不可见动态的数据。
+     */
+    private Post assertPostVisible(Long postId, Long currentUserId) {
+        Post post = postMapper.selectById(postId);
+        if (post == null || post.getStatus() == 0) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
+        Integer rs = post.getReviewStatus() != null ? post.getReviewStatus() : 0;
+        if (rs != 0 && (currentUserId == null || !post.getUserId().equals(currentUserId))) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
+        return post;
     }
 
     @Override
@@ -163,6 +171,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostVO updatePost(Long userId, Long postId, PostCreateDTO dto) {
+        userWriteGuard.checkWritable(userId); // 禁言/冻结用户不可编辑动态
         Post post = postMapper.selectById(postId);
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ResultCode.POST_NOT_FOUND);
@@ -231,6 +240,8 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PageVO<CommentVO> listComments(Long postId, int page, int size, Long currentUserId) {
+        // 评论可见性:动态不可见(不存在/删除/待审拒审非作者)时不返回评论
+        assertPostVisible(postId, currentUserId);
         // 查询一级评论（parent_id IS NULL）
         Page<PostComment> pg = new Page<>(page, size);
         Page<PostComment> result = commentMapper.selectPage(pg,
@@ -248,9 +259,16 @@ public class PostServiceImpl implements PostService {
     @Override
     public CommentVO addComment(Long userId, Long postId, Long parentId, String content) {
         userWriteGuard.checkWritable(userId);
-        Post post = postMapper.selectById(postId);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        Post post = assertPostVisible(postId, userId);
+        // 父评论归属校验:必须属于当前动态、未删除
+        PostComment parent = null;
+        if (parentId != null) {
+            parent = commentMapper.selectOne(new LambdaQueryWrapper<PostComment>()
+                    .eq(PostComment::getId, parentId)
+                    .eq(PostComment::getPostId, postId));
+            if (parent == null || (parent.getStatus() != null && parent.getStatus() == 1)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "父评论不存在或已删除");
+            }
         }
         PostComment comment = new PostComment();
         comment.setPostId(postId);
@@ -263,17 +281,13 @@ public class PostServiceImpl implements PostService {
         post.setCommentCount(post.getCommentCount() + 1);
         postMapper.updateById(post);
 
-        // 如果回复了别人的评论，发通知
-        if (parentId != null) {
-            PostComment parent = commentMapper.selectById(parentId);
-            if (parent != null && !parent.getUserId().equals(userId)) {
+        // 回复了别人的评论 → 通知评论作者;否则评论了动态 → 通知帖主(均非自己)
+        if (parent != null) {
+            if (!parent.getUserId().equals(userId)) {
                 messageService.notify(userId, parent.getUserId(), "comment", "回复了你的评论", postId);
             }
-        } else {
-            // 评论了帖子，通知帖主
-            if (!post.getUserId().equals(userId)) {
-                messageService.notify(userId, post.getUserId(), "comment", "评论了你的动态", postId);
-            }
+        } else if (!post.getUserId().equals(userId)) {
+            messageService.notify(userId, post.getUserId(), "comment", "评论了你的动态", postId);
         }
 
         return toCommentVO(comment, userId);
@@ -327,8 +341,11 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public void deleteComment(Long userId, Long commentId) {
-        PostComment comment = commentMapper.selectById(commentId);
+    public void deleteComment(Long userId, Long postId, Long commentId) {
+        // 限定评论归属动态,防止跨动态 commentId 操作他人动态资源
+        PostComment comment = commentMapper.selectOne(new LambdaQueryWrapper<PostComment>()
+                .eq(PostComment::getId, commentId)
+                .eq(PostComment::getPostId, postId));
         if (comment == null) {
             throw new BusinessException(ResultCode.COMMENT_NOT_FOUND);
         }
@@ -342,8 +359,12 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void toggleCommentLike(Long userId, Long commentId) {
-        PostComment comment = commentMapper.selectById(commentId);
+    public void toggleCommentLike(Long userId, Long postId, Long commentId) {
+        // 动态不可见时不可点赞评论
+        assertPostVisible(postId, userId);
+        PostComment comment = commentMapper.selectOne(new LambdaQueryWrapper<PostComment>()
+                .eq(PostComment::getId, commentId)
+                .eq(PostComment::getPostId, postId));
         if (comment == null) {
             throw new BusinessException(ResultCode.COMMENT_NOT_FOUND);
         }
