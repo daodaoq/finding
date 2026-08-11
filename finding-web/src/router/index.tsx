@@ -34,6 +34,7 @@ const AccountPage = lazy(() => import('../pages/Mine/Account'));
 const ChatSettingsGlobal = lazy(() => import('../pages/Mine/Settings/Chat'));
 const FriendSetting = lazy(() => import('../pages/Mine/Settings/Friend'));
 const PrivacySetting = lazy(() => import('../pages/Mine/Settings/Privacy'));
+const PreferenceSetting = lazy(() => import('../pages/Mine/Settings/Preference'));
 const AboutPage = lazy(() => import('../pages/Mine/About'));
 const PostDetailPage = lazy(() => import('../pages/PostDetail'));
 const MateDetailPage = lazy(() => import('../pages/MateDetail'));
@@ -113,6 +114,7 @@ const router = createBrowserRouter([
       { path: 'mine/settings/chat', element: withSuspense(<ChatSettingsGlobal />) },
       { path: 'mine/settings/friend', element: withSuspense(<FriendSetting />) },
       { path: 'mine/settings/privacy', element: withSuspense(<PrivacySetting />) },
+      { path: 'mine/settings/preference', element: withSuspense(<PreferenceSetting />) },
       { path: 'mine/about', element: withSuspense(<AboutPage />) },
       { path: 'create-post', element: withSuspense(<CreatePostPage />) },
       { path: 'create-mate', element: withSuspense(<CreateMatePage />) },

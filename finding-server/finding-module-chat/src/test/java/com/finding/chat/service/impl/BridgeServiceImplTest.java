@@ -1,10 +1,16 @@
 package com.finding.chat.service.impl;
 
+import com.finding.chat.config.MatchScoreWeights;
 import com.finding.chat.entity.ChatApply;
+import com.finding.chat.entity.RecommendEvent;
+import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
+import com.finding.chat.mapper.RecommendEventMapper;
+import com.finding.chat.mapper.RecommendExcludeMapper;
 import com.finding.chat.mapper.RoomMapper;
+import com.finding.chat.mapper.UserMatchPreferenceMapper;
 import com.finding.chat.service.ChatService;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
@@ -35,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +63,10 @@ class BridgeServiceImplTest {
     @Mock private UserSettingsMapper userSettingsMapper;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserRelationshipService relationshipService;
+    @Mock private UserMatchPreferenceMapper preferenceMapper;
+    @Mock private RecommendExcludeMapper excludeMapper;
+    @Mock private RecommendEventMapper eventMapper;
+    @Mock private MatchScoreWeights weights;
 
     @InjectMocks
     private BridgeServiceImpl service;
@@ -66,6 +77,8 @@ class BridgeServiceImplTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), ChatApply.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserSettings.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserMatchPreference.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), com.finding.chat.entity.RecommendExclude.class);
     }
 
     private UserSettings settings(int friendAddMode) {
@@ -183,6 +196,46 @@ class BridgeServiceImplTest {
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.withdrawApply(1L, 10L));
         assertEquals(ResultCode.CHAT_APPLY_ALREADY_HANDLED.getCode(), ex.getCode());
+    }
+
+    // ── 相亲交友偏好 ──
+
+    @Test
+    void getMatchPreference_noRow_returnsDefaults() {
+        when(preferenceMapper.selectOne(any())).thenReturn(null);
+        UserMatchPreference p = service.getMatchPreference(1L);
+        assertEquals(0, p.getPreferGender());
+        assertEquals(0, p.getMaxDistanceKm());
+    }
+
+    @Test
+    void updateMatchPreference_invalidGender_rejected() {
+        UserMatchPreference pref = new UserMatchPreference();
+        pref.setPreferGender(5);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateMatchPreference(1L, pref));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void skipUser_recordsExcludeAndEvent() {
+        when(excludeMapper.selectCount(any())).thenReturn(0L);
+        when(excludeMapper.insert(any())).thenReturn(1);
+        when(eventMapper.insert(any())).thenReturn(1);
+
+        service.skipUser(1L, 2L);
+
+        verify(excludeMapper).insert(any());
+        verify(eventMapper).insert(any());
+    }
+
+    @Test
+    void skipUser_alreadyExcluded_skipsDuplicate() {
+        when(excludeMapper.selectCount(any())).thenReturn(1L);
+        when(eventMapper.insert(any())).thenReturn(1);
+        service.skipUser(1L, 2L);
+        // 不重复插入排除记录,但仍记录跳过事件
+        verify(excludeMapper, never()).insert(any());
+        verify(eventMapper).insert(any());
     }
 
     private ChatApply pending(Long id, Long from, Long to) {

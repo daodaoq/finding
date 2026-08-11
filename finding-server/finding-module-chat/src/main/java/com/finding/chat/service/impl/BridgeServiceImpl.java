@@ -7,17 +7,24 @@ import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.user.common.VerificationGuard;
 import com.finding.chat.constant.ChatApplyStatus;
+import com.finding.chat.config.MatchScoreWeights;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
+import com.finding.chat.entity.RecommendEvent;
+import com.finding.chat.entity.RecommendExclude;
 import com.finding.chat.entity.Room;
+import com.finding.chat.entity.UserMatchPreference;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserFollow;
 import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
+import com.finding.chat.mapper.RecommendEventMapper;
+import com.finding.chat.mapper.RecommendExcludeMapper;
 import com.finding.chat.mapper.RoomMapper;
+import com.finding.chat.mapper.UserMatchPreferenceMapper;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
@@ -36,7 +43,9 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -65,14 +74,20 @@ public class BridgeServiceImpl implements BridgeService {
     private final UserSettingsMapper userSettingsMapper;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
+    private final UserMatchPreferenceMapper preferenceMapper;
+    private final RecommendExcludeMapper excludeMapper;
+    private final RecommendEventMapper eventMapper;
+    private final MatchScoreWeights weights;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
         Set<Long> excludeIds = new HashSet<>();
         User currentUser = null;
+        UserMatchPreference pref = null;
         if (userId != null) {
             excludeIds.add(userId);
             currentUser = userMapper.selectById(userId);
+            pref = getMatchPreference(userId);
 
             // 排除已申请过的
             List<ChatApply> sentApplies = chatApplyMapper.selectList(
@@ -86,6 +101,11 @@ public class BridgeServiceImpl implements BridgeService {
 
             // 排除与当前用户双向拉黑的用户
             excludeIds.addAll(relationshipService.blockedUserIds(userId));
+
+            // 排除"不感兴趣"的用户
+            List<RecommendExclude> excludes = excludeMapper.selectList(
+                    new LambdaQueryWrapper<RecommendExclude>().eq(RecommendExclude::getUserId, userId));
+            excludes.forEach(e -> excludeIds.add(e.getTargetUserId()));
         }
 
         // 排除关闭"允许被搜索"的用户(关闭搜索同时不出现在相亲推荐)
@@ -99,80 +119,149 @@ public class BridgeServiceImpl implements BridgeService {
         if (!excludeIds.isEmpty()) {
             wrapper.notIn(User::getId, excludeIds);
         }
-
-        // ── 候选全量过滤 → 打分 → 稳定排序 → 分页 ──
-        // 全量候选(校园规模可控)在内存中按得分稳定排序,保证翻页不跳不重、total 准确
-        List<User> candidates = userMapper.selectList(wrapper);
-        final User me = currentUser;
-        candidates.sort((a, b) -> {
-            int cmp = Integer.compare(matchScore(b, me), matchScore(a, me)); // 得分降序
-            return cmp != 0 ? cmp : Long.compare(b.getId(), a.getId());     // 同分按 id 降序(稳定)
-        });
-
-        int total = candidates.size();
-        int from = Math.min((page - 1) * size, total);
-        int to = Math.min(from + size, total);
-        List<User> paged = candidates.subList(from, to);
-
-        List<HomeFeedVO> records = paged.stream()
-                .map(u -> toFeedVO(u, lat, lng, userId))
-                .collect(Collectors.toList());
-        return PageVO.of(records, (long) total, page, size);
-    }
-
-    /**
-     * 相亲匹配评分：异性 +20、同校 +15、同城 +8、已认证 +5、
-     * 最近活跃 +3、兴趣关键词匹配 +2/词、有头像 +2。
-     */
-    private int matchScore(User candidate, User me) {
-        int score = 0;
-        if (me == null) return score;
-
-        // 异性优先（相亲核心）
-        if (me.getGender() != null && candidate.getGender() != null
-                && me.getGender() > 0 && candidate.getGender() > 0
-                && !me.getGender().equals(candidate.getGender())) {
-            score += 20;
-        }
-
-        // 同校（大学生相亲最重要）
-        if (me.getSchool() != null && me.getSchool().equals(candidate.getSchool())) {
-            score += 15;
-        }
-
-        // 同城
-        if (me.getCity() != null && me.getCity().equals(candidate.getCity())) {
-            score += 3;
-        }
-
-        // 已认证
-        if (candidate.getRealNameVerified() != null && candidate.getRealNameVerified() == 2) {
-            score += 5;
-        }
-
-        // 最近 24h 活跃
-        if (candidate.getLastLoginAt() != null
-                && candidate.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24))) {
-            score += 3;
-        }
-
-        // 有头像（更真诚）
-        if (candidate.getAvatar() != null && !candidate.getAvatar().isEmpty()) {
-            score += 2;
-        }
-
-        // 兴趣标签 / 个性签名关键词匹配
-        if (me.getSignature() != null && candidate.getSignature() != null) {
-            String[] myWords = me.getSignature().split("[，。！？,.!?\\s]+");
-            String theirSig = candidate.getSignature();
-            for (String w : myWords) {
-                if (w.length() >= 2 && theirSig.contains(w)) {
-                    score += 2;
-                }
+        // 偏好硬性过滤(数据库层:认证/性别/城市)
+        if (pref != null) {
+            if (pref.getOnlyVerified() != null && pref.getOnlyVerified() == 1) {
+                wrapper.eq(User::getRealNameVerified, 2);
+            }
+            if (pref.getPreferGender() != null && pref.getPreferGender() == 1) {
+                wrapper.eq(User::getGender, 1);
+            } else if (pref.getPreferGender() != null && pref.getPreferGender() == 2) {
+                wrapper.eq(User::getGender, 2);
+            }
+            if (pref.getPreferCity() != null && !pref.getPreferCity().isBlank()) {
+                wrapper.eq(User::getCity, pref.getPreferCity());
             }
         }
 
-        return score;
+        // ── 候选全量过滤(内存:年龄/距离) → 可解释打分 → 稳定排序 → 分页 ──
+        List<User> candidates = userMapper.selectList(wrapper);
+        final User me = currentUser;
+        final UserMatchPreference myPref = pref;
+        List<Scored> scored = new ArrayList<>();
+        for (User c : candidates) {
+            if (me == null) {
+                scored.add(new Scored(c, new ScoreResult(0, List.of())));
+                continue;
+            }
+            // 年龄范围过滤
+            if (myPref != null && ((myPref.getMinAge() != null && myPref.getMinAge() > 0)
+                    || (myPref.getMaxAge() != null && myPref.getMaxAge() > 0))) {
+                int age = ageOf(c);
+                if (age == 0) continue;
+                int min = myPref.getMinAge() != null ? myPref.getMinAge() : 0;
+                int max = myPref.getMaxAge() != null && myPref.getMaxAge() > 0 ? myPref.getMaxAge() : Integer.MAX_VALUE;
+                if (age < min || age > max) continue;
+            }
+            Double dist = distanceKm(lat, lng, c);
+            // 距离范围过滤
+            if (myPref != null && myPref.getMaxDistanceKm() != null && myPref.getMaxDistanceKm() > 0
+                    && dist != null && dist > myPref.getMaxDistanceKm()) {
+                continue;
+            }
+            scored.add(new Scored(c, scoreCandidate(me, c, myPref, dist)));
+        }
+        scored.sort((a, b) -> {
+            int cmp = Integer.compare(b.score.score, a.score.score); // 得分降序
+            return cmp != 0 ? cmp : Long.compare(b.user.getId(), a.user.getId()); // 同分按 id 降序(稳定)
+        });
+
+        int total = scored.size();
+        int from = Math.min((page - 1) * size, total);
+        int to = Math.min(from + size, total);
+        List<Scored> paged = scored.subList(from, to);
+
+        List<HomeFeedVO> records = paged.stream()
+                .map(s -> toFeedVO(s.user, lat, lng, userId, s.score.reasons))
+                .collect(Collectors.toList());
+
+        // 记录曝光事件(匿名行为统计)
+        if (userId != null) {
+            for (Scored s : paged) {
+                recordEvent(userId, "expose", s.user.getId());
+            }
+        }
+        return PageVO.of(records, (long) total, page, size);
+    }
+
+    private record ScoreResult(int score, List<String> reasons) {}
+    private record Scored(User user, ScoreResult score) {}
+
+    /**
+     * 可解释相亲评分:同校/同城/已认证/近期活跃/兴趣相投/距离/资料完整度,权重可配置(finding.recommend.*)。
+     * 不再用"异性优先"硬编码:性别偏好由 user_match_preference.prefer_gender 在候选阶段过滤。
+     */
+    private ScoreResult scoreCandidate(User me, User candidate, UserMatchPreference pref, Double distanceKm) {
+        List<String> reasons = new ArrayList<>();
+        int score = 0;
+        if (me == null) return new ScoreResult(score, reasons);
+
+        if (me.getSchool() != null && me.getSchool().equals(candidate.getSchool())) {
+            score += weights.getSameSchool();
+            reasons.add("同校");
+        }
+        if (me.getCity() != null && candidate.getCity() != null && me.getCity().equals(candidate.getCity())) {
+            score += weights.getSameCity();
+            reasons.add("同城");
+        }
+        if (candidate.getRealNameVerified() != null && candidate.getRealNameVerified() == 2) {
+            score += weights.getVerified();
+            reasons.add("已认证");
+        }
+        if (candidate.getLastLoginAt() != null
+                && candidate.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24))) {
+            score += weights.getRecentActive();
+            reasons.add("近期活跃");
+        }
+        if (candidate.getAvatar() != null && !candidate.getAvatar().isEmpty()) {
+            score += weights.getHasAvatar();
+        }
+        // 兴趣相投(个性签名关键词)
+        if (me.getSignature() != null && candidate.getSignature() != null) {
+            int matches = interestMatches(me.getSignature(), candidate.getSignature());
+            if (matches > 0) {
+                score += weights.getInterestPerKeyword() * matches;
+                reasons.add("兴趣相投");
+            }
+        }
+        if (distanceKm != null && distanceKm < 50) {
+            score += weights.getDistanceClose();
+            reasons.add("距离较近");
+        }
+        score += weights.getCompleteness() * completeness(candidate);
+        return new ScoreResult(score, reasons);
+    }
+
+    private int interestMatches(String mySig, String theirSig) {
+        int matches = 0;
+        for (String w : mySig.split("[，。！？,.!?\\s]+")) {
+            if (w.length() >= 2 && theirSig.contains(w)) matches++;
+        }
+        return matches;
+    }
+
+    /** 资料完整度 0-10 */
+    private int completeness(User u) {
+        int filled = 0;
+        if (u.getAvatar() != null && !u.getAvatar().isEmpty()) filled++;
+        if (u.getSchool() != null && !u.getSchool().isEmpty()) filled++;
+        if (u.getCity() != null && !u.getCity().isEmpty()) filled++;
+        if (u.getGender() != null && u.getGender() > 0) filled++;
+        if (u.getSignature() != null && !u.getSignature().isEmpty()) filled++;
+        if (u.getBirthday() != null) filled++;
+        return filled * 10 / 6;
+    }
+
+    private int ageOf(User u) {
+        if (u.getBirthday() == null) return 0;
+        return Period.between(u.getBirthday(), LocalDate.now()).getYears();
+    }
+
+    private Double distanceKm(Double lat, Double lng, User candidate) {
+        if (lat == null || lng == null || candidate.getLatitude() == null || candidate.getLongitude() == null) {
+            return null;
+        }
+        return GeoUtils.haversineKm(lat, lng, candidate.getLatitude().doubleValue(), candidate.getLongitude().doubleValue());
     }
 
     @Override
@@ -241,6 +330,8 @@ public class BridgeServiceImpl implements BridgeService {
         } catch (DuplicateKeyException e) {
             throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT);
         }
+        // 行为事件:申请
+        recordEvent(fromUserId, "apply", toUserId);
 
         if (friendMode == 0) {
             // 所有人可申请 → 自动通过并建立会话
@@ -339,6 +430,7 @@ public class BridgeServiceImpl implements BridgeService {
         if (status == ChatApplyStatus.APPROVED.getCode()) {
             // 通过:建会话 + 系统消息 + 通知申请人(仅一次)
             approveApply(apply);
+            recordEvent(userId, "approve", apply.getFromUserId());
         } else {
             User handler = userMapper.selectById(userId);
             messageService.notify(userId, apply.getFromUserId(), "chat_rejected",
@@ -377,6 +469,76 @@ public class BridgeServiceImpl implements BridgeService {
                 .lt(ChatApply::getApplyTime, LocalDateTime.now().minusDays(APPLY_EXPIRE_DAYS))
                 .set(ChatApply::getStatus, ChatApplyStatus.EXPIRED.getCode())
                 .set(ChatApply::getHandleTime, LocalDateTime.now()));
+    }
+
+    // ── 相亲交友偏好 ──
+
+    @Override
+    public UserMatchPreference getMatchPreference(Long userId) {
+        UserMatchPreference p = preferenceMapper.selectOne(
+                new LambdaQueryWrapper<UserMatchPreference>().eq(UserMatchPreference::getUserId, userId));
+        if (p == null) {
+            p = new UserMatchPreference();
+            p.setUserId(userId);
+            p.setPreferGender(0);
+            p.setMinAge(0);
+            p.setMaxAge(0);
+            p.setMaxDistanceKm(0);
+            p.setOnlyVerified(0);
+        }
+        return p;
+    }
+
+    @Override
+    @Transactional
+    public void updateMatchPreference(Long userId, UserMatchPreference pref) {
+        pref.setUserId(userId);
+        if (pref.getPreferGender() == null) pref.setPreferGender(0);
+        if (pref.getMinAge() == null) pref.setMinAge(0);
+        if (pref.getMaxAge() == null) pref.setMaxAge(0);
+        if (pref.getMaxDistanceKm() == null) pref.setMaxDistanceKm(0);
+        if (pref.getOnlyVerified() == null) pref.setOnlyVerified(0);
+        if (pref.getPreferGender() < 0 || pref.getPreferGender() > 2) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "preferGender 仅允许 0/1/2");
+        }
+        if (pref.getMinAge() < 0 || pref.getMaxAge() < 0
+                || (pref.getMaxAge() > 0 && pref.getMinAge() > pref.getMaxAge())) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "年龄范围不合法");
+        }
+        UserMatchPreference existing = preferenceMapper.selectOne(
+                new LambdaQueryWrapper<UserMatchPreference>().eq(UserMatchPreference::getUserId, userId));
+        if (existing == null) {
+            preferenceMapper.insert(pref);
+        } else {
+            pref.setId(existing.getId());
+            preferenceMapper.updateById(pref);
+        }
+    }
+
+    // ── 不感兴趣 + 行为事件 ──
+
+    @Override
+    @Transactional
+    public void skipUser(Long userId, Long targetUserId) {
+        if (userId.equals(targetUserId)) return;
+        Long exists = excludeMapper.selectCount(new LambdaQueryWrapper<RecommendExclude>()
+                .eq(RecommendExclude::getUserId, userId)
+                .eq(RecommendExclude::getTargetUserId, targetUserId));
+        if (exists == null || exists == 0) {
+            RecommendExclude e = new RecommendExclude();
+            e.setUserId(userId);
+            e.setTargetUserId(targetUserId);
+            excludeMapper.insert(e);
+        }
+        recordEvent(userId, "skip", targetUserId);
+    }
+
+    private void recordEvent(Long userId, String type, Long targetUserId) {
+        RecommendEvent ev = new RecommendEvent();
+        ev.setUserId(userId);
+        ev.setEventType(type);
+        ev.setTargetUserId(targetUserId);
+        eventMapper.insert(ev);
     }
 
     // ── Private helpers ──
@@ -461,7 +623,7 @@ public class BridgeServiceImpl implements BridgeService {
     }
 
 
-    private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId) {
+    private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId, List<String> matchReasons) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
@@ -473,6 +635,7 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setSignature(detailed ? user.getSignature() : null);
         vo.setCity(detailed ? user.getCity() : null);
         vo.setLastLoginAt(user.getLastLoginAt());
+        vo.setMatchReasons(matchReasons);
 
         // Distance calculation
         if (lat != null && lng != null && user.getLatitude() != null && user.getLongitude() != null) {

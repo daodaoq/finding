@@ -70,6 +70,15 @@ export default function BridgePage() {
     });
   };
 
+  /** 不感兴趣:排除出推荐流 */
+  const handleSkip = async (userId: number) => {
+    try {
+      await bridgeApi.skipUser(userId);
+      setUsers((prev) => prev.filter((u) => u.userId !== userId));
+      showToast('已标记不感兴趣');
+    } catch { /* 拦截器已提示 */ }
+  };
+
   const confirmApply = async () => {
     if (applyTarget == null) return;
     try {
@@ -167,7 +176,7 @@ export default function BridgePage() {
       <div className="bridge-feed-header">推荐用户</div>
       <div className="bridge-user-list">
         {users.map((user) => (
-          <UserCard key={user.userId} user={user} onLike={handleLike} />
+          <UserCard key={user.userId} user={user} onLike={handleLike} onSkip={handleSkip} />
         ))}
         {loading && <LoadingSkeleton />}
         {!loading && users.length === 0 && (

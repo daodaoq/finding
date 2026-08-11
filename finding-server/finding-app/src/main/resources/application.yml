@@ -57,6 +57,16 @@ finding:
   upload:
     max-size: 5242880   # 5MB
     allowed-types: image/jpeg,image/png,image/webp
+  # 相亲匹配评分权重(可调,默认值见 MatchScoreWeights)
+  recommend:
+    same-school: 15
+    same-city: 3
+    verified: 5
+    recent-active: 3
+    has-avatar: 2
+    interest-per-keyword: 2
+    distance-close: 4
+    completeness: 1
   # 图片内容安全(鉴黄 + OCR 违禁词)。密钥放环境变量或 gitignored 的 application-local.yml
   image-safety:
     enabled: ${IMAGE_SAFETY_ENABLED:false}

@@ -31,9 +31,12 @@
 
 .user-card-meta { display: flex; gap: 8px; font-size: 12px; color: #999; margin-top: 4px; flex-wrap: wrap; }
 
-.more-btn { background: none; border: none; font-size: 18px; color: #ccc; cursor: pointer; flex-shrink: 0; }
+.skip-btn { background: none; border: 1px solid #eee; border-radius: 12px; font-size: 12px; color: #999; padding: 2px 8px; cursor: pointer; flex-shrink: 0; }
+.skip-btn:active { background: #f5f5f5; }
 
 .user-card-bio { font-size: 14px; color: #666; margin-bottom: 10px; line-height: 1.5; }
+.user-card-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.user-card-reasons { font-size: 12px; color: #ff6b81; }
 
 .user-card-footer { display: flex; justify-content: space-between; align-items: center; }
 .time-text { font-size: 12px; color: #bbb; }

@@ -7,6 +7,7 @@ const ITEMS = [
   { label: '聊天通用', desc: '全局聊天背景、消息免打扰', to: '/mine/settings/chat' },
   { label: '加好友方式', desc: '谁可以申请加你为好友', to: '/mine/settings/friend' },
   { label: '个人权限', desc: '搜索可见性、主页可见性', to: '/mine/settings/privacy' },
+  { label: '相亲偏好', desc: '偏好性别、年龄、距离、只看认证', to: '/mine/settings/preference' },
 ];
 
 export default function SettingsPage() {

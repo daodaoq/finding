@@ -1,5 +1,6 @@
 package com.finding.chat.service;
 
+import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
 import com.finding.common.PageVO;
@@ -29,4 +30,13 @@ public interface BridgeService {
 
     /** 撤回我发出的待处理申请 */
     void withdrawApply(Long userId, Long applyId);
+
+    /** 获取我的相亲交友偏好(无记录返回默认) */
+    UserMatchPreference getMatchPreference(Long userId);
+
+    /** 更新我的相亲交友偏好 */
+    void updateMatchPreference(Long userId, UserMatchPreference pref);
+
+    /** 对某候选「不感兴趣」:排除出推荐流并记录跳过事件 */
+    void skipUser(Long userId, Long targetUserId);
 }

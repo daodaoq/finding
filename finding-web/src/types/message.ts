@@ -45,6 +45,7 @@ export interface HomeFeedUser {
   lastLoginAt: string;
   isLiked: boolean;
   mutualFriends: number;
+  matchReasons?: string[];
 }
 
 export interface Banner {

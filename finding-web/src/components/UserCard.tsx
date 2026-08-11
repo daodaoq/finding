@@ -5,9 +5,10 @@ import './UserCard.css';
 interface Props {
   user: HomeFeedUser;
   onLike: (userId: number) => void;
+  onSkip?: (userId: number) => void;
 }
 
-export default function UserCard({ user, onLike }: Props) {
+export default function UserCard({ user, onLike, onSkip }: Props) {
   return (
     <div className="user-card">
       <div className="user-card-header">
@@ -26,9 +27,16 @@ export default function UserCard({ user, onLike }: Props) {
             {user.city && <span><AppIcon name="location" size={13} /> {user.city}</span>}
           </div>
         </div>
-        <button className="more-btn">⋯</button>
+        {onSkip && (
+          <button className="skip-btn" onClick={(e) => { e.stopPropagation(); onSkip(user.userId); }}>
+            不感兴趣
+          </button>
+        )}
       </div>
       {user.signature && <div className="user-card-bio">{user.signature}</div>}
+      {user.matchReasons && user.matchReasons.length > 0 && (
+        <div className="user-card-reasons">{user.matchReasons.join(' · ')}</div>
+      )}
       <div className="user-card-footer">
         <span className="time-text">{formatRelativeTime(user.lastLoginAt)}</span>
         <button

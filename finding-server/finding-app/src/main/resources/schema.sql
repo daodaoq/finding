@@ -648,3 +648,46 @@ CREATE TABLE IF NOT EXISTS `feedback` (
     KEY `idx_user` (`user_id`),
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 26. user_match_preference - 相亲交友偏好(每用户一份)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_match_preference` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `prefer_gender` TINYINT DEFAULT 0 COMMENT '0=不限 1=男 2=女',
+    `min_age` INT DEFAULT 0 COMMENT '最小年龄 0=不限',
+    `max_age` INT DEFAULT 0 COMMENT '最大年龄 0=不限',
+    `max_distance_km` INT DEFAULT 0 COMMENT '最大距离km 0=不限',
+    `only_verified` TINYINT DEFAULT 0 COMMENT '只看已认证 0=否 1=是',
+    `prefer_city` VARCHAR(50) DEFAULT NULL COMMENT '偏好城市 空=不限',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 27. recommend_exclude - 相亲"不感兴趣"排除
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `recommend_exclude` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `target_user_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_target` (`user_id`, `target_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 28. recommend_event - 相亲行为事件(曝光/跳过/申请/通过)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `recommend_event` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `event_type` VARCHAR(20) NOT NULL COMMENT 'expose/skip/apply/approve',
+    `target_user_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_user_type` (`user_id`, `event_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

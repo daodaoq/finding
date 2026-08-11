@@ -3,6 +3,15 @@ import type { ApiResponse, PageResult } from '../types/common';
 import type { BridgeRecommendUser, ChatApply } from '../types/bridge';
 import type { InfoShareStatus } from '../types/resume';
 
+export interface UserMatchPreference {
+  preferGender: number;   // 0=不限 1=男 2=女
+  minAge: number;
+  maxAge: number;
+  maxDistanceKm: number;
+  onlyVerified: number;   // 0=否 1=是
+  preferCity?: string;
+}
+
 export const bridgeApi = {
   /** 分页获取推荐用户列表 */
   recommend: (params: { page?: number; size?: number; lat?: number; lng?: number }) =>
@@ -45,4 +54,16 @@ export const bridgeApi = {
     request.get<ApiResponse<InfoShareStatus>>('/bridge/info-share/status', {
       params: { userId },
     }),
+
+  /** 我的相亲交友偏好 */
+  getPreference: () =>
+    request.get<ApiResponse<UserMatchPreference>>('/bridge/preference'),
+
+  /** 更新相亲交友偏好 */
+  updatePreference: (data: Partial<UserMatchPreference>) =>
+    request.put<ApiResponse<null>>('/bridge/preference', data),
+
+  /** 对某候选「不感兴趣」:排除出推荐流 */
+  skipUser: (userId: number) =>
+    request.post<ApiResponse<null>>(`/bridge/recommend/${userId}/skip`),
 };

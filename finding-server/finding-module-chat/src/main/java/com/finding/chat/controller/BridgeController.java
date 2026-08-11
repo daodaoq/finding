@@ -6,6 +6,7 @@ import com.finding.user.common.VerificationGuard;
 import com.finding.chat.dto.ChatApplyDTO;
 import com.finding.chat.dto.ChatApplyHandleDTO;
 import com.finding.user.security.JwtInterceptor;
+import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
@@ -86,6 +87,32 @@ public class BridgeController {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         bridgeService.withdrawApply(userId, id);
+        return Result.ok();
+    }
+
+    /** 我的相亲交友偏好 */
+    @GetMapping("/preference")
+    public Result<UserMatchPreference> getPreference() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(bridgeService.getMatchPreference(userId));
+    }
+
+    /** 更新相亲交友偏好 */
+    @PutMapping("/preference")
+    public Result<Void> updatePreference(@RequestBody UserMatchPreference pref) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        bridgeService.updateMatchPreference(userId, pref);
+        return Result.ok();
+    }
+
+    /** 对某候选「不感兴趣」:排除出推荐流 */
+    @PostMapping("/recommend/{targetId}/skip")
+    public Result<Void> skip(@PathVariable Long targetId) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        bridgeService.skipUser(userId, targetId);
         return Result.ok();
     }
 }
