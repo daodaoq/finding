@@ -39,8 +39,10 @@ export default function MateDetailPage() {
 
   const handleJoin = () => {
     requireLogin(async () => {
+      const message = window.prompt('可以给发起人留一句话（选填，最多500字）', '') ?? undefined;
+      if (message !== undefined && message.length > 500) { showToast('留言不能超过500字'); return; }
       try {
-        await mateApi.join(mateId);
+        await mateApi.join(mateId, message);
         showToast('申请已发送');
         loadDetail(); // 刷新剩余名额/报名状态(满员时可能进入候补)
       } catch (e: any) { showToast(e?.message || '加入失败'); }
@@ -54,11 +56,7 @@ export default function MateDetailPage() {
     setLeaving(true);
     try {
       await mateApi.leave(mateId);
-      setMate(prev => prev ? {
-        ...prev,
-        hasJoined: false,
-        currentParticipants: Math.max(0, prev.currentParticipants - 1)
-      } : null);
+      await loadDetail();
       showToast('已退出搭子活动');
     } catch { showToast('退出失败'); }
     finally { setLeaving(false); }

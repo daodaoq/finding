@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { mateApi } from '../../api/mate';
 import LoginModal from '../../components/LoginModal';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
@@ -15,25 +15,41 @@ export default function CreateMatePage() {
   const [activityTime, setActivityTime] = useState('');
   const [location, setLocation] = useState('');
   const [maxParticipants, setMaxParticipants] = useState(10);
+  const [isAnonymous, setIsAnonymous] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
+  const { id } = useParams<{ id: string }>();
+  const editingId = id ? Number(id) : null;
+
+  useEffect(() => {
+    if (!editingId) return;
+    mateApi.detail(editingId).then(({ data }) => {
+      const m = data.data;
+      setCategory(m.category); setTitle(m.title); setDescription(m.description || '');
+      setActivityTime(m.activityTime ? new Date(m.activityTime).toISOString().slice(0, 16) : '');
+      setLocation(m.location || ''); setMaxParticipants(m.maxParticipants); setIsAnonymous(m.isAnonymous || 0);
+    }).catch(() => showToast('活动不存在或无法编辑'));
+  }, [editingId]);
 
   const handleSubmit = () => {
     requireLogin(async () => {
       if (!category) { showToast('请选择搭子分类'); return; }
       if (!title.trim()) { showToast('请输入标题'); return; }
       if (!activityTime) { showToast('请选择活动时间'); return; }
+      if (!location.trim()) { showToast('请输入活动地点'); return; }
       setSubmitting(true);
       try {
-        await mateApi.create({
+        const payload = {
           category, title: title.trim(),
           description: description.trim(),
-          activityTime: activityTime ? new Date(activityTime).toISOString() : undefined,
-          location: location.trim() || undefined,
+          activityTime: new Date(activityTime).toISOString(),
+          location: location.trim(),
           maxParticipants,
-        });
-        showToast('发布成功！');
+          isAnonymous,
+        };
+        if (editingId) await mateApi.update(editingId, payload); else await mateApi.create(payload);
+        showToast(editingId ? '活动已更新' : '发布成功！');
         navigate(-1);
       } catch { showToast('发布失败'); }
       finally { setSubmitting(false); }
@@ -44,9 +60,9 @@ export default function CreateMatePage() {
     <div className="cm-page">
       <div className="cm-header">
         <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-        <h3>找搭子</h3>
+        <h3>{editingId ? '编辑搭子' : '找搭子'}</h3>
         <button className="cm-submit-btn" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? '发布中...' : '发布'}
+          {submitting ? '保存中...' : editingId ? '保存' : '发布'}
         </button>
       </div>
 
@@ -104,11 +120,16 @@ export default function CreateMatePage() {
           <input
             className="cm-field-input"
             type="text"
-            placeholder="活动地点（选填）"
+            placeholder="活动地点 *"
             value={location}
             onChange={e => setLocation(e.target.value)}
           />
         </div>
+
+        <label className="cm-field" style={{ justifyContent: 'space-between' }}>
+          <span>匿名发布</span>
+          <input type="checkbox" checked={isAnonymous === 1} onChange={e => setIsAnonymous(e.target.checked ? 1 : 0)} />
+        </label>
 
         {/* 人数 */}
         <div className="cm-field">

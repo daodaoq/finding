@@ -48,6 +48,9 @@ import com.finding.message.service.MessageService;
 @RequiredArgsConstructor
 public class MateServiceImpl implements MateService {
 
+    private static final Set<String> SUPPORTED_CATEGORIES = Set.of(
+            "travel", "carpool", "fitness", "study", "exam", "sports", "gaming", "entertainment", "other");
+
     private final MateInvitationMapper invitationMapper;
     private final MateParticipantMapper participantMapper;
     private final MessageService messageService;
@@ -142,6 +145,7 @@ public class MateServiceImpl implements MateService {
     @Transactional
     public MateVO createInvitation(Long userId, MateCreateDTO dto) {
         userWriteGuard.checkWritable(userId);
+        validateInvitationRules(dto);
         // 统一内容准备:先清洗后赋值 + 拦截/送审分类(标题/描述/地点一并清洗)
         PreparedContent pc = prepareInvitationContent(dto);
         MateInvitation invitation = new MateInvitation();
@@ -179,6 +183,24 @@ public class MateServiceImpl implements MateService {
         return new PreparedContent(title, description, location, review);
     }
 
+    private void validateInvitationRules(MateCreateDTO dto) {
+        if (!StringUtils.hasText(dto.getCategory()) || !SUPPORTED_CATEGORIES.contains(dto.getCategory())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的活动分类");
+        }
+        if (dto.getMaxParticipants() == null || dto.getMaxParticipants() < 2 || dto.getMaxParticipants() > 50) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "人数上限应在2到50之间");
+        }
+        if (dto.getIsAnonymous() == null || (dto.getIsAnonymous() != 0 && dto.getIsAnonymous() != 1)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "匿名设置只能为0或1");
+        }
+        if (dto.getActivityTime() == null || dto.getActivityTime().isBefore(LocalDateTime.now().plusMinutes(30))) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "活动时间至少应晚于当前时间30分钟");
+        }
+        if ((dto.getLatitude() == null) != (dto.getLongitude() == null)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "经纬度必须同时填写或同时留空");
+        }
+    }
+
     @Override
     @Transactional
     public void updateInvitation(Long userId, Long id, MateCreateDTO dto) {
@@ -190,8 +212,20 @@ public class MateServiceImpl implements MateService {
         if (!invitation.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.NOT_CREATOR);
         }
-        // 统一内容准备:先清洗后赋值,命中拦截词直接拒绝(数据库不变,不写入未清洗内容)
+        // 内容拦截优先于普通业务校验，确保违禁内容永远不会进入后续流程。
         PreparedContent pc = prepareInvitationContent(dto);
+        validateInvitationRules(dto);
+        if (invitation.getStatus() != MateInvitationStatus.ACTIVE.getCode() || isExpired(invitation)) {
+            throw new BusinessException(ResultCode.MATE_CLOSED, "已取消、已关闭或已过期的活动不能编辑");
+        }
+        if (dto.getMaxParticipants() < invitation.getCurrentParticipants()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "人数上限不能低于当前已确认人数");
+        }
+        boolean importantChanged = !java.util.Objects.equals(invitation.getActivityTime(), dto.getActivityTime())
+                || !java.util.Objects.equals(invitation.getLocation(), dto.getLocation())
+                || !java.util.Objects.equals(invitation.getTitle(), dto.getTitle())
+                || !java.util.Objects.equals(invitation.getDescription(), dto.getDescription());
+        // 统一内容准备:先清洗后赋值,命中拦截词直接拒绝(数据库不变,不写入未清洗内容)
         invitation.setCategory(dto.getCategory());
         invitation.setTitle(pc.title());
         invitation.setDescription(pc.description());
@@ -211,11 +245,15 @@ public class MateServiceImpl implements MateService {
             invitation.setReviewStatus(pc.review().hasReview() ? 1 : 0);
         }
         invitationMapper.updateById(invitation);
+        if (importantChanged) {
+            notifyMembersAndApplicants(invitation, "你报名的搭子活动信息已更新，请查看最新时间、地点和内容");
+        }
     }
 
     @Override
     @Transactional
     public void cancelInvitation(Long userId, Long id) {
+        userWriteGuard.checkWritable(userId);
         MateInvitation invitation = invitationMapper.selectById(id);
         if (invitation == null) {
             throw new BusinessException(ResultCode.MATE_NOT_FOUND);
@@ -230,6 +268,33 @@ public class MateServiceImpl implements MateService {
         invitationMapper.updateById(invitation);
         // 通知已通过成员 + 待审批/候补申请人
         notifyMembersAndApplicants(invitation, "你参与的搭子活动已取消");
+        participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
+                .eq(MateParticipant::getInvitationId, id)
+                .in(MateParticipant::getStatus,
+                        MateParticipantStatus.ACCEPTED.getCode(),
+                        MateParticipantStatus.PENDING.getCode(),
+                        MateParticipantStatus.WAITLISTED.getCode())
+                .set(MateParticipant::getStatus, MateParticipantStatus.INVALIDATED.getCode()));
+    }
+
+    @Override
+    @Transactional
+    public void closeInvitation(Long userId, Long id) {
+        userWriteGuard.checkWritable(userId);
+        MateInvitation invitation = invitationMapper.selectById(id);
+        if (invitation == null) throw new BusinessException(ResultCode.MATE_NOT_FOUND);
+        if (!invitation.getUserId().equals(userId)) throw new BusinessException(ResultCode.NOT_CREATOR);
+        if (invitation.getStatus() != MateInvitationStatus.ACTIVE.getCode()) {
+            throw new BusinessException(ResultCode.MATE_CLOSED, "该活动已关闭或取消");
+        }
+        invitation.setStatus(MateInvitationStatus.CLOSED.getCode());
+        invitationMapper.updateById(invitation);
+        notifyMembersAndApplicants(invitation, "该搭子活动已停止接受新的报名");
+        participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
+                .eq(MateParticipant::getInvitationId, id)
+                .in(MateParticipant::getStatus,
+                        MateParticipantStatus.PENDING.getCode(), MateParticipantStatus.WAITLISTED.getCode())
+                .set(MateParticipant::getStatus, MateParticipantStatus.INVALIDATED.getCode()));
     }
 
     @Override
@@ -403,9 +468,9 @@ public class MateServiceImpl implements MateService {
                             (m.getActivityTime() == null || m.getActivityTime().isAfter(now)))
                     .collect(Collectors.toList());
         } else {
-            // 已结束：status=2 或 activityTime 已过
+            // 已结束：已取消、已关闭或活动时间已过
             filtered = allInvitations.stream()
-                    .filter(m -> m.getStatus() == 2 ||
+                    .filter(m -> m.getStatus() != MateInvitationStatus.ACTIVE.getCode() ||
                             (m.getActivityTime() != null && !m.getActivityTime().isAfter(now)))
                     .collect(Collectors.toList());
         }
@@ -588,16 +653,19 @@ public class MateServiceImpl implements MateService {
                 .orderByAsc(MateParticipant::getCreatedAt)
                 .last("LIMIT 1"));
         if (next == null) return;
-        // 条件更新防并发:仅当前仍在候补才可提升
+        // 先原子占用名额，再迁移候补状态；任一步失败均抛错并由外层事务回滚。
+        int slotRows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                .eq(MateInvitation::getId, invitationId)
+                .lt(MateInvitation::getCurrentParticipants, invitation.getMaxParticipants())
+                .setSql("current_participants = current_participants + 1"));
+        if (slotRows == 0) return;
         int pRows = participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
                 .eq(MateParticipant::getId, next.getId())
                 .eq(MateParticipant::getStatus, MateParticipantStatus.WAITLISTED.getCode())
                 .set(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
-        if (pRows == 0) return;
-        invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
-                .eq(MateInvitation::getId, invitationId)
-                .lt(MateInvitation::getCurrentParticipants, invitation.getMaxParticipants())
-                .setSql("current_participants = current_participants + 1"));
+        if (pRows == 0) {
+            throw new BusinessException(ResultCode.MATE_APPLY_HANDLED, "候补状态已变化，请重试");
+        }
         messageService.notify(invitation.getUserId(), next.getUserId(), "mate_accepted", "名额有空位，你已补位成功", invitationId);
     }
 

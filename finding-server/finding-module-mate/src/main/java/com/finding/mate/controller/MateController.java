@@ -57,6 +57,14 @@ public class MateController {
         return Result.ok();
     }
 
+    @PutMapping("/{id}/close")
+    public Result<Void> close(@PathVariable Long id) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        mateService.closeInvitation(userId, id);
+        return Result.ok();
+    }
+
     @PostMapping("/{id}/join")
     public Result<Void> join(@PathVariable Long id, @RequestParam(required = false) String message) {
         Long userId = JwtInterceptor.getCurrentUserId();
@@ -121,15 +129,15 @@ public class MateController {
     @GetMapping("/categories")
     public Result<List<Map<String, String>>> categories() {
         List<Map<String, String>> list = List.of(
-                Map.of("code", "travel", "name", "旅游搭子", "icon", "✈️"),
-                Map.of("code", "carpool", "name", "拼车搭子", "icon", "🚗"),
-                Map.of("code", "fitness", "name", "健身搭子", "icon", "💪"),
-                Map.of("code", "study", "name", "学习搭子", "icon", "📚"),
-                Map.of("code", "exam", "name", "备考搭子", "icon", "📝"),
-                Map.of("code", "sports", "name", "运动搭子", "icon", "⚽"),
-                Map.of("code", "gaming", "name", "游戏搭子", "icon", "🎮"),
-                Map.of("code", "entertainment", "name", "娱乐搭子", "icon", "🎬"),
-                Map.of("code", "other", "name", "其他", "icon", "📌")
+                Map.of("code", "travel", "name", "旅游搭子"),
+                Map.of("code", "carpool", "name", "拼车搭子"),
+                Map.of("code", "fitness", "name", "健身搭子"),
+                Map.of("code", "study", "name", "学习搭子"),
+                Map.of("code", "exam", "name", "备考搭子"),
+                Map.of("code", "sports", "name", "运动搭子"),
+                Map.of("code", "gaming", "name", "游戏搭子"),
+                Map.of("code", "entertainment", "name", "娱乐搭子"),
+                Map.of("code", "other", "name", "其他")
         );
         return Result.ok(list);
     }

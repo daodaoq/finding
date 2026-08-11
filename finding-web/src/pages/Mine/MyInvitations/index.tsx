@@ -45,6 +45,11 @@ export default function MyInvitationsPage() {
               </div>
             )}
             <MateCard mate={m} onJoin={() => {}} onClick={id => navigate(`/mate/${id}`)} />
+            {m.status === 1 && !m.isExpired && <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px' }}>
+              <button className="subpage-action-btn" onClick={() => navigate(`/create-mate/${m.id}`)}>编辑</button>
+              <button className="subpage-action-btn" onClick={async () => { if (!window.confirm('关闭后将停止新的报名，确认继续吗？')) return; try { await mateApi.close(m.id); showToast('已停止报名'); loadMyInvitations(); } catch (e: any) { showToast(e?.message || '操作失败'); } }}>停止报名</button>
+              <button className="subpage-action-btn danger" onClick={async () => { if (!window.confirm('取消后活动将不再举行，确认继续吗？')) return; try { await mateApi.cancel(m.id); showToast('活动已取消'); loadMyInvitations(); } catch (e: any) { showToast(e?.message || '操作失败'); } }}>取消活动</button>
+            </div>}
           </div>
         ))}
         {!loading && mates.length === 0 && <EmptyState message="还没有发布过邀约" />}

@@ -14,7 +14,7 @@ const QUICK_ITEMS: { key: string; icon: AppIconName; label: string; to: string }
 ];
 const MENU_ITEMS: { key: string; icon: AppIconName; label: string; desc: string; to: string }[] = [
   { key: 'my-mates', icon: 'users', label: '我的搭子', desc: '关注和粉丝', to: '/mine/mates' }, { key: 'orders', icon: 'calendar', label: '订单', desc: '预约成功的搭子', to: '/mine/orders' }, { key: 'reports', icon: 'flag', label: '我的投诉', desc: '查看举报处理结果', to: '/mine/reports' },
-  { key: 'help', icon: 'message', label: '帮助与客服', desc: '常见问题与联系客服', to: '/mine/help' }, { key: 'invitations', icon: 'inbox', label: '搭子管理', desc: '我发布的内容', to: '/mine/invitations' },
+  { key: 'help', icon: 'message', label: '帮助与客服', desc: '常见问题与联系客服', to: '/mine/help' }, { key: 'applications', icon: 'calendar', label: '搭子申请', desc: '待审核、候补与历史记录', to: '/mine/applications' }, { key: 'invitations', icon: 'inbox', label: '搭子管理', desc: '我发布的内容', to: '/mine/invitations' },
   { key: 'settings', icon: 'pen', label: '设置', desc: '个人资料与账号安全', to: '/mine/settings' }, { key: 'about', icon: 'book', label: '关于我们', desc: '版本更新信息', to: '/mine/about' },
 ];
 

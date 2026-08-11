@@ -18,6 +18,7 @@ const MyLikesPage = lazy(() => import('../pages/Mine/MyLikes'));
 const MyMatesPage = lazy(() => import('../pages/Mine/MyMates'));
 const MyInvitationsPage = lazy(() => import('../pages/Mine/MyInvitations'));
 const MyJoinedPage = lazy(() => import('../pages/Mine/MyJoined'));
+const MyApplicationsPage = lazy(() => import('../pages/Mine/MyApplications'));
 const ProfileEditPage = lazy(() => import('../pages/Mine/ProfileEdit'));
 const VerifyPage = lazy(() => import('../pages/Mine/Verify'));
 const ResumeEditPage = lazy(() => import('../pages/Resume'));
@@ -98,6 +99,7 @@ const router = createBrowserRouter([
       { path: 'mine/mates', element: withSuspense(<MyMatesPage />) },
       { path: 'mine/invitations', element: withSuspense(<MyInvitationsPage />) },
       { path: 'mine/joined', element: withSuspense(<MyJoinedPage />) },
+      { path: 'mine/applications', element: withSuspense(<MyApplicationsPage />) },
       { path: 'mine/profile', element: withSuspense(<ProfileEditPage />) },
       { path: 'mine/verify', element: withSuspense(<VerifyPage />) },
       { path: 'mine/resume', element: withSuspense(<ResumeEditPage />) },
@@ -118,6 +120,7 @@ const router = createBrowserRouter([
       { path: 'mine/about', element: withSuspense(<AboutPage />) },
       { path: 'create-post', element: withSuspense(<CreatePostPage />) },
       { path: 'create-mate', element: withSuspense(<CreateMatePage />) },
+      { path: 'create-mate/:id', element: withSuspense(<CreateMatePage />) },
     ],
   },
   {

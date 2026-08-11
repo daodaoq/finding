@@ -11,6 +11,10 @@ export const mateApi = {
 
   create: (data: Record<string, unknown>) =>
     request.post<ApiResponse<Mate>>('/mates', data),
+  update: (id: number, data: Record<string, unknown>) =>
+    request.put<ApiResponse<null>>(`/mates/${id}`, data),
+  cancel: (id: number) => request.delete<ApiResponse<null>>(`/mates/${id}`),
+  close: (id: number) => request.put<ApiResponse<null>>(`/mates/${id}/close`),
 
   join: (id: number, message?: string) =>
     request.post<ApiResponse<null>>(`/mates/${id}/join`, null, { params: { message } }),
@@ -51,7 +55,7 @@ export interface Participant {
   avatar?: string;
   school?: string;
   message?: string;
-  status: number;   // 0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补
+  status: number;   // 0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补 5=活动已结束
   statusDesc?: string;
   applyTime: string;
 }
@@ -59,7 +63,7 @@ export interface Participant {
 /** 我的搭子申请记录 */
 export interface MateApplication {
   invitationId: number;
-  applicationStatus: number;   // 0=待审核 1=已通过 2=被拒
+  applicationStatus: number;   // 0=待审核 1=已通过 2=被拒 3=已退出 4=候补 5=活动已结束
   message?: string;
   applyTime: string;
   title: string;

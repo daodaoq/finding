@@ -183,6 +183,10 @@ class MateServiceImplTest {
         d.setTitle(title);
         d.setDescription(desc);
         d.setLocation(location);
+        d.setCategory("other");
+        d.setActivityTime(LocalDateTime.now().plusDays(2));
+        d.setMaxParticipants(10);
+        d.setIsAnonymous(0);
         return d;
     }
 

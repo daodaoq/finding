@@ -19,7 +19,9 @@ public enum MateParticipantStatus {
     ACCEPTED(1, "已通过"),
     REJECTED(2, "已拒绝"),
     CANCELLED(3, "已退出"),
-    WAITLISTED(4, "候补中");
+    WAITLISTED(4, "候补中"),
+    INVALIDATED(5, "活动已结束");
+
 
     private final int code;
     private final String desc;

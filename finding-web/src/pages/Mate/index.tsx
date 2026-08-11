@@ -34,11 +34,13 @@ export default function MatePage() {
     });
 
   const handleJoin = async (id: number) => {
+    const message = window.prompt('可以给发起人留一句话（选填，最多500字）', '') ?? undefined;
+    if (message !== undefined && message.length > 500) { showToast('留言不能超过500字'); return; }
     try {
-      await mateApi.join(id);
-      setMates((prev) => prev.map((m) =>
-        m.id === id ? { ...m, hasJoined: true, currentParticipants: m.currentParticipants + 1 } : m));
-    } catch { showToast('操作失败'); }
+      await mateApi.join(id, message);
+      // 服务端决定待审核/候补/已通过状态，重新拉取避免客户端伪造人数
+      setMates((prev) => prev.filter((m) => m.id !== id));
+    } catch (e: any) { showToast(e?.message || '操作失败'); }
   };
 
   return (
