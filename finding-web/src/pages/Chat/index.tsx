@@ -22,6 +22,10 @@ import './index.css';
 interface ChatMessage extends MessageLike {
   toUserId: number;
   isRead: number;
+  /** 客户端幂等 ID(弱网重试复用,服务端据此去重) */
+  clientMessageId?: string;
+  /** 发送状态(仅自己刚发送/失败的消息) */
+  sendState?: 'sending' | 'sent' | 'failed';
 }
 
 export default function ChatDetailPage() {
@@ -52,15 +56,17 @@ export default function ChatDetailPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const msgListRef = useRef<HTMLDivElement>(null);
 
-  // WebSocket 实时消息处理
-  const { sendMessage } = useWebSocket((wsMsg) => {
+  // WebSocket 实时消息处理(连接由全局单例管理)
+  useWebSocket((wsMsg) => {
     if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
       setMessages((prev) => prev.map((m) =>
         m.id === wsMsg.messageId ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
       return;
     }
-    if (wsMsg.type === 'chat' && wsMsg.fromUserId === targetUserId && wsMsg.messageId) {
-      // 按 ID 去重：避免消息历史加载完后又收到同一条 WebSocket 推送
+    // 接收对方消息 + 自己其他设备发送的消息(多端同步);按真实 messageId 去重
+    const isRelevant = wsMsg.type === 'chat' && wsMsg.messageId
+      && (wsMsg.fromUserId === targetUserId || wsMsg.fromUserId === user?.id);
+    if (isRelevant) {
       setMessages((prev) => {
         if (prev.some((m) => m.id === wsMsg.messageId)) return prev;
         return [...prev, {
@@ -192,7 +198,8 @@ export default function ChatDetailPage() {
         const seen = new Set<number>();
         return merged.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
       });
-      setHasMore((res.data.data.records?.length || 0) === 50);
+      // 游标分页:后端"多查一条"判定 hasMore,不再按 50 条整页猜测
+      setHasMore(!!res.data.data.hasMore);
     } catch { /* 忽略 */ }
     finally { setLoadingMore(false); }
   };
@@ -208,28 +215,63 @@ export default function ChatDetailPage() {
     }
   };
 
-  // 发送消息(以 roomId 指定会话;接收者由服务端从房间成员推导)
+  // 发送消息(以 roomId 指定会话;成功后用真实消息回执替换临时消息)
   const handleSend = async (content: string, messageType = 'text') => {
     if (!user || !conversation) return;
     const roomId = conversation.roomId || conversation.id;
     if (!roomId) return;
+    const tempId = Date.now();
     const newMsg: ChatMessage = {
-      id: Date.now(), // 临时 ID
+      id: tempId, // 临时 ID
       fromUserId: user.id,
       toUserId: targetUserId,
       content,
       messageType,
       isRead: 0,
       createdAt: new Date().toISOString(),
+      clientMessageId: `${user.id}_${tempId}`,
+      sendState: 'sending',
     };
-
     setMessages((prev) => [...prev, newMsg]);
 
     try {
-      await chatApi.sendMessage({ roomId, content, messageType });
+      const res = await chatApi.sendMessage({
+        roomId, content, messageType, clientMessageId: newMsg.clientMessageId,
+      });
+      const real = res.data.data;
+      // 用真实消息替换临时消息(避免与 WS 推送重复;同一 clientMessageId 重试返回同一条)
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== real.id).map((m) =>
+          m.id === tempId
+            ? { ...m, id: real.id, createdAt: real.createdAt, isRead: real.isRead ?? 0, sendState: 'sent' as const }
+            : m));
     } catch (e: any) {
-      setMessages((prev) => prev.filter((m) => m.id !== newMsg.id));
+      // 失败不删除:标记失败,可点击重试
+      setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, sendState: 'failed' as const } : m));
       showToast(e?.message || '发送失败，请稍后重试');
+    }
+  };
+
+  // 重试失败的发送(复用同一 clientMessageId,服务端幂等去重)
+  const retryMessage = async (msg: MessageLike) => {
+    const failed = msg as ChatMessage;
+    if (!conversation) return;
+    const roomId = conversation.roomId || conversation.id;
+    if (!roomId) return;
+    setMessages((prev) => prev.map((m) => m.id === failed.id ? { ...m, sendState: 'sending' as const } : m));
+    try {
+      const res = await chatApi.sendMessage({
+        roomId, content: failed.content, messageType: failed.messageType, clientMessageId: failed.clientMessageId,
+      });
+      const real = res.data.data;
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== real.id).map((m) =>
+          m.id === failed.id
+            ? { ...m, id: real.id, createdAt: real.createdAt, isRead: real.isRead ?? 0, sendState: 'sent' as const }
+            : m));
+    } catch (e: any) {
+      setMessages((prev) => prev.map((m) => m.id === failed.id ? { ...m, sendState: 'failed' as const } : m));
+      showToast(e?.message || '重试失败，请稍后再试');
     }
   };
 
@@ -294,6 +336,7 @@ export default function ChatDetailPage() {
           title: '这条消息',
         })}
         onRecallMessage={handleRecallMessage}
+        onRetryMessage={retryMessage}
         onLoadMore={loadOlder}
         loadingMore={loadingMore}
         hasMore={hasMore}

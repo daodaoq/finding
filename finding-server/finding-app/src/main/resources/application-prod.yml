@@ -32,6 +32,7 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:admin}
     password: ${RABBITMQ_PASSWORD:Finding@2026}
+    publisher-confirm-type: correlated   # 开启发布确认,Outbox 据此标记已发布
     listener:
       simple:
         acknowledge-mode: auto

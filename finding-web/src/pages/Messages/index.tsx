@@ -22,7 +22,14 @@ export default function MessagesPage() {
   const loadConversations = async (silent = false) => { silent ? setRefreshing(true) : setLoading(true); try { const response = await chatApi.listConversations(); setConversations(response.data.data || []); } catch { showToast('加载会话列表失败'); } finally { setLoading(false); setRefreshing(false); } };
   const loadGroups = async () => { try { const response = await groupChatApi.listMyGroups(); setGroups(response.data.data || []); } catch { showToast('加载群聊列表失败'); } };
   const loadUnreadCount = async () => { try { const response = await messageApi.unreadCount(); setUnreadCount(response.data.data.count); } catch {} };
-  useWebSocket(useCallback((message) => { if (message.type === 'chat') { loadConversations(true); setUnreadCount(unreadCount + 1); } }, [unreadCount]));
+  const myId = useAuthStore((s) => s.user?.id);
+  useWebSocket(useCallback((message) => {
+    if (message.type === 'chat') {
+      loadConversations(true);
+      // 自己发送的消息(其他设备同步)不计入未读
+      if (message.fromUserId !== myId) setUnreadCount(unreadCount + 1);
+    }
+  }, [unreadCount, myId]));
   useEffect(() => { if (isLoggedIn) { loadConversations(); loadGroups(); loadUnreadCount(); } else setLoading(false); }, [isLoggedIn]);
   const refresh = async () => { await loadConversations(true); await loadUnreadCount(); };
   return <div className="messages-page"><header className="msg-header"><h2 className="msg-header-title">互动消息</h2><div className="msg-header-actions"><button className="header-create-group-btn" onClick={() => navigate('/messages/create-group')}>建群</button><button className="header-action-btn" onClick={refresh} aria-label="刷新"><AppIcon name="refresh" size={19} className={refreshing ? 'is-spinning' : ''} /></button></div></header>

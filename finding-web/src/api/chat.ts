@@ -13,9 +13,9 @@ export const chatApi = {
       params: { targetUserId }
     }),
 
-  /** 发送消息(以 roomId 指定会话,接收者由服务端从房间成员推导) */
-  sendMessage: (data: { roomId: number; content: string; messageType?: string }) =>
-    request.post<ApiResponse<Conversation>>('/chat/send', data),
+  /** 发送消息(以 roomId 指定会话,返回真实消息回执;clientMessageId 用于弱网重试幂等) */
+  sendMessage: (data: { roomId: number; content: string; messageType?: string; clientMessageId?: string }) =>
+    request.post<ApiResponse<any>>('/chat/send', data),
 
   /** 消息历史（id=room_id） */
   getMessageHistory: (roomId: number, lastId?: number, size = 50) =>

@@ -17,6 +17,8 @@ public class PrivateChat {
     private Long toUserId;
     private String content;
     private String messageType;     // text / image
+    /** 客户端幂等 ID(senderId + clientMessageId 唯一,弱网重试不重复落库) */
+    private String clientMessageId;
     private Integer isRecalled;     // 0=否 1=已撤回
     private Integer isRead;
     /** uid1(较小者)是否已单侧清空该消息 */

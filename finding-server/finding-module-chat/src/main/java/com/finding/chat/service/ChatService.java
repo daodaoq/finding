@@ -23,8 +23,8 @@ public interface ChatService {
     /** 获取当前用户的所有会话列表 */
     List<ConversationVO> listConversations(Long userId);
 
-    /** 发送私聊消息（REST 方式，客户端只能以 roomId 指定会话） */
-    ConversationVO sendMessage(Long userId, MessageSendDTO dto);
+    /** 发送私聊消息（REST 方式，客户端只能以 roomId 指定会话；返回落库后的真实消息回执） */
+    ChatMessageVO sendMessage(Long userId, MessageSendDTO dto);
 
     /** 获取会话消息历史（id=room_id，游标分页） */
     PageVO<ChatMessageVO> getMessageHistory(Long userId, Long roomId, Long lastId, int size);

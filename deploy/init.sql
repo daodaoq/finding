@@ -1,12 +1,8 @@
 -- ============================================================
--- Finding 大学生社交平台 - 数据库初始化 (schema only)
--- 说明: 原 init.sql 为编码损坏的数据库导出(UTF-16/GBK 混合乱码),
---       无法被 MySQL 解析。现替换为项目 resources/schema.sql 的干净结构脚本。
--- 建库 + 建 26 张表;如需测试数据请另行导入正确编码的数据文件。
+-- Finding 大学生社交平台 - 数据库初始化 (schema only, 由 resources/schema.sql 生成)
 -- ============================================================
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
-
 -- ============================================================
 -- Finding 大学生社交平台 - Database Schema
 -- MySQL 8.0+, InnoDB, utf8mb4
@@ -39,6 +35,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `banned_until` DATETIME DEFAULT NULL COMMENT '封禁到期时间(NULL=永久封禁)',
     `banned_reason` VARCHAR(500) DEFAULT NULL COMMENT '封禁原因',
     `real_name_verified` TINYINT DEFAULT 0 COMMENT '0=no, 1=pending, 2=approved, 3=rejected',
+    `target_type` TINYINT DEFAULT 0 COMMENT '交友目标 0=未设置 1=找对象 2=交朋友',
     `last_login_at` DATETIME DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -177,6 +174,10 @@ CREATE TABLE IF NOT EXISTS `mate_invitation` (
     `current_participants` INT DEFAULT 1,
     `is_anonymous` TINYINT DEFAULT 0,
     `status` TINYINT DEFAULT 1 COMMENT '0=cancelled, 1=active, 2=closed',
+    `review_status` TINYINT DEFAULT 0 COMMENT '0=已发布 1=待审 2=拒绝',
+    `review_reason` VARCHAR(500) DEFAULT NULL COMMENT '审核拒绝原因',
+    `review_by` BIGINT DEFAULT NULL COMMENT '审核人',
+    `review_time` DATETIME DEFAULT NULL COMMENT '审核时间',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -244,12 +245,14 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `to_user_id` BIGINT NOT NULL,
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text' COMMENT 'text / image',
+    `client_message_id` VARCHAR(64) DEFAULT NULL COMMENT '客户端幂等ID(senderId+clientMessageId 唯一)',
     `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `is_read` TINYINT DEFAULT 0,
     `uid1_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid1(较小者)是否已单侧清空',
     `uid2_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid2(较大者)是否已单侧清空',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_from_client` (`from_user_id`, `client_message_id`),
     KEY `idx_chat_conv` (`conversation_id`, `created_at`),
     KEY `idx_chat_room` (`room_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -301,7 +304,7 @@ CREATE TABLE IF NOT EXISTS `contact` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_uid_room` (`uid`, `room_id`),
+    UNIQUE KEY `uk_uid_room` (`uid`, `room_id`),
     KEY `idx_room_id` (`room_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -480,6 +483,21 @@ CREATE TABLE IF NOT EXISTS `chat_apply` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- 18b. chat_outbox - 消息发送 Outbox(事务内落库,后台任务补发 MQ,保证事件不丢失)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `chat_outbox` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `message_id` BIGINT NOT NULL COMMENT 'private_chat.id',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0=待发布 1=已发布',
+    `retry_count` INT NOT NULL DEFAULT 0,
+    `last_error` VARCHAR(500) DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `published_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_status_id` (`status`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- 19. user_resume - 情感简历 (每个用户一份)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `user_resume` (
@@ -610,6 +628,12 @@ CREATE TABLE IF NOT EXISTS `user_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- contact.muted 改为可空(NULL=继承全局默认免打扰)
+-- 新装库直接跑 ALTER 即可(幂等)。
+-- ============================================================
+-- ALTER TABLE `contact` MODIFY `muted` TINYINT DEFAULT NULL COMMENT '0=否 1=免打扰 NULL=继承全局';
+
+-- ============================================================
 -- 24. forbidden_word - 违禁词(管理员动态维护,内容发布全链路拦截)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `forbidden_word` (
@@ -652,4 +676,98 @@ CREATE TABLE IF NOT EXISTS `feedback` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================================
+-- 26. user_match_preference - 相亲交友偏好(每用户一份)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_match_preference` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `prefer_gender` TINYINT DEFAULT 0 COMMENT '0=不限 1=男 2=女',
+    `min_age` INT DEFAULT 0 COMMENT '最小年龄 0=不限',
+    `max_age` INT DEFAULT 0 COMMENT '最大年龄 0=不限',
+    `max_distance_km` INT DEFAULT 0 COMMENT '最大距离km 0=不限',
+    `only_verified` TINYINT DEFAULT 0 COMMENT '只看已认证 0=否 1=是',
+    `prefer_city` VARCHAR(50) DEFAULT NULL COMMENT '偏好城市 空=不限',
+    `prefer_target_type` TINYINT DEFAULT 0 COMMENT '偏好目标 0=不限 1=找对象 2=交朋友',
+    `min_completeness` TINYINT DEFAULT 0 COMMENT '资料完整度最低门槛 0-10,0=不限',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 27. recommend_exclude - 相亲"不感兴趣"排除
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `recommend_exclude` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `target_user_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_target` (`user_id`, `target_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 28. recommend_event - 相亲行为事件(曝光/跳过/申请/通过)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `recommend_event` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `event_type` VARCHAR(20) NOT NULL COMMENT 'expose/skip/apply/approve',
+    `target_user_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_user_type` (`user_id`, `event_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 29. operation_log - 敏感操作审计日志
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `operation_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `operator_id` BIGINT DEFAULT NULL COMMENT '操作者',
+    `action` VARCHAR(50) NOT NULL COMMENT '动作:ban/report_handle/post_review/mate_status',
+    `target_type` VARCHAR(50) DEFAULT NULL COMMENT '目标类型',
+    `target_id` BIGINT DEFAULT NULL COMMENT '目标ID',
+    `detail` VARCHAR(1000) DEFAULT NULL COMMENT '操作详情',
+    `result` VARCHAR(500) DEFAULT NULL COMMENT '结果/备注',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_operator` (`operator_id`),
+    KEY `idx_action` (`action`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 30. user_warning - 警告记录
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_warning` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL COMMENT '警告原因',
+    `operator_id` BIGINT DEFAULT NULL COMMENT '操作者',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 31. appeal - 内容审核申诉
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `appeal` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '申诉人',
+    `target_type` VARCHAR(20) NOT NULL COMMENT 'post',
+    `target_id` BIGINT NOT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL COMMENT '申诉理由',
+    `status` TINYINT DEFAULT 0 COMMENT '0待处理 1通过 2驳回',
+    `original_result` VARCHAR(500) DEFAULT NULL COMMENT '原处理结果',
+    `handle_by` BIGINT DEFAULT NULL,
+    `handle_note` VARCHAR(500) DEFAULT NULL,
+    `handle_time` DATETIME DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_target` (`target_type`, `target_id`),
+    KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SET FOREIGN_KEY_CHECKS = 1;

@@ -31,6 +31,8 @@ interface Props {
   onReportMessage?: (msg: MessageLike) => void;
   /** 长按消息撤回(仅自己的消息) */
   onRecallMessage?: (msg: MessageLike) => void;
+  /** 点击失败消息重试发送 */
+  onRetryMessage?: (msg: MessageLike) => void;
   /** 滚动到顶部时加载更早消息 */
   onLoadMore?: () => void;
   loadingMore?: boolean;
@@ -50,6 +52,7 @@ export default function MessageList({
   emptyNode,
   onReportMessage,
   onRecallMessage,
+  onRetryMessage,
   onLoadMore,
   loadingMore,
   hasMore,
@@ -84,6 +87,7 @@ export default function MessageList({
               nickname={nicknameOf(msg)}
               onReport={onReportMessage}
               onRecall={onRecallMessage}
+              onRetry={onRetryMessage}
             />
           </div>
         );

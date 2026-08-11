@@ -11,6 +11,8 @@ interface ChatMessage {
   messageType: string;
   isRecalled?: number;
   createdAt: string;
+  /** 自己刚发送/失败的消息状态(失败可点击重试) */
+  sendState?: 'sending' | 'sent' | 'failed';
 }
 
 interface Props {
@@ -22,9 +24,11 @@ interface Props {
   onReport?: (message: ChatMessage) => void;
   /** 长按消息触发撤回(仅自己的消息) */
   onRecall?: (message: ChatMessage) => void;
+  /** 点击失败消息重试 */
+  onRetry?: (message: ChatMessage) => void;
 }
 
-export default function ChatBubble({ message, isMine, avatar, nickname, onReport, onRecall }: Props) {
+export default function ChatBubble({ message, isMine, avatar, nickname, onReport, onRecall, onRetry }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
@@ -77,6 +81,14 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
             )}
           </div>
           <span className="chat-time">{formatClockTime(message.createdAt)}</span>
+          {isMine && message.sendState === 'failed' && (
+            <button
+              className="chat-retry"
+              onClick={(e) => { e.stopPropagation(); onRetry?.(message); }}
+            >
+              发送失败·点击重试
+            </button>
+          )}
         </div>
       </div>
 

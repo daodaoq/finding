@@ -33,8 +33,8 @@ export default function GroupChatPage() {
   const navigate = useNavigate();
   const msgListRef = useRef<HTMLDivElement>(null);
 
-  // WebSocket:撤回同步 + 实时群消息
-  const { sendMessage } = useWebSocket((wsMsg) => {
+  // WebSocket:撤回同步 + 实时群消息(连接由全局单例管理)
+  useWebSocket((wsMsg) => {
     if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
       setMessages((prev) => prev.map((m) =>
         m.id === wsMsg.messageId ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));

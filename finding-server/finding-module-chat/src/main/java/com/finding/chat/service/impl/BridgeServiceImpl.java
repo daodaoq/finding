@@ -627,19 +627,31 @@ public class BridgeServiceImpl implements BridgeService {
         }
     }
 
-    /** 更新/创建 contact 记录 */
+    /** 更新/创建 contact 记录(uk_uid_room 唯一约束下幂等,并发重复插入忽略) */
     private void updateContact(Long uid, Long roomId, Long msgId) {
         Contact contact = contactMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Contact>()
                         .eq(Contact::getUid, uid)
                         .eq(Contact::getRoomId, roomId));
         if (contact == null) {
-            contact = new Contact();
-            contact.setUid(uid);
-            contact.setRoomId(roomId);
-            contact.setActiveTime(LocalDateTime.now());
-            contact.setLastMsgId(msgId);
-            contactMapper.insert(contact);
+            try {
+                contact = new Contact();
+                contact.setUid(uid);
+                contact.setRoomId(roomId);
+                contact.setActiveTime(LocalDateTime.now());
+                contact.setLastMsgId(msgId);
+                contactMapper.insert(contact);
+            } catch (DuplicateKeyException e) {
+                contact = contactMapper.selectOne(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Contact>()
+                                .eq(Contact::getUid, uid)
+                                .eq(Contact::getRoomId, roomId));
+                if (contact != null) {
+                    contact.setActiveTime(LocalDateTime.now());
+                    contact.setLastMsgId(msgId);
+                    contactMapper.updateById(contact);
+                }
+            }
         } else {
             contact.setActiveTime(LocalDateTime.now());
             contact.setLastMsgId(msgId);

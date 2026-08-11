@@ -1,93 +1,28 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { chatSocket } from '../ws/chatSocket';
+import type { WsMessage } from '../ws/chatSocket';
 
-interface WsMessage {
-  type: string;
-  action?: string;
-  title?: string;
-  fromUserId: number;
-  fromUserNickname?: string;
-  fromUserAvatar?: string;
-  toUserId: number;
-  conversationId: number;
-  content: string;
-  messageType: string;
-  messageId: number;
-  timestamp: number;
-}
+export type { WsMessage };
 
 /**
- * WebSocket 连接 Hook —— 稳定连接、心跳保活。
- * 用 ref 存储回调避免因回调变化导致反复重连。
- * @param enabled 为 false 时不建立连接(登录后才连接时传入)。
+ * WebSocket 订阅 Hook —— 连接生命周期由全局单例 chatSocket 管理。
+ *
+ * 组件挂载时订阅回调并按需连接(幂等);卸载仅退订,不断开全局连接(避免路由切换遗留后台连接)。
+ * @param enabled 登录态;为 false 时断开全局连接(仅登录态监听者传此参数,如 MainLayout)
  */
 export function useWebSocket(onMessage: (msg: WsMessage) => void, enabled = true) {
-  const wsRef = useRef<WebSocket | null>(null);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
   const onMsgRef = useRef(onMessage);
-  onMsgRef.current = onMessage; // 始终指向最新回调
-
-  const connect = useCallback(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
-
-    // 避免重复连接
-    if (wsRef.current?.readyState === WebSocket.OPEN ||
-        wsRef.current?.readyState === WebSocket.CONNECTING) {
-      return;
-    }
-
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log('WebSocket 已连接');
-      heartbeatRef.current = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'heartbeat' }));
-        }
-      }, 30000);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg: WsMessage = JSON.parse(event.data);
-        onMsgRef.current(msg); // 通过 ref 调用最新回调
-      } catch (e) {
-        console.error('解析 WebSocket 消息失败', e);
-      }
-    };
-
-    ws.onclose = (e) => {
-      console.log('WebSocket 断开，3秒后重连, code=', e.code);
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-      wsRef.current = null;
-      setTimeout(connect, 3000);
-    };
-
-    ws.onerror = (e) => {
-      console.error('WebSocket 错误', e);
-      ws.close();
-    };
-
-    wsRef.current = ws;
-  }, []); // 空依赖，只创建一次
+  onMsgRef.current = onMessage; // 始终指向最新回调,避免回调变化触发重连
 
   useEffect(() => {
-    if (!enabled) return;
-    connect();
-    return () => {
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-      wsRef.current?.close();
-      wsRef.current = null;
-    };
-  }, [connect, enabled]);
-
-  /** 通过 WebSocket 发送消息 */
-  const sendMessage = useCallback((msg: Partial<WsMessage>) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(msg));
+    if (!enabled) {
+      chatSocket.disconnect();
+      return;
     }
-  }, []);
+    const unsubscribe = chatSocket.subscribe((msg) => onMsgRef.current(msg));
+    chatSocket.connect();
+    return unsubscribe;
+  }, [enabled]);
 
-  return { sendMessage };
+  return {};
 }

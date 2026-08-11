@@ -240,12 +240,14 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `to_user_id` BIGINT NOT NULL,
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text' COMMENT 'text / image',
+    `client_message_id` VARCHAR(64) DEFAULT NULL COMMENT '客户端幂等ID(senderId+clientMessageId 唯一)',
     `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `is_read` TINYINT DEFAULT 0,
     `uid1_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid1(较小者)是否已单侧清空',
     `uid2_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid2(较大者)是否已单侧清空',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_from_client` (`from_user_id`, `client_message_id`),
     KEY `idx_chat_conv` (`conversation_id`, `created_at`),
     KEY `idx_chat_room` (`room_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -297,7 +299,7 @@ CREATE TABLE IF NOT EXISTS `contact` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_uid_room` (`uid`, `room_id`),
+    UNIQUE KEY `uk_uid_room` (`uid`, `room_id`),
     KEY `idx_room_id` (`room_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -473,6 +475,21 @@ CREATE TABLE IF NOT EXISTS `chat_apply` (
     UNIQUE KEY `uk_pending_key` (`pending_key`),
     KEY `idx_to_user_status` (`to_user_id`, `status`),
     KEY `idx_from_user` (`from_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 18b. chat_outbox - 消息发送 Outbox(事务内落库,后台任务补发 MQ,保证事件不丢失)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `chat_outbox` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `message_id` BIGINT NOT NULL COMMENT 'private_chat.id',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0=待发布 1=已发布',
+    `retry_count` INT NOT NULL DEFAULT 0,
+    `last_error` VARCHAR(500) DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `published_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_status_id` (`status`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

@@ -2,13 +2,14 @@ package com.finding.chat.service.impl;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.chat.dto.MessageSendDTO;
+import com.finding.chat.entity.ChatOutbox;
 import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Report;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.RoomFriend;
+import com.finding.chat.mapper.ChatOutboxMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
@@ -35,15 +36,18 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,7 +67,7 @@ class ChatServiceImplTest {
     @Mock private UserMapper userMapper;
     @Mock private ReportMapper reportMapper;
     @Mock private UserSettingsMapper userSettingsMapper;
-    @Mock private RabbitTemplate rabbitTemplate;
+    @Mock private ChatOutboxMapper chatOutboxMapper;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserRelationshipService relationshipService;
     @Mock private UserWriteGuard userWriteGuard;
@@ -82,6 +86,7 @@ class ChatServiceImplTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), Room.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), Report.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserSettings.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), ChatOutbox.class);
     }
 
     private RoomFriend rf(Long uid1, Long uid2, Long roomId) {
@@ -136,14 +141,27 @@ class ChatServiceImplTest {
     @Test
     void getMessageHistory_member_returnsMessages() {
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
-        Page<PrivateChat> page = new Page<>(1, 50);
-        page.setRecords(List.of(msg(10L, 100L, 2L, 1L)));
-        page.setTotal(1);
-        when(privateChatMapper.selectPage(any(), any())).thenReturn(page);
+        when(privateChatMapper.selectList(any())).thenReturn(List.of(msg(10L, 100L, 2L, 1L)));
 
         PageVO<ChatMessageVO> result = service.getMessageHistory(1L, 100L, null, 50);
         assertEquals(1, result.getRecords().size());
         assertEquals(10L, result.getRecords().get(0).getId());
+        assertFalse(result.getHasMore());
+    }
+
+    @Test
+    void getMessageHistory_member_cursorHasMore_andReversesToAsc() {
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        // 多查一条:limit=2 → 返回 3 条 → hasMore=true,仅保留 2 条
+        when(privateChatMapper.selectList(any())).thenReturn(List.of(
+                msg(30L, 100L, 2L, 1L), msg(20L, 100L, 2L, 1L), msg(10L, 100L, 2L, 1L)));
+
+        PageVO<ChatMessageVO> result = service.getMessageHistory(1L, 100L, null, 2);
+        assertTrue(result.getHasMore());
+        assertEquals(2, result.getRecords().size());
+        // 保留最新的 2 条(id DESC: 30,20)反转为时间正序展示: 20,30
+        assertEquals(20L, result.getRecords().get(0).getId());
+        assertEquals(30L, result.getRecords().get(1).getId());
     }
 
     @Test
@@ -289,20 +307,19 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void sendMessage_member_derivesToUserIdFromRoom() {
+    void sendMessage_member_derivesToUserIdFromRoom_andWritesOutbox() {
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
-        when(privateChatMapper.insert(any())).thenReturn(1);
-        when(privateChatMapper.selectList(any())).thenReturn(List.of());
-        when(userMapper.selectById(2L)).thenReturn(new User());
+        when(privateChatMapper.insert(any())).thenAnswer(inv -> {
+            PrivateChat c = inv.getArgument(0);
+            c.setId(555L);
+            return 1;
+        });
+        when(chatOutboxMapper.insert(any())).thenReturn(1);
 
-        // 纯单测无事务上下文:sendMessage 内 registerSynchronization 需要同步器已初始化
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            service.sendMessage(1L, dto(100L, "hi"));
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        MessageSendDTO dto = dto(100L, "hi");
+        dto.setClientMessageId("client-1");
+        ChatMessageVO result = service.sendMessage(1L, dto);
 
         ArgumentCaptor<PrivateChat> captor = ArgumentCaptor.forClass(PrivateChat.class);
         verify(privateChatMapper).insert(captor.capture());
@@ -311,6 +328,16 @@ class ChatServiceImplTest {
         assertEquals(2L, inserted.getToUserId());
         assertEquals(100L, inserted.getRoomId());
         assertEquals(100L, inserted.getConversationId());
+        assertEquals("client-1", inserted.getClientMessageId());
+        // 返回真实消息回执
+        assertNotNull(result.getId());
+        assertEquals(555L, result.getId());
+        assertEquals("hi", result.getContent());
+        // 事务内写 outbox(与消息同事务,发布事件不丢失)
+        ArgumentCaptor<ChatOutbox> outboxCaptor = ArgumentCaptor.forClass(ChatOutbox.class);
+        verify(chatOutboxMapper).insert(outboxCaptor.capture());
+        assertEquals(555L, outboxCaptor.getValue().getMessageId());
+        assertEquals(0, outboxCaptor.getValue().getStatus());
     }
 
     @Test
@@ -321,5 +348,61 @@ class ChatServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.sendMessage(1L, dto(100L, "hi")));
         assertEquals(ResultCode.RELATION_BLOCKED.getCode(), ex.getCode());
+    }
+
+    // ── P1-2 clientMessageId 幂等 / P1-7 边界校验 ──
+
+    @Test
+    void sendMessage_idempotentClientMessageId_returnsExistingWithoutInsert() {
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(privateChatMapper.selectOne(any())).thenReturn(msg(99L, 100L, 1L, 2L));
+
+        MessageSendDTO dto = dto(100L, "hi");
+        dto.setClientMessageId("client-1");
+        ChatMessageVO result = service.sendMessage(1L, dto);
+
+        assertEquals(99L, result.getId());
+        verify(privateChatMapper, never()).insert(any());
+        verify(chatOutboxMapper, never()).insert(any());
+    }
+
+    @Test
+    void sendMessage_invalidMessageType_rejected() {
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+
+        MessageSendDTO dto = dto(100L, "x");
+        dto.setMessageType("video");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.sendMessage(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void sendMessage_untrustedImageUrl_rejected() {
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+
+        MessageSendDTO dto = dto(100L, "https://evil.com/track.png");
+        dto.setMessageType("image");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.sendMessage(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+        assertTrue(ex.getMessage().contains("本站上传"));
+    }
+
+    @Test
+    void sendMessage_trustedImageUrl_ok() {
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(privateChatMapper.insert(any())).thenReturn(1);
+        when(chatOutboxMapper.insert(any())).thenReturn(1);
+
+        MessageSendDTO dto = dto(100L, "/api/v1/images/abc.png");
+        dto.setMessageType("image");
+        assertDoesNotThrow(() -> service.sendMessage(1L, dto));
+
+        ArgumentCaptor<PrivateChat> captor = ArgumentCaptor.forClass(PrivateChat.class);
+        verify(privateChatMapper).insert(captor.capture());
+        assertEquals("image", captor.getValue().getMessageType());
     }
 }

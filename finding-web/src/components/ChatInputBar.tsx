@@ -101,6 +101,7 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers }: Pr
           type="text"
           placeholder="输入消息..."
           value={text}
+          maxLength={2000}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

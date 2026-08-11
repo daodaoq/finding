@@ -30,6 +30,11 @@ public class RabbitMQConfig {
     public static final String QUEUE_SEND_MSG = "chat.send.msg";
     public static final String RK_SEND_MSG = "chat.send.msg";
 
+    // 死信:消费重试耗尽后进入 DLQ,避免单条异常消息无限阻塞
+    public static final String DLX = "finding.chat.dlx";
+    public static final String QUEUE_SEND_MSG_DLQ = "chat.send.msg.dlq";
+    public static final String RK_SEND_MSG_DLQ = "chat.send.msg.dlq";
+
     // ── Direct Exchange ──
 
     @Bean
@@ -37,11 +42,25 @@ public class RabbitMQConfig {
         return new DirectExchange(EXCHANGE, true, false);
     }
 
+    /** 死信交换 */
+    @Bean
+    public DirectExchange chatDlx() {
+        return new DirectExchange(DLX, true, false);
+    }
+
     // ── Queues ──
 
     @Bean
     public Queue sendMsgQueue() {
-        return QueueBuilder.durable(QUEUE_SEND_MSG).build();
+        return QueueBuilder.durable(QUEUE_SEND_MSG)
+                .withArgument("x-dead-letter-exchange", DLX)
+                .withArgument("x-dead-letter-routing-key", RK_SEND_MSG_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue sendMsgDlq() {
+        return QueueBuilder.durable(QUEUE_SEND_MSG_DLQ).build();
     }
 
     // ── Bindings ──
@@ -49,6 +68,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding sendMsgBinding() {
         return BindingBuilder.bind(sendMsgQueue()).to(chatExchange()).with(RK_SEND_MSG);
+    }
+
+    @Bean
+    public Binding sendMsgDlqBinding() {
+        return BindingBuilder.bind(sendMsgDlq()).to(chatDlx()).with(RK_SEND_MSG_DLQ);
     }
 
     // ── RabbitTemplate ──

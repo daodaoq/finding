@@ -45,9 +45,9 @@ public class ChatController {
         return Result.ok(chatService.getConversation(userId, targetUserId));
     }
 
-    /** 发送消息(REST 方式) */
+    /** 发送消息(REST 方式,返回真实消息回执) */
     @PostMapping("/send")
-    public Result<ConversationVO> sendMessage(@Valid @RequestBody MessageSendDTO dto) {
+    public Result<ChatMessageVO> sendMessage(@Valid @RequestBody MessageSendDTO dto) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         verificationGuard.checkVerified(userId); // 未认证用户不可发私信

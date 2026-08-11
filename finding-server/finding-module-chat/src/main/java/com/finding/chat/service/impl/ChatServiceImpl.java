@@ -7,10 +7,8 @@ import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.chat.dto.MessageSendDTO;
 
-import com.finding.framework.config.RabbitMQConfig;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.framework.websocket.WsMessage;
-import com.finding.chat.event.MsgSendMessageDTO;
 
 import com.finding.chat.service.ChatService;
 import com.finding.chat.vo.ChatMessageVO;
@@ -21,18 +19,15 @@ import com.finding.common.util.XssUtil;
 import com.finding.common.word.SensitiveWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.finding.chat.entity.ChatOutbox;
 import com.finding.chat.entity.Contact;
 import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Report;
@@ -42,6 +37,7 @@ import com.finding.user.entity.User;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserWriteGuard;
+import com.finding.chat.mapper.ChatOutboxMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
@@ -67,7 +63,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserMapper userMapper;
     private final ReportMapper reportMapper;
     private final UserSettingsMapper userSettingsMapper;
-    private final RabbitTemplate rabbitTemplate;
+    private final ChatOutboxMapper chatOutboxMapper;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
     private final UserWriteGuard userWriteGuard;
@@ -275,7 +271,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ConversationVO sendMessage(Long userId, MessageSendDTO dto) {
+    public ChatMessageVO sendMessage(Long userId, MessageSendDTO dto) {
         userWriteGuard.checkWritable(userId);
         // 房间成员鉴权:房间不存在/非成员一律拒绝,并确定接收者(客户端不能指定任意 toUserId)
         RoomFriend rf = requireRoomMember(userId, dto.getRoomId());
@@ -287,11 +283,32 @@ public class ChatServiceImpl implements ChatService {
             throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
 
-        // XSS 清洗 + 违禁词拦截
+        // 消息类型边界校验:仅 text / image
+        String messageType = dto.getMessageType() != null ? dto.getMessageType() : "text";
+        if (!"text".equals(messageType) && !"image".equals(messageType)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的消息类型");
+        }
+
+        // XSS 清洗 + 违禁词拦截(清洗后可能为空,再拦)
         dto.setContent(XssUtil.clean(dto.getContent()));
         sensitiveWordFilter.assertClean(dto.getContent());
         if (!StringUtils.hasText(dto.getContent())) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "消息内容不能为空");
+        }
+
+        // 图片消息只允许本站上传源,拒绝外部跟踪图片
+        if ("image".equals(messageType) && !isTrustedImageUrl(dto.getContent())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "图片消息只允许使用本站上传的图片");
+        }
+
+        // 幂等:同一 senderId + clientMessageId 已存在 → 直接返回已有消息(弱网重试不重复落库)
+        if (StringUtils.hasText(dto.getClientMessageId())) {
+            PrivateChat existed = privateChatMapper.selectOne(new LambdaQueryWrapper<PrivateChat>()
+                    .eq(PrivateChat::getFromUserId, userId)
+                    .eq(PrivateChat::getClientMessageId, dto.getClientMessageId()));
+            if (existed != null) {
+                return toChatMessageVO(existed);
+            }
         }
 
         // 保存消息（使用 room_id）
@@ -301,58 +318,59 @@ public class ChatServiceImpl implements ChatService {
         chat.setFromUserId(userId);
         chat.setToUserId(toUserId);
         chat.setContent(dto.getContent());
-        chat.setMessageType(dto.getMessageType() != null ? dto.getMessageType() : "text");
+        chat.setMessageType(messageType);
         chat.setIsRead(0);
-        privateChatMapper.insert(chat);
-
-        // 事务提交后再发送 MQ，确保消费者能读到消息
-        final Long msgId = chat.getId();
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.RK_SEND_MSG,
-                        new MsgSendMessageDTO(msgId));
+        chat.setClientMessageId(dto.getClientMessageId()); // null 时不落库
+        try {
+            privateChatMapper.insert(chat);
+        } catch (DuplicateKeyException e) {
+            // 并发幂等:uk_from_client 唯一索引兜底,重新查询已存在消息
+            PrivateChat existed = privateChatMapper.selectOne(new LambdaQueryWrapper<PrivateChat>()
+                    .eq(PrivateChat::getFromUserId, userId)
+                    .eq(PrivateChat::getClientMessageId, dto.getClientMessageId()));
+            if (existed != null) {
+                return toChatMessageVO(existed);
             }
-        });
+            throw e;
+        }
 
-        return buildConvVO(dto.getRoomId(), userId, toUserId);
+        // 事务内写 Outbox(与消息同事务):发布事件不丢失,RabbitMQ 恢复后由定时任务补发
+        ChatOutbox outbox = new ChatOutbox();
+        outbox.setMessageId(chat.getId());
+        outbox.setStatus(0);
+        outbox.setRetryCount(0);
+        chatOutboxMapper.insert(outbox);
+
+        return toChatMessageVO(chat);
     }
 
     @Override
     public PageVO<ChatMessageVO> getMessageHistory(Long userId, Long roomId, Long lastId, int size) {
-        // 房间成员鉴权(不存在→会话不存在;非成员→无权限);只返回我这一侧未隐藏的消息(单侧清空)
+        // 房间成员鉴权(不存在→会话不存在;非成员→无权限)
         RoomFriend rf = requireRoomMember(userId, roomId);
+        // 游标分页:首次取最新 size 条;有 lastId 取 id < lastId 的更早消息。按 id DESC 多查一条判 hasMore。
+        int limit = Math.max(1, Math.min(size, 100));
         LambdaQueryWrapper<PrivateChat> wrapper = new LambdaQueryWrapper<PrivateChat>()
                 .eq(PrivateChat::getRoomId, roomId);
         if (rf.getUid1().equals(userId)) wrapper.eq(PrivateChat::getUid1Hidden, 0);
         else wrapper.eq(PrivateChat::getUid2Hidden, 0);
-        wrapper.orderByAsc(PrivateChat::getCreatedAt);
         if (lastId != null) wrapper.lt(PrivateChat::getId, lastId);
+        wrapper.orderByDesc(PrivateChat::getId).last("LIMIT " + (limit + 1));
 
-        Page<PrivateChat> page = new Page<>(1, size);
-        Page<PrivateChat> result = privateChatMapper.selectPage(page, wrapper);
+        List<PrivateChat> rows = privateChatMapper.selectList(wrapper);
+        boolean hasMore = rows.size() > limit;
+        if (hasMore) rows = new ArrayList<>(rows.subList(0, limit));
+        // 反转为时间正序(旧的在前),前端按顺序展示
+        Collections.reverse(rows);
 
         // 标记已读
         markConversationRead(userId, roomId);
 
-        // 映射为 ChatMessageVO
-        List<ChatMessageVO> records = result.getRecords().stream()
-                .map(m -> {
-                    ChatMessageVO vo = new ChatMessageVO();
-                    vo.setId(m.getId());
-                    vo.setRoomId(m.getRoomId());
-                    vo.setFromUserId(m.getFromUserId());
-                    vo.setToUserId(m.getToUserId());
-                    vo.setContent(m.getContent());
-                    vo.setMessageType(m.getMessageType());
-                    vo.setIsRecalled(m.getIsRecalled());
-                    vo.setIsRead(m.getIsRead());
-                    vo.setCreatedAt(m.getCreatedAt());
-                    return vo;
-                })
-                .collect(Collectors.toList());
-
-        return PageVO.of(records, result.getTotal(), 1, size);
+        List<ChatMessageVO> records = rows.stream().map(this::toChatMessageVO).collect(Collectors.toList());
+        PageVO<ChatMessageVO> vo = new PageVO<>();
+        vo.setRecords(records);
+        vo.setHasMore(hasMore);
+        return vo;
     }
 
     @Override
@@ -433,19 +451,7 @@ public class ChatServiceImpl implements ChatService {
         Page<PrivateChat> result = privateChatMapper.selectPage(page, wrapper.orderByDesc(PrivateChat::getCreatedAt));
 
         List<ChatMessageVO> records = result.getRecords().stream()
-                .map(m -> {
-                    ChatMessageVO vo = new ChatMessageVO();
-                    vo.setId(m.getId());
-                    vo.setRoomId(m.getRoomId());
-                    vo.setFromUserId(m.getFromUserId());
-                    vo.setToUserId(m.getToUserId());
-                    vo.setContent(m.getContent());
-                    vo.setMessageType(m.getMessageType());
-                    vo.setIsRecalled(m.getIsRecalled());
-                    vo.setIsRead(m.getIsRead());
-                    vo.setCreatedAt(m.getCreatedAt());
-                    return vo;
-                })
+                .map(this::toChatMessageVO)
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), 1, size);
     }
@@ -535,6 +541,26 @@ public class ChatServiceImpl implements ChatService {
                 .eq(Contact::getRoomId, roomId));
     }
 
+    /** 消息实体 → VO(发送回执 / 历史 / 搜索共用) */
+    private ChatMessageVO toChatMessageVO(PrivateChat m) {
+        ChatMessageVO vo = new ChatMessageVO();
+        vo.setId(m.getId());
+        vo.setRoomId(m.getRoomId());
+        vo.setFromUserId(m.getFromUserId());
+        vo.setToUserId(m.getToUserId());
+        vo.setContent(m.getContent());
+        vo.setMessageType(m.getMessageType());
+        vo.setIsRecalled(m.getIsRecalled());
+        vo.setIsRead(m.getIsRead());
+        vo.setCreatedAt(m.getCreatedAt());
+        return vo;
+    }
+
+    /** 图片消息只允许本站上传代理 URL(/api/v1/images/),拒绝外部跟踪图片 */
+    private boolean isTrustedImageUrl(String url) {
+        return url != null && url.startsWith("/api/v1/images/");
+    }
+
     /** 读取用户全局默认免打扰(单个聊天未显式设置时继承) */
     private boolean globalMuted(Long userId) {
         UserSettings s = userSettingsMapper.selectOne(
@@ -551,19 +577,23 @@ public class ChatServiceImpl implements ChatService {
 
     // ── Private helpers ──
 
-    /** 确保用户在 room 中有 contact 记录 */
+    /** 确保用户在 room 中有 contact 记录(uk_uid_room 唯一约束下幂等,并发重复插入忽略) */
     private void ensureContact(Long uid, Long roomId) {
         Contact contact = contactMapper.selectOne(
                 new LambdaQueryWrapper<Contact>()
                         .eq(Contact::getUid, uid)
                         .eq(Contact::getRoomId, roomId));
         if (contact == null) {
-            contact = new Contact();
-            contact.setUid(uid);
-            contact.setRoomId(roomId);
-            contact.setActiveTime(LocalDateTime.now());
-            contact.setReadTime(LocalDateTime.now());
-            contactMapper.insert(contact);
+            try {
+                contact = new Contact();
+                contact.setUid(uid);
+                contact.setRoomId(roomId);
+                contact.setActiveTime(LocalDateTime.now());
+                contact.setReadTime(LocalDateTime.now());
+                contactMapper.insert(contact);
+            } catch (DuplicateKeyException e) {
+                // 并发已插入(uk_uid_room),无需处理
+            }
         }
     }
 
