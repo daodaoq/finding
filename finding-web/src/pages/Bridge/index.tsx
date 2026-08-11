@@ -8,6 +8,8 @@ import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import PageState from '../../components/PageState';
+import { getErrorMessage } from '../../utils/appError';
 import { useAuthStore } from '../../store/authStore';
 import { useBridgeStore } from '../../store/bridgeStore';
 import { QUICK_ACTIONS } from '../../utils/constants';
@@ -30,6 +32,7 @@ export default function BridgePage() {
   const [loading, setLoading] = useState(true);
   const [noMore, setNoMore] = useState(false);
   const [acting, setActing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadBanners();
@@ -73,9 +76,15 @@ export default function BridgePage() {
       const records = res.data.data.records || [];
       setNoMore(records.length === 0);
       setCandidate(records[0] || null);
-    } catch (e: any) {
-      showToast((e as Error)?.message || '加载推荐用户失败');
-      setNoMore(true);
+      setError(null);
+    } catch (e) {
+      // 首次加载失败→错误态+重试;滑动中失败仅提示并保留当前卡
+      if (!candidate) {
+        setError(getErrorMessage(e, '加载推荐用户失败'));
+      } else {
+        showToast(getErrorMessage(e, '加载推荐用户失败'));
+        setNoMore(true);
+      }
     } finally {
       setLoading(false);
       setActing(false);
@@ -210,6 +219,8 @@ export default function BridgePage() {
           />
         ) : loading ? (
           <div className="bridge-swipe-loading">加载中...</div>
+        ) : error ? (
+          <PageState loading={false} error={error} onRetry={() => loadNext()} />
         ) : noMore || !candidate ? (
           <EmptyState
             icon="heart"

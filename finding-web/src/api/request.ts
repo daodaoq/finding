@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse } from '../types/common';
+import { AppError } from '../utils/appError';
 import { tokenStorage } from '../utils/tokenStorage';
 import { useAuthStore, tryRefreshToken } from '../store/authStore';
 import { showToast } from '../components/Toast';
@@ -43,7 +44,7 @@ request.interceptors.response.use(
       if (res.code === 9010) {
         showToast(res.message || '内容包含违禁词');
       }
-      return Promise.reject(new Error(res.message || 'Request failed'));
+      return Promise.reject(new AppError(res.message || 'Request failed', { code: res.code }));
     }
     return response;
   },
@@ -73,7 +74,14 @@ request.interceptors.response.use(
     } else if (status === 403) {
       useAuthStore.getState().logout();
     }
-    return Promise.reject(error);
+    // 统一抛出 AppError:优先服务端业务文案,网络错误可重试
+    const data = error.response?.data as { message?: string; code?: number } | undefined;
+    const message = data?.message || error.message || '网络异常，请稍后再试';
+    return Promise.reject(new AppError(message, {
+      status,
+      code: data?.code,
+      retryable: !error.response || (status != null && status >= 500),
+    }));
   }
 );
 
