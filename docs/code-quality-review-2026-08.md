@@ -168,7 +168,7 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 - Axios 重试标记 `_retry`；刷新失败时只执行一次集中登出。
 - 评估将 refresh token 改为 `HttpOnly + Secure + SameSite` Cookie，降低 XSS 窃取风险。
 
-### P1-4：大型页面组件混合了状态、请求和 UI
+### P1-4：大型页面组件混合了状态、请求和 UI ✅ 已完成
 
 **证据**
 
@@ -185,7 +185,7 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 
 同样的拆分模式再推广到活动详情和资料编辑。
 
-### P1-5：Effect 依赖和过期请求管理不一致
+### P1-5：Effect 依赖和过期请求管理不一致 ✅ 已完成
 
 **证据**
 
@@ -201,7 +201,7 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 - Axios 请求接入 `AbortController` signal，卸载或依赖变化时取消。
 - 为搜索、聊天、用户资料等采用 request sequence，只有最新请求可以 `setState`。
 
-### P1-6：富文本安全策略要显式测试
+### P1-6：富文本安全策略要显式测试 ✅ 已完成
 
 `AnnouncementModal.tsx` 使用 `dangerouslySetInnerHTML`。项目已引入 DOMPurify，但必须确认 `renderMarkdown()` 的最终 HTML 一定经过 sanitize。
 
@@ -253,7 +253,7 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 - Ant Design 的 `Table`、`Form`、Upload 使用泛型，禁止业务模块新增裸 `any`。
 - 审核提交 payload 定义为专门 command 类型，避免把整个表单对象直接提交。
 
-### P1-8：后台鉴权与跳转逻辑分散
+### P1-8：后台鉴权与跳转逻辑分散 ✅ 已完成
 
 **证据**
 
