@@ -29,6 +29,10 @@ export default function ChatSettingsPage() {
   const [profile, setProfile] = useState<any>(null);
   const [view, setView] = useState<'main' | 'search' | 'background'>('main');
 
+  // 对方昵称/头像以服务端 profile 为准,URL 参数仅兜底(不可信)
+  const peerName = profile?.nickname || nickname;
+  const peerAvatar = profile?.avatar || avatar;
+
   // 查找聊天记录
   const [keyword, setKeyword] = useState('');
   const [results, setResults] = useState<any[] | null>(null);
@@ -131,7 +135,7 @@ export default function ChatSettingsPage() {
   if (view === 'search') {
     return (
       <SearchView
-        nickname={nickname}
+        nickname={peerName}
         myId={myId}
         keyword={keyword}
         onKeywordChange={setKeyword}
@@ -166,10 +170,10 @@ export default function ChatSettingsPage() {
       {/* 对方名片 → 跳转情感简介 */}
       <div className="cs-contact-card" onClick={openProfile}>
         <div className="cs-contact-avatar">
-          {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={24} />}
+          {peerAvatar ? <img src={peerAvatar} alt="" /> : <AppIcon name="user" size={24} />}
         </div>
         <div className="cs-contact-info">
-          <span className="cs-contact-name">{nickname}</span>
+          <span className="cs-contact-name">{peerName}</span>
           <span className="cs-contact-sub">查看TA的情感简介 ›</span>
         </div>
       </div>
@@ -244,7 +248,7 @@ export default function ChatSettingsPage() {
       {showReport && (
         <div className="report-overlay" onClick={() => setShowReport(false)}>
           <div className="report-card" onClick={(e) => e.stopPropagation()}>
-            <h4 className="report-title">投诉 {nickname}</h4>
+            <h4 className="report-title">投诉 {peerName}</h4>
             <div className="report-reasons">
               {REPORT_REASONS.map((r) => (
                 <button

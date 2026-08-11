@@ -32,8 +32,9 @@ interface ChatMessage extends MessageLike {
 export default function ChatDetailPage() {
   const [searchParams] = useSearchParams();
   const targetUserId = Number(searchParams.get('userId'));
-  const targetNickname = searchParams.get('name') || '聊天';
-  const targetAvatar = searchParams.get('avatar') || '';
+  // 昵称/头像仅作加载时的兜底展示,进入会话后以服务端会话接口返回为准(URL 参数不可信)
+  const [targetNickname, setTargetNickname] = useState(searchParams.get('name') || '聊天');
+  const [targetAvatar, setTargetAvatar] = useState(searchParams.get('avatar') || '');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -122,6 +123,9 @@ export default function ChatDetailPage() {
       const convRes = await chatApi.getOrCreateConversation(targetUserId);
       const conv = convRes.data.data;
       setConversation(conv);
+      // 对方资料以服务端会话返回为准,覆盖 URL 携带的昵称/头像
+      if (conv.targetNickname) setTargetNickname(conv.targetNickname);
+      if (conv.targetAvatar) setTargetAvatar(conv.targetAvatar);
       // 使用 roomId 加载消息历史
       const roomId = conv.roomId || conv.id;
       const msgRes = await chatApi.getMessageHistory(roomId);
@@ -132,6 +136,8 @@ export default function ChatDetailPage() {
     } catch (e: any) {
       console.error('初始化会话失败', e);
       showToast(e?.message || '还没有会话，请先通过『相亲桥』发起聊天申请');
+      // 会话不存在或无权限:回到上一页并提示原因
+      navigate(-1);
     } finally {
       setLoading(false);
     }
