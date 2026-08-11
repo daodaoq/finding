@@ -4,10 +4,12 @@ import { mateApi } from '../../api/mate';
 import MateCard from '../../components/MateCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import LoginModal from '../../components/LoginModal';
 import AppIcon, { type AppIconName } from '../../components/AppIcon';
 import { showToast } from '../../components/Toast';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { MATE_CATEGORIES } from '../../utils/constants';
 import type { Mate } from '../../types/mate';
 import './index.css';
@@ -24,6 +26,7 @@ export default function MatePage() {
   const [keyword, setKeyword] = useState('');
   const navigate = useNavigate();
   const { lat, lng } = useGeolocation(true);
+  const { showLogin, requireLogin, handleLoginSuccess, handleClose } = useRequireLogin();
 
   const { items: mates, loading, hasMore, setItems: setMates, onScroll } = useInfiniteList<Mate, [string, number?, number?]>({
     fetcher: async (page, selectedCategory, latitude, longitude) => {
@@ -43,14 +46,17 @@ export default function MatePage() {
   });
 
   const submitSearch = useCallback(() => setKeyword(keywordInput.trim()), [keywordInput]);
-  const handleJoin = async (id: number) => {
-    const message = window.prompt('可以给发起人留一句话（选填，最多 500 字）', '') ?? undefined;
-    if (message !== undefined && message.length > 500) { showToast('留言不能超过 500 字'); return; }
-    try {
-      await mateApi.join(id, message);
-      setMates((previous) => previous.filter((mate) => mate.id !== id));
-      showToast('申请已提交');
-    } catch (error: any) { showToast(error?.message || '操作失败'); }
+  const handleJoin = (id: number) => {
+    // 未登录先弹登录框,登录成功后再执行报名
+    requireLogin(async () => {
+      const message = window.prompt('可以给发起人留一句话（选填，最多 500 字）', '') ?? undefined;
+      if (message !== undefined && message.length > 500) { showToast('留言不能超过 500 字'); return; }
+      try {
+        await mateApi.join(id, message);
+        setMates((previous) => previous.filter((mate) => mate.id !== id));
+        showToast('申请已提交');
+      } catch (error: any) { showToast(error?.message || '操作失败'); }
+    });
   };
 
   return (
@@ -78,6 +84,9 @@ export default function MatePage() {
         {!loading && mates.length === 0 ? <EmptyState message="暂无搭子邀约" /> : null}
         {!hasMore && mates.length > 0 ? <p className="no-more">— 没有更多活动了 —</p> : null}
       </section>
+
+      {/* 登录弹窗(未登录报名时弹出) */}
+      <LoginModal visible={showLogin} onClose={handleClose} onSuccess={handleLoginSuccess} />
     </div>
   );
 }

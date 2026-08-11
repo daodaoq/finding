@@ -156,6 +156,10 @@ public class MateServiceImpl implements MateService {
         if (rs != 0 && (currentUserId == null || !invitation.getUserId().equals(currentUserId))) {
             throw new BusinessException(ResultCode.MATE_NOT_FOUND);
         }
+        // 拉黑过滤:双向拉黑视为不存在(与列表/搜索一致),避免泄露资源存在性
+        if (currentUserId != null && relationshipService.isBlockedEitherWay(currentUserId, invitation.getUserId())) {
+            throw new BusinessException(ResultCode.MATE_NOT_FOUND);
+        }
         return toVO(invitation, currentUserId, null, null);
     }
 
@@ -406,12 +410,25 @@ public class MateServiceImpl implements MateService {
                 .eq(MateParticipant::getUserId, userId));
         if (participant == null) return;
 
-        // 已通过成员退出 → 释放名额并候补补位
+        // 仅"已通过"成员退出才释放名额,且活动须仍有效(未取消/未关闭/未过期)
         if (participant.getStatus() != null && participant.getStatus() == MateParticipantStatus.ACCEPTED.getCode()) {
-            invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
-                    .eq(MateInvitation::getId, id)
-                    .setSql("current_participants = GREATEST(current_participants - 1, 0)"));
-            promoteWaitlist(id);
+            MateInvitation invitation = invitationMapper.selectById(id);
+            boolean active = invitation != null
+                    && invitation.getStatus() != null
+                    && invitation.getStatus() == MateInvitationStatus.ACTIVE.getCode()
+                    && invitation.getActivityTime() != null
+                    && invitation.getActivityTime().isAfter(LocalDateTime.now());
+            if (active) {
+                // 条件原子更新:仅当活动仍有效时扣减,重复请求不会重复扣名额
+                int rows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                        .eq(MateInvitation::getId, id)
+                        .eq(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode())
+                        .gt(MateInvitation::getActivityTime, LocalDateTime.now())
+                        .setSql("current_participants = GREATEST(current_participants - 1, 0)"));
+                if (rows > 0) {
+                    promoteWaitlist(id);
+                }
+            }
         }
         // 保留审计:置为已退出(不可再次报名同一活动)
         participant.setStatus(MateParticipantStatus.CANCELLED.getCode());
@@ -549,7 +566,7 @@ public class MateServiceImpl implements MateService {
             if (inv != null) {
                 map.put("title", inv.getTitle());
                 map.put("category", inv.getCategory());
-                map.put("location", p.getStatus() != null && p.getStatus() == MateParticipantStatus.ACCEPTED.getCode()
+                map.put("location", canSeePreciseLocation(inv, userId)
                         ? inv.getLocation() : "报名通过后可查看集合地点");
                 map.put("activityTime", inv.getActivityTime());
                 map.put("invitationStatus", inv.getStatus());
@@ -608,6 +625,20 @@ public class MateServiceImpl implements MateService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 是否可查看精确集合地点:发起人 或 已通过成员;其余一律模糊。
+     * 详情/列表/申请记录等出口统一走此策略,避免各接口自行组装导致泄露。
+     */
+    private boolean canSeePreciseLocation(MateInvitation inv, Long currentUserId) {
+        if (currentUserId == null || inv == null) return false;
+        if (inv.getUserId().equals(currentUserId)) return true;
+        Long accepted = participantMapper.selectCount(new LambdaQueryWrapper<MateParticipant>()
+                .eq(MateParticipant::getInvitationId, inv.getId())
+                .eq(MateParticipant::getUserId, currentUserId)
+                .eq(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
+        return accepted != null && accepted > 0;
+    }
+
     private MateVO toVO(MateInvitation m, Long currentUserId, Double userLat, Double userLng) {
         MateVO vo = new MateVO();
         vo.setId(m.getId());
@@ -618,14 +649,12 @@ public class MateServiceImpl implements MateService {
                 .eq(MateParticipant::getInvitationId, m.getId())
                 .eq(MateParticipant::getUserId, currentUserId)
                 .last("LIMIT 1"));
-        boolean viewerAccepted = mine != null && mine.getStatus() != null
-                && mine.getStatus() == MateParticipantStatus.ACCEPTED.getCode();
         vo.setUserId(anon && !viewerIsOwner ? null : m.getUserId());
         vo.setCategory(m.getCategory());
         vo.setTitle(m.getTitle());
         vo.setDescription(m.getDescription());
         vo.setActivityTime(m.getActivityTime());
-        boolean preciseLocationVisible = viewerIsOwner || viewerAccepted;
+        boolean preciseLocationVisible = canSeePreciseLocation(m, currentUserId);
         vo.setLocation(preciseLocationVisible ? m.getLocation() : "报名通过后可查看集合地点");
         vo.setLatitude(preciseLocationVisible ? m.getLatitude() : null);
         vo.setLongitude(preciseLocationVisible ? m.getLongitude() : null);

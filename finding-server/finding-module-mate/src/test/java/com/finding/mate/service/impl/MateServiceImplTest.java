@@ -328,6 +328,76 @@ class MateServiceImplTest {
         org.junit.jupiter.api.Assertions.assertTrue(result.getRecords().isEmpty());
     }
 
+    // ── 3.6 详情拉黑 / 3.7 地点脱敏 / 3.9 离开活动状态 ──
+
+    @Test
+    void detail_blocked_returnsNotFound() {
+        MateInvitation inv = invitation(1L, 3, 10);
+        inv.setUserId(100L);
+        inv.setReviewStatus(0);
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+        when(relationshipService.isBlockedEitherWay(999L, 100L)).thenReturn(true);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.getInvitationDetail(1L, 999L));
+        assertEquals(ResultCode.MATE_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void detail_nonAccepted_locationMasked() {
+        MateInvitation inv = invitation(1L, 3, 10);
+        inv.setUserId(100L);
+        inv.setReviewStatus(0);
+        inv.setLocation("东操场");
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+        when(participantMapper.selectOne(any())).thenReturn(null); // 我的报名记录
+        when(participantMapper.selectCount(any())).thenReturn(0L); // 非已通过
+
+        var vo = service.getInvitationDetail(1L, 999L);
+        assertEquals("报名通过后可查看集合地点", vo.getLocation());
+    }
+
+    @Test
+    void detail_accepted_locationPrecise() {
+        MateInvitation inv = invitation(1L, 3, 10);
+        inv.setUserId(100L);
+        inv.setReviewStatus(0);
+        inv.setLocation("东操场");
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+        MateParticipant accepted = participant(9L, 1L, 200L, MateParticipantStatus.ACCEPTED.getCode());
+        when(participantMapper.selectOne(any())).thenReturn(accepted);
+        when(participantMapper.selectCount(any())).thenReturn(1L);
+
+        var vo = service.getInvitationDetail(1L, 200L);
+        assertEquals("东操场", vo.getLocation());
+    }
+
+    @Test
+    void leaveInvitation_inactiveActivity_noSlotChange() {
+        MateParticipant part = participant(5L, 1L, 200L, MateParticipantStatus.ACCEPTED.getCode());
+        when(participantMapper.selectOne(any())).thenReturn(part);
+        MateInvitation inv = invitation(1L, 5, 10);
+        inv.setActivityTime(LocalDateTime.now().minusHours(1)); // 已过期
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+
+        service.leaveInvitation(200L, 1L);
+
+        verify(invitationMapper, never()).update(any(), any()); // 不释放名额
+        verify(participantMapper).updateById(any()); // 仍标记退出
+    }
+
+    @Test
+    void leaveInvitation_activeActivity_releasesSlot() {
+        MateParticipant part = participant(5L, 1L, 200L, MateParticipantStatus.ACCEPTED.getCode());
+        when(participantMapper.selectOne(any())).thenReturn(part).thenReturn(null); // 第二次=promoteWaitlist 无候补
+        MateInvitation inv = invitation(1L, 5, 10); // status=1(ACTIVE),activityTime=明天
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+        when(invitationMapper.update(any(), any())).thenReturn(1); // 条件更新成功
+
+        service.leaveInvitation(200L, 1L);
+
+        verify(invitationMapper).update(any(), any()); // 释放名额
+    }
+
     private MateInvitation invitation(Long id, int current, int max) {
         MateInvitation inv = new MateInvitation();
         inv.setId(id);
