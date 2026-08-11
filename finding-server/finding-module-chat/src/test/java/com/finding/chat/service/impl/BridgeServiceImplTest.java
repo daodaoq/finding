@@ -32,6 +32,7 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -292,6 +293,36 @@ class BridgeServiceImplTest {
         pref.setPreferGender(5);
         BusinessException ex = assertThrows(BusinessException.class, () -> service.updateMatchPreference(1L, pref));
         assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void updateMatchPreference_invalidMaxDistance_rejected() {
+        UserMatchPreference pref = new UserMatchPreference();
+        pref.setMaxDistanceKm(-1);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateMatchPreference(1L, pref));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void updateMatchPreference_invalidOnlyVerified_rejected() {
+        UserMatchPreference pref = new UserMatchPreference();
+        pref.setOnlyVerified(2);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateMatchPreference(1L, pref));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void updateMatchPreference_preferCityTrimmed() {
+        UserMatchPreference pref = new UserMatchPreference();
+        pref.setPreferCity("  北京  ");
+        when(preferenceMapper.selectOne(any())).thenReturn(null);
+        when(preferenceMapper.insert(any())).thenReturn(1);
+
+        service.updateMatchPreference(1L, pref);
+
+        ArgumentCaptor<UserMatchPreference> captor = ArgumentCaptor.forClass(UserMatchPreference.class);
+        verify(preferenceMapper).insert(captor.capture());
+        assertEquals("北京", captor.getValue().getPreferCity());
     }
 
     @Test

@@ -574,6 +574,23 @@ public class BridgeServiceImpl implements BridgeService {
                 || (pref.getMaxAge() > 0 && pref.getMinAge() > pref.getMaxAge())) {
             throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "年龄范围不合法");
         }
+        if (pref.getMaxAge() > 100 || pref.getMinAge() > 100) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "年龄超出合理范围");
+        }
+        if (pref.getMaxDistanceKm() < 0 || pref.getMaxDistanceKm() > 10000) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "maxDistanceKm 超出合理范围(0-10000)");
+        }
+        if (pref.getOnlyVerified() < 0 || pref.getOnlyVerified() > 1) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "onlyVerified 仅允许 0/1");
+        }
+        // 城市统一 trim;空白清空为不限;限制长度
+        if (pref.getPreferCity() != null) {
+            String city = pref.getPreferCity().trim();
+            if (city.length() > 50) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "preferCity 长度不能超过 50");
+            }
+            pref.setPreferCity(city.isEmpty() ? null : city);
+        }
         UserMatchPreference existing = preferenceMapper.selectOne(
                 new LambdaQueryWrapper<UserMatchPreference>().eq(UserMatchPreference::getUserId, userId));
         if (existing == null) {

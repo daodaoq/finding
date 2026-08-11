@@ -6,6 +6,7 @@ import com.finding.user.common.VerificationGuard;
 import com.finding.chat.dto.ChatApplyDTO;
 import com.finding.chat.dto.ChatApplyHandleDTO;
 import com.finding.user.security.JwtInterceptor;
+import com.finding.chat.dto.UserMatchPreferenceDTO;
 import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.vo.ChatApplyVO;
@@ -101,10 +102,10 @@ public class BridgeController {
 
     /** 更新相亲交友偏好 */
     @PutMapping("/preference")
-    public Result<Void> updatePreference(@RequestBody UserMatchPreference pref) {
+    public Result<Void> updatePreference(@Valid @RequestBody UserMatchPreferenceDTO dto) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
-        bridgeService.updateMatchPreference(userId, pref);
+        bridgeService.updateMatchPreference(userId, dto.toEntity());
         return Result.ok();
     }
 
