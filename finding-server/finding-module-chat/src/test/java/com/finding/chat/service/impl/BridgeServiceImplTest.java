@@ -47,6 +47,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -313,6 +314,15 @@ class BridgeServiceImplTest {
         // 不重复插入排除记录,但仍记录跳过事件
         verify(excludeMapper, never()).insert(any());
         verify(eventMapper).insert(any());
+    }
+
+    @Test
+    void skipUser_duplicateEventToday_ignored() {
+        // dedup_key 唯一约束触发 DuplicateKeyException → 幂等忽略,不抛异常
+        when(excludeMapper.selectCount(any())).thenReturn(1L);
+        when(eventMapper.insert(any())).thenThrow(new DuplicateKeyException("dedup_key"));
+
+        assertDoesNotThrow(() -> service.skipUser(1L, 2L));
     }
 
     private ChatApply pending(Long id, Long from, Long to) {

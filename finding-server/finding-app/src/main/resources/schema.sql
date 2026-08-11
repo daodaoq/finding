@@ -723,9 +723,23 @@ CREATE TABLE IF NOT EXISTS `recommend_event` (
     `event_type` VARCHAR(20) NOT NULL COMMENT 'expose/skip/apply/approve',
     `target_user_id` BIGINT NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 同日去重键:同一 user+target+type 每天只保留一条(防推荐曝光反复刷写)
+    `dedup_key` VARCHAR(100) GENERATED ALWAYS AS (
+        CONCAT(`user_id`, '_', `target_user_id`, '_', `event_type`, '_', DATE(`created_at`))
+    ) STORED,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_dedup` (`dedup_key`),
     KEY `idx_user_type` (`user_id`, `event_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- recommend_event.dedup_key 迁移(已部署库需先清理同日重复数据再执行,幂等)
+-- ============================================================
+-- ALTER TABLE `recommend_event`
+--     ADD COLUMN `dedup_key` VARCHAR(100) GENERATED ALWAYS AS (
+--         CONCAT(`user_id`, '_', `target_user_id`, '_', `event_type`, '_', DATE(`created_at`))
+--     ) STORED,
+--     ADD UNIQUE KEY `uk_dedup` (`dedup_key`);
 
 -- ============================================================
 -- 29. operation_log - 敏感操作审计日志

@@ -599,7 +599,11 @@ public class BridgeServiceImpl implements BridgeService {
         ev.setUserId(userId);
         ev.setEventType(type);
         ev.setTargetUserId(targetUserId);
-        eventMapper.insert(ev);
+        try {
+            eventMapper.insert(ev);
+        } catch (DuplicateKeyException e) {
+            // dedup_key 唯一约束:同日同 user+target+type 事件已存在,幂等忽略(如重复曝光)
+        }
     }
 
     // ── Private helpers ──
