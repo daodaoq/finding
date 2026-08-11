@@ -8,7 +8,9 @@ import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import AppIcon from '../../components/AppIcon';
-import type { ChatSettings } from '../../types/message';
+import type { ChatMessageDTO, ChatSettings } from '../../types/message';
+import type { User } from '../../types/user';
+import { getErrorMessage } from '../../utils/appError';
 import SearchView from './components/SearchView';
 import BackgroundView from './components/BackgroundView';
 import './index.css';
@@ -26,7 +28,7 @@ export default function ChatSettingsPage() {
   const myId = useAuthStore((s) => s.user?.id);
 
   const [settings, setSettings] = useState<ChatSettings | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [view, setView] = useState<'main' | 'search' | 'background'>('main');
 
   // 对方昵称/头像以服务端 profile 为准,URL 参数仅兜底(不可信)
@@ -35,7 +37,7 @@ export default function ChatSettingsPage() {
 
   // 查找聊天记录
   const [keyword, setKeyword] = useState('');
-  const [results, setResults] = useState<any[] | null>(null);
+  const [results, setResults] = useState<ChatMessageDTO[] | null>(null);
   const [searching, setSearching] = useState(false);
 
   // 清空 / 投诉
@@ -58,8 +60,8 @@ export default function ChatSettingsPage() {
     try {
       await chatApi.updateSettings(roomId, data);
       setSettings((prev) => (prev ? { ...prev, ...data } : prev));
-    } catch (e: any) {
-      showToast(e?.message || '设置保存失败');
+    } catch (e) {
+      showToast(getErrorMessage(e, '设置保存失败'));
     }
   };
 
@@ -83,8 +85,8 @@ export default function ChatSettingsPage() {
     try {
       await chatApi.clearMessages(roomId);
       showToast('聊天记录已清空');
-    } catch (e: any) {
-      showToast(e?.message || '清空失败');
+    } catch (e) {
+      showToast(getErrorMessage(e, '清空失败'));
     }
   };
 
@@ -95,8 +97,8 @@ export default function ChatSettingsPage() {
       await chatApi.hideConversation(roomId, true);
       showToast('已隐藏会话，对方发来新消息时会自动恢复');
       navigate(-1);
-    } catch (e: any) {
-      showToast(e?.message || '隐藏失败');
+    } catch (e) {
+      showToast(getErrorMessage(e, '隐藏失败'));
     }
   };
 
@@ -113,8 +115,8 @@ export default function ChatSettingsPage() {
       setReportCustom('');
       setReportReason('');
       showToast('投诉已提交，我们会尽快处理');
-    } catch (e: any) {
-      showToast(e?.message || '投诉提交失败');
+    } catch (e) {
+      showToast(getErrorMessage(e, '投诉提交失败'));
     }
   };
 

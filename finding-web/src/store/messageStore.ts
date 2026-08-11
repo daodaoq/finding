@@ -25,8 +25,8 @@ export const useMessageStore = create<MessageState>((set) => ({
         groupChatApi.listMyGroups(),
       ]);
       const notif = msgRes.data.data.count || 0;
-      const priv = (convRes.data.data || []).reduce((s, c: any) => s + (c.unreadCount || 0), 0);
-      const grp = (groupRes.data.data || []).reduce((s, g: any) => s + (g.unreadCount || 0), 0);
+      const priv = (convRes.data.data || []).reduce((s, c) => s + (c.unreadCount || 0), 0);
+      const grp = (groupRes.data.data || []).reduce((s, g) => s + (g.unreadCount || 0), 0);
       set({ unreadCount: notif + priv + grp });
     } catch { /* 忽略 */ }
   },

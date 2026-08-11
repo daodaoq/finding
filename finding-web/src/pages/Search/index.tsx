@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import request from '../../api/request';
+import type { ApiResponse } from '../../types/common';
+import type { User } from '../../types/user';
+import type { Mate } from '../../types/mate';
 import { showToast } from '../../components/Toast';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppIcon from '../../components/AppIcon';
 import './index.css';
 
+/** 搜索结果中的动态项(后端扁平结构,含作者昵称/头像) */
+interface SearchPostItem {
+  id: number;
+  content: string;
+  userNickname: string;
+  userAvatar: string;
+  createdAt?: string;
+}
+
 interface SearchResult {
-  users: { records: any[]; total: number };
-  posts: { records: any[]; total: number };
-  mates: { records: any[]; total: number };
+  users: { records: User[]; total: number };
+  posts: { records: SearchPostItem[]; total: number };
+  mates: { records: Mate[]; total: number };
 }
 
 const TABS = [
@@ -32,7 +44,7 @@ export default function SearchPage() {
     if (!q.trim()) return;
     setLoading(true);
     try {
-      const res = await request.get('/search', { params: { keyword: q.trim() } });
+      const res = await request.get<ApiResponse<SearchResult>>('/search', { params: { keyword: q.trim() } });
       setResults(res.data.data);
     } catch { showToast('搜索失败'); }
     finally { setLoading(false); }
@@ -93,7 +105,7 @@ export default function SearchPage() {
         {!loading && results && (
           <>
             {/* 用户 */}
-            {showTab('users') && results.users.records.map((u: any) => (
+            {showTab('users') && results.users.records.map((u: User) => (
               <div key={u.id} className="search-item"
                 onClick={() => navigate(`/messages/chat?userId=${u.id}&name=${encodeURIComponent(u.nickname || '')}&avatar=${encodeURIComponent(u.avatar || '')}`)}>
                 <div className="sr-avatar">
@@ -108,7 +120,7 @@ export default function SearchPage() {
             ))}
 
             {/* 动态 */}
-            {showTab('posts') && results.posts.records.map((p: any) => (
+            {showTab('posts') && results.posts.records.map((p: SearchPostItem) => (
               <div key={p.id} className="search-item"
                 onClick={() => navigate(`/square/post/${p.id}`)}>
                 <div className="sr-avatar">
@@ -123,7 +135,7 @@ export default function SearchPage() {
             ))}
 
             {/* 搭子 */}
-            {showTab('mates') && results.mates.records.map((m: any) => (
+            {showTab('mates') && results.mates.records.map((m: Mate) => (
               <div key={m.id} className="search-item"
                 onClick={() => navigate(`/mate/${m.id}`)}>
                 <div className="sr-avatar"><AppIcon name="target" size={20} /></div>

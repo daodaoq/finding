@@ -1,13 +1,15 @@
 import { formatSessionTime } from '../../../utils/format';
 import './SearchView.css';
 
+import type { ChatMessageDTO } from '../../../types/message';
+
 interface Props {
   nickname: string;
   myId?: number;
   keyword: string;
   onKeywordChange: (v: string) => void;
   searching: boolean;
-  results: any[] | null;
+  results: ChatMessageDTO[] | null;
   onSearch: () => void;
   onBack: () => void;
 }

@@ -25,6 +25,20 @@ export interface Conversation {
   muted?: boolean;
 }
 
+/** 聊天消息(后端 ChatMessageVO 原始返回) */
+export interface ChatMessageDTO {
+  id: number;
+  roomId: number;
+  fromUserId: number;
+  toUserId: number;
+  content: string;
+  messageType: string;      // text / image
+  isRecalled: number;
+  isRead: number;
+  parentMessageId?: number;
+  createdAt: string;
+}
+
 /** 陌生人打招呼消息 */
 export interface StrangerMessage {
   id: number;

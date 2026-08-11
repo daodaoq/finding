@@ -8,18 +8,20 @@ import { postApi } from '../../api/post';
 import { showToast } from '../../components/Toast';
 import PostCard from '../../components/PostCard';
 import type { Post } from '../../types/post';
+import type { User } from '../../types/user';
 import { useAuthStore } from '../../store/authStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import ResumeView from '../../components/ResumeView';
 import ReportDialog from '../../components/ReportDialog';
 import AppIcon from '../../components/AppIcon';
 import type { ResumeView as ResumeViewType } from '../../types/resume';
+import { getErrorMessage } from '../../utils/appError';
 import './index.css';
 
 export default function UserProfilePage() {
   const { id } = useParams<{ id: string }>();
   const userId = Number(id);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [resumeView, setResumeView] = useState<ResumeViewType | null>(null);
   const [resumeLoading, setResumeLoading] = useState(true);
@@ -65,13 +67,14 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const handleFollowToggle = async () => {
+    if (!profile) return;
     try {
       if (profile.isFollowed) {
         await userApi.unfollow(userId);
-        setProfile((prev: any) => prev ? { ...prev, isFollowed: false, followerCount: Math.max(0, (prev.followerCount || 0) - 1) } : prev);
+        setProfile((prev: User | null) => prev ? { ...prev, isFollowed: false, followerCount: Math.max(0, (prev.followerCount || 0) - 1) } : prev);
       } else {
         await userApi.follow(userId);
-        setProfile((prev: any) => prev ? { ...prev, isFollowed: true, followerCount: (prev.followerCount || 0) + 1 } : prev);
+        setProfile((prev: User | null) => prev ? { ...prev, isFollowed: true, followerCount: (prev.followerCount || 0) + 1 } : prev);
       }
     } catch { /* 拦截器统一提示 */ }
   };
@@ -125,8 +128,8 @@ export default function UserProfilePage() {
       await chatApi.sendStrangerMessage(userId, content.trim());
       setStranger((prev) => ({ ...prev, sent: true }));
       showToast('已发送打招呼消息，等待对方确认');
-    } catch (e: any) {
-      showToast(e?.message || '发送失败');
+    } catch (e) {
+      showToast(getErrorMessage(e, '发送失败'));
     }
   };
 

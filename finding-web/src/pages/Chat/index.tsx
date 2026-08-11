@@ -15,8 +15,9 @@ import ReportDialog from '../../components/ReportDialog';
 import ChatHeader from './components/ChatHeader';
 import ShareStatusTag from './components/ShareStatusTag';
 import MessageList, { type MessageLike } from './components/MessageList';
-import type { Conversation, ChatSettings } from '../../types/message';
+import type { ChatMessageDTO, Conversation, ChatSettings } from '../../types/message';
 import type { InfoShareStatus } from '../../types/resume';
+import { getErrorMessage } from '../../utils/appError';
 import { resolveChatBg } from '../../utils/chatBackgrounds';
 import './index.css';
 
@@ -104,7 +105,7 @@ export default function ChatDetailPage() {
   }, [targetUserId]);
 
   /** 后端消息记录 → 本地消息结构 */
-  const toMsg = (r: any): ChatMessage => ({
+  const toMsg = (r: ChatMessageDTO): ChatMessage => ({
     id: r.id,
     fromUserId: r.fromUserId,
     toUserId: r.toUserId,
@@ -133,9 +134,9 @@ export default function ChatDetailPage() {
       setMessages(records);
       // 进入会话已标记已读 → 刷新汇总角标
       useMessageStore.getState().refreshTotal();
-    } catch (e: any) {
+    } catch (e) {
       console.error('初始化会话失败', e);
-      showToast(e?.message || '还没有会话，请先通过『相亲桥』发起聊天申请');
+      showToast(getErrorMessage(e, '还没有会话，请先通过『相亲桥』发起聊天申请'));
       // 会话不存在或无权限:回到上一页并提示原因
       navigate(-1);
     } finally {
@@ -208,8 +209,8 @@ export default function ChatDetailPage() {
       await bridgeApi.infoShareRequest(targetUserId);
       setShareStatus('pendingSent');
       showToast('已发送互换申请，等待对方同意');
-    } catch (e: any) {
-      showToast(e?.message || '发送失败，请重试');
+    } catch (e) {
+      showToast(getErrorMessage(e, '发送失败，请重试'));
     }
   };
 
@@ -220,8 +221,8 @@ export default function ChatDetailPage() {
       await bridgeApi.infoShareHandle(shareId, approve ? 1 : 2);
       setShareStatus(approve ? 'approved' : 'none');
       showToast(approve ? '已同意互换详细信息' : '已拒绝互换申请');
-    } catch (e: any) {
-      showToast(e?.message || '操作失败，请重试');
+    } catch (e) {
+      showToast(getErrorMessage(e, '操作失败，请重试'));
     }
   };
 
@@ -252,8 +253,8 @@ export default function ChatDetailPage() {
       await chatApi.recallMessage(msg.id);
       setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
       showToast('已撤回');
-    } catch (e: any) {
-      showToast(e?.message || '撤回失败');
+    } catch (e) {
+      showToast(getErrorMessage(e, '撤回失败'));
     }
   };
 
@@ -288,10 +289,10 @@ export default function ChatDetailPage() {
           m.id === tempId
             ? { ...m, id: real.id, createdAt: real.createdAt, isRead: real.isRead ?? 0, sendState: 'sent' as const }
             : m));
-    } catch (e: any) {
+    } catch (e) {
       // 失败不删除:标记失败,可点击重试
       setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, sendState: 'failed' as const } : m));
-      showToast(e?.message || '发送失败，请稍后重试');
+      showToast(getErrorMessage(e, '发送失败，请稍后重试'));
     }
     // 无论成败都清除引用条(失败消息保留 parentMessageId,重试时复用)
     setReplyTo(null);
@@ -315,9 +316,9 @@ export default function ChatDetailPage() {
           m.id === failed.id
             ? { ...m, id: real.id, createdAt: real.createdAt, isRead: real.isRead ?? 0, sendState: 'sent' as const }
             : m));
-    } catch (e: any) {
+    } catch (e) {
       setMessages((prev) => prev.map((m) => m.id === failed.id ? { ...m, sendState: 'failed' as const } : m));
-      showToast(e?.message || '重试失败，请稍后再试');
+      showToast(getErrorMessage(e, '重试失败，请稍后再试'));
     }
   };
 

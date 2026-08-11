@@ -1,6 +1,6 @@
 import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
-import type { Conversation, ChatSettings, StrangerMessage } from '../types/message';
+import type { ChatMessageDTO, Conversation, ChatSettings, StrangerMessage } from '../types/message';
 
 export const chatApi = {
   /** 会话列表 */
@@ -37,11 +37,11 @@ export const chatApi = {
 
   /** 发送消息(以 roomId 指定会话,返回真实消息回执;clientMessageId 用于弱网重试幂等;replyToMessageId 回复引用) */
   sendMessage: (data: { roomId: number; content: string; messageType?: string; clientMessageId?: string; replyToMessageId?: number }) =>
-    request.post<ApiResponse<any>>('/chat/send', data),
+    request.post<ApiResponse<ChatMessageDTO>>('/chat/send', data),
 
   /** 消息历史（id=room_id） */
   getMessageHistory: (roomId: number, lastId?: number, size = 50) =>
-    request.get<ApiResponse<PageResult<any>>>(`/chat/conversations/${roomId}/messages`, {
+    request.get<ApiResponse<PageResult<ChatMessageDTO>>>(`/chat/conversations/${roomId}/messages`, {
       params: { lastId, size }
     }),
 
@@ -59,7 +59,7 @@ export const chatApi = {
 
   /** 搜索会话内聊天记录 */
   searchMessages: (roomId: number, keyword: string, size = 50) =>
-    request.get<ApiResponse<PageResult<any>>>(`/chat/conversations/${roomId}/messages/search`, {
+    request.get<ApiResponse<PageResult<ChatMessageDTO>>>(`/chat/conversations/${roomId}/messages/search`, {
       params: { keyword, size },
     }),
 
