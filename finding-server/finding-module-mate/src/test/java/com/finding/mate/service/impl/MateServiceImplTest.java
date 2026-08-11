@@ -398,6 +398,64 @@ class MateServiceImplTest {
         verify(invitationMapper).update(any(), any()); // 释放名额
     }
 
+    // ── 回归测试:活动时间校验 / 活动状态 / 重复处理 ──
+
+    @Test
+    void createInvitation_pastActivityTime_rejected() {
+        MateCreateDTO d = dto("标题", "描述", "地点");
+        d.setActivityTime(LocalDateTime.now().minusHours(1));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createInvitation(1L, d));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void createInvitation_within30min_rejected() {
+        MateCreateDTO d = dto("标题", "描述", "地点");
+        d.setActivityTime(LocalDateTime.now().plusMinutes(10));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createInvitation(1L, d));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void joinInvitation_closedActivity_rejected() {
+        MateInvitation inv = invitation(1L, 3, 10);
+        inv.setUserId(100L);
+        inv.setStatus(2); // CLOSED
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.joinInvitation(2L, 1L, "hi"));
+        assertEquals(ResultCode.MATE_CLOSED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void joinInvitation_expiredActivity_rejected() {
+        MateInvitation inv = invitation(1L, 3, 10);
+        inv.setUserId(100L);
+        inv.setActivityTime(LocalDateTime.now().minusHours(2)); // 已过期
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.joinInvitation(2L, 1L, "hi"));
+        assertEquals(ResultCode.MATE_EXPIRED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void handleJoinRequest_duplicate_doesNotChangeCapacity() {
+        MateInvitation inv = invitation(1L, 3, 10);
+        inv.setUserId(100L);
+        when(invitationMapper.selectById(1L)).thenReturn(inv);
+        MateParticipant part = participant(9L, 1L, 200L, MateParticipantStatus.PENDING.getCode());
+        when(participantMapper.selectById(9L)).thenReturn(part);
+        when(relationshipService.isBlockedEitherWay(100L, 200L)).thenReturn(false);
+        when(invitationMapper.update(any(), any())).thenReturn(1); // 名额占用成功
+        when(participantMapper.update(any(), any())).thenReturn(0); // 状态已被并发处理
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.handleJoinRequest(100L, 1L, 9L, true));
+        assertEquals(ResultCode.MATE_APPLY_HANDLED.getCode(), ex.getCode());
+    }
+
     private MateInvitation invitation(Long id, int current, int max) {
         MateInvitation inv = new MateInvitation();
         inv.setId(id);

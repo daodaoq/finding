@@ -245,6 +245,50 @@ class PostServiceImplTest {
         verify(postMapper, never()).updateById(any()); // 去重后不累加浏览量
     }
 
+    // ── 回归测试:禁言创建 / 已删动态评论 / 已删父评论 ──
+
+    @Test
+    void createPost_frozenUser_rejected() {
+        doThrow(new BusinessException(ResultCode.ACCOUNT_FROZEN)).when(userWriteGuard).checkWritable(1L);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPost(1L, dto("内容")));
+        assertEquals(ResultCode.ACCOUNT_FROZEN.getCode(), ex.getCode());
+    }
+
+    @Test
+    void listComments_deletedPost_rejected() {
+        Post post = post(1L, 1L, 0);
+        post.setStatus(0); // 已删除
+        when(postMapper.selectById(1L)).thenReturn(post);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.listComments(1L, 1, 10, 2L));
+        assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void addComment_deletedParent_rejected() {
+        Post post = post(1L, 2L, 0);
+        when(postMapper.selectById(1L)).thenReturn(post);
+        PostComment parent = new PostComment();
+        parent.setId(99L);
+        parent.setPostId(1L);
+        parent.setStatus(1); // 已删除
+        when(commentMapper.selectOne(any())).thenReturn(parent);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.addComment(1L, 1L, 99L, "回复"));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void toggleCommentLike_deletedPost_rejected() {
+        Post post = post(1L, 1L, 0);
+        post.setStatus(0); // 已删除
+        when(postMapper.selectById(1L)).thenReturn(post);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.toggleCommentLike(1L, 1L, 10L));
+        assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
+    }
+
     private PostCreateDTO dto(String content) {
         PostCreateDTO dto = new PostCreateDTO();
         dto.setContent(content);
