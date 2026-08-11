@@ -190,8 +190,16 @@ public class BridgeServiceImpl implements BridgeService {
         long toL = Math.min(fromL + size, total);
         List<Scored> paged = scored.subList((int) fromL, (int) toL);
 
+        // 批量查询本页候选人中「我已申请过」的集合,避免逐人 N+1 查询
+        List<Long> pageIds = paged.stream().map(s -> s.user.getId()).toList();
+        Set<Long> appliedIds = pageIds.isEmpty() ? Set.of()
+                : chatApplyMapper.selectList(new LambdaQueryWrapper<ChatApply>()
+                                .eq(ChatApply::getFromUserId, userId)
+                                .in(ChatApply::getToUserId, pageIds))
+                        .stream().map(ChatApply::getToUserId).collect(Collectors.toSet());
+
         List<HomeFeedVO> records = paged.stream()
-                .map(s -> toFeedVO(s.user, lat, lng, userId, s.score.reasons))
+                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds, s.score.reasons))
                 .collect(Collectors.toList());
 
         // 记录曝光事件(按 user+target+type 每日去重)
@@ -703,7 +711,8 @@ public class BridgeServiceImpl implements BridgeService {
     }
 
 
-    private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId, List<String> matchReasons) {
+    private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId, Set<Long> appliedIds,
+                                List<String> matchReasons) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
@@ -723,12 +732,8 @@ public class BridgeServiceImpl implements BridgeService {
                     user.getLatitude().doubleValue(), user.getLongitude().doubleValue()));
         }
 
-        // Check if current user has already sent application
-        if (currentUserId != null) {
-            vo.setIsLiked(chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
-                    .eq(ChatApply::getFromUserId, currentUserId)
-                    .eq(ChatApply::getToUserId, user.getId())) > 0);
-        }
+        // 是否已申请(由批量加载的 appliedIds 判断)
+        vo.setIsLiked(appliedIds.contains(user.getId()));
 
         return vo;
     }
