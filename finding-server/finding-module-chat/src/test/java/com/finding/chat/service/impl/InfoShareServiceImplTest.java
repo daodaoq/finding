@@ -61,6 +61,15 @@ class InfoShareServiceImplTest {
         return u;
     }
 
+    private InfoShare pendingShare(Long id, Long from, Long to) {
+        InfoShare s = new InfoShare();
+        s.setId(id);
+        s.setFromUserId(from);
+        s.setToUserId(to);
+        s.setStatus(0);
+        return s;
+    }
+
     // ── requestShare: 限流 ──
 
     @Test
@@ -109,5 +118,40 @@ class InfoShareServiceImplTest {
         assertDoesNotThrow(() -> service.requestShare(1L, 2L));
         verify(infoShareMapper).insert(any());
         verify(messageService).notify(any(), any(), any(), any(), any());
+    }
+
+    // ── handleShare: 条件更新防并发 ──
+
+    @Test
+    void handleShare_conditionalUpdate_success() {
+        InfoShare share = pendingShare(100L, 2L, 1L);
+        when(infoShareMapper.selectById(100L)).thenReturn(share);
+        when(infoShareMapper.update(any(), any())).thenReturn(1);
+        when(webSocketServer.isOnline(2L)).thenReturn(false);
+
+        assertDoesNotThrow(() -> service.handleShare(1L, 100L, 1));
+        verify(messageService).notify(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void handleShare_conditionalUpdateFails_throwsAlreadyHandled() {
+        InfoShare share = pendingShare(100L, 2L, 1L);
+        when(infoShareMapper.selectById(100L)).thenReturn(share);
+        // 并发下条件更新返回 0 → 已被他人处理
+        when(infoShareMapper.update(any(), any())).thenReturn(0);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.handleShare(1L, 100L, 1));
+        assertEquals(ResultCode.CHAT_APPLY_ALREADY_HANDLED.getCode(), ex.getCode());
+        // 不产生任何通知
+        verify(messageService, never()).notify(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void handleShare_notReceiver_throws() {
+        InfoShare share = pendingShare(100L, 1L, 2L); // 接收方是 2,当前用户是 1
+        when(infoShareMapper.selectById(100L)).thenReturn(share);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.handleShare(1L, 100L, 1));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
     }
 }

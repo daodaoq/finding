@@ -108,10 +108,16 @@ public class InfoShareServiceImpl implements InfoShareService {
         if (share.getStatus() != 0) {
             throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED);
         }
-
-        share.setStatus(status);
-        share.setHandledAt(LocalDateTime.now());
-        infoShareMapper.updateById(share);
+        // 条件更新:仅 status=0 且处理人=接收方,并发下只有一个请求能成功
+        int rows = infoShareMapper.update(null, new LambdaUpdateWrapper<InfoShare>()
+                .eq(InfoShare::getId, shareId)
+                .eq(InfoShare::getToUserId, userId)
+                .eq(InfoShare::getStatus, 0)
+                .set(InfoShare::getStatus, status)
+                .set(InfoShare::getHandledAt, LocalDateTime.now()));
+        if (rows == 0) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED);
+        }
 
         if (status == 1) {
             messageService.notify(userId, share.getFromUserId(), "info_share_approved",
