@@ -2,6 +2,7 @@ package com.finding.chat.event;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.finding.chat.constant.ChatApplyStatus;
+import com.finding.chat.constant.InfoShareStatus;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
 import com.finding.chat.mapper.ChatApplyMapper;
@@ -36,10 +37,10 @@ public class AccountDeleteListener {
                 .set(ChatApply::getHandleTime, LocalDateTime.now()));
         // 取消涉及该用户的待处理信息互换(置为已拒绝)
         infoShareMapper.update(null, new LambdaUpdateWrapper<InfoShare>()
-                .eq(InfoShare::getStatus, 0)
+                .eq(InfoShare::getStatus, InfoShareStatus.PENDING.getCode())
                 .and(w -> w.eq(InfoShare::getFromUserId, userId)
                         .or().eq(InfoShare::getToUserId, userId))
-                .set(InfoShare::getStatus, 2)
+                .set(InfoShare::getStatus, InfoShareStatus.REJECTED.getCode())
                 .set(InfoShare::getHandledAt, LocalDateTime.now()));
     }
 }

@@ -38,4 +38,22 @@ public enum MateParticipantStatus {
         }
         return "未知";
     }
+
+    /**
+     * 状态迁移是否合法(状态迁移表):
+     * PENDING -> ACCEPTED | REJECTED | CANCELLED | WAITLISTED
+     * WAITLISTED -> ACCEPTED | CANCELLED
+     * ACCEPTED -> CANCELLED
+     * INVALIDATED(活动结束强制失效)允许从任意非失效态转入
+     */
+    public boolean canTransitTo(MateParticipantStatus next) {
+        if (next == null) return false;
+        if (next == INVALIDATED) return this != INVALIDATED;
+        return switch (this) {
+            case PENDING -> next == ACCEPTED || next == REJECTED || next == CANCELLED || next == WAITLISTED;
+            case WAITLISTED -> next == ACCEPTED || next == CANCELLED;
+            case ACCEPTED -> next == CANCELLED;
+            default -> false;
+        };
+    }
 }

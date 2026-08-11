@@ -1,6 +1,7 @@
 package com.finding.chat.event;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.finding.chat.constant.InfoShareStatus;
 import com.finding.chat.entity.InfoShare;
 import com.finding.chat.mapper.InfoShareMapper;
 import com.finding.common.event.UserBlockedEvent;
@@ -23,12 +24,12 @@ public class InfoShareBlockListener {
     @EventListener
     public void onUserBlocked(UserBlockedEvent event) {
         infoShareMapper.update(null, new LambdaUpdateWrapper<InfoShare>()
-                .eq(InfoShare::getStatus, 0)
+                .eq(InfoShare::getStatus, InfoShareStatus.PENDING.getCode())
                 .and(w -> w.and(x -> x.eq(InfoShare::getFromUserId, event.getUserId())
                                         .eq(InfoShare::getToUserId, event.getBlockedUserId()))
                         .or().and(x -> x.eq(InfoShare::getFromUserId, event.getBlockedUserId())
                                         .eq(InfoShare::getToUserId, event.getUserId())))
-                .set(InfoShare::getStatus, 2)
+                .set(InfoShare::getStatus, InfoShareStatus.REJECTED.getCode())
                 .set(InfoShare::getHandledAt, LocalDateTime.now()));
     }
 }

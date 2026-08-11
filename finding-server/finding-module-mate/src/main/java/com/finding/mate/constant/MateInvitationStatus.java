@@ -21,4 +21,9 @@ public enum MateInvitationStatus {
         this.code = code;
         this.desc = desc;
     }
+
+    /** 状态迁移是否合法:仅 ACTIVE 可流转(关闭/取消/过期),其余均为终态 */
+    public boolean canTransitTo(MateInvitationStatus next) {
+        return next != null && this == ACTIVE;
+    }
 }

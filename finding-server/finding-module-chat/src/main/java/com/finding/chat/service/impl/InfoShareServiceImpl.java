@@ -3,6 +3,7 @@ package com.finding.chat.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.finding.chat.constant.ChatApplyStatus;
+import com.finding.chat.constant.InfoShareStatus;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
 import com.finding.chat.event.InfoSharePushEvent;
@@ -78,11 +79,11 @@ public class InfoShareServiceImpl implements InfoShareService {
 
         Long shareId;
         if (existing != null) {
-            // 已存在: pending/approved 不允许重复发起; rejected 则原地改回 pending(允许重新申请)
-            if (existing.getStatus() != 2) {
+            // 已存在: pending/approved 不允许重复发起; rejected 则原地改回 pending(允许重新申请,迁移 REJECTED->PENDING)
+            if (existing.getStatus() != InfoShareStatus.REJECTED.getCode()) {
                 throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT, "已经发起过互换申请了");
             }
-            existing.setStatus(0);
+            existing.setStatus(InfoShareStatus.PENDING.getCode());
             existing.setHandledAt(null);
             infoShareMapper.updateById(existing);
             shareId = existing.getId();
@@ -90,7 +91,7 @@ public class InfoShareServiceImpl implements InfoShareService {
             InfoShare share = new InfoShare();
             share.setFromUserId(fromUserId);
             share.setToUserId(toUserId);
-            share.setStatus(0);
+            share.setStatus(InfoShareStatus.PENDING.getCode());
             infoShareMapper.insert(share);
             shareId = share.getId();
         }
@@ -117,14 +118,19 @@ public class InfoShareServiceImpl implements InfoShareService {
         if (!share.getToUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "无权处理该申请");
         }
-        if (share.getStatus() != 0) {
+        if (share.getStatus() != InfoShareStatus.PENDING.getCode()) {
             throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED);
+        }
+        // 状态迁移校验:仅允许 PENDING -> APPROVED | REJECTED,非法流转直接拒绝
+        InfoShareStatus to = InfoShareStatus.of(status);
+        if (to == null || !InfoShareStatus.PENDING.canTransitTo(to)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "非法的状态流转");
         }
         // 条件更新:仅 status=0 且处理人=接收方,并发下只有一个请求能成功
         int rows = infoShareMapper.update(null, new LambdaUpdateWrapper<InfoShare>()
                 .eq(InfoShare::getId, shareId)
                 .eq(InfoShare::getToUserId, userId)
-                .eq(InfoShare::getStatus, 0)
+                .eq(InfoShare::getStatus, InfoShareStatus.PENDING.getCode())
                 .set(InfoShare::getStatus, status)
                 .set(InfoShare::getHandledAt, LocalDateTime.now()));
         if (rows == 0) {
@@ -170,9 +176,9 @@ public class InfoShareServiceImpl implements InfoShareService {
             return vo;
         }
         vo.setShareId(share.getId());
-        if (share.getStatus() == 1) {
+        if (share.getStatus() == InfoShareStatus.APPROVED.getCode()) {
             vo.setStatus("approved");
-        } else if (share.getStatus() == 2) {
+        } else if (share.getStatus() == InfoShareStatus.REJECTED.getCode()) {
             vo.setStatus("rejected");
         } else {
             // pending: 区分发送/接收方向

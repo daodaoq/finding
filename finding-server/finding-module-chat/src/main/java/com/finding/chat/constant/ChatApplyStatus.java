@@ -36,4 +36,9 @@ public enum ChatApplyStatus {
         }
         return "未知";
     }
+
+    /** 状态迁移是否合法:仅 PENDING 可流转(通过/拒绝/撤回/过期),其余均为终态 */
+    public boolean canTransitTo(ChatApplyStatus next) {
+        return next != null && this == PENDING;
+    }
 }
