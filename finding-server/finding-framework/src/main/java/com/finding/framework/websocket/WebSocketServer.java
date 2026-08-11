@@ -52,7 +52,10 @@ public class WebSocketServer extends TextWebSocketHandler {
         }
         // 认证失败，关闭连接
         log.warn("WebSocket 认证失败，关闭连接: {}", session.getId());
-        try { session.close(); } catch (IOException ignored) {}
+        try { session.close(); } catch (IOException e) {
+            // 关闭认证失败连接失败属预期可忽略,debug 记录会话上下文
+            log.debug("关闭认证失败连接失败: sessionId={}", session.getId());
+        }
     }
 
     // ── 接收消息 ──
@@ -111,7 +114,10 @@ public class WebSocketServer extends TextWebSocketHandler {
                 if (channels.isEmpty()) USER_CHANNELS.remove(userId);
             }
         }
-        try { session.close(); } catch (IOException ignored) {}
+        try { session.close(); } catch (IOException e) {
+            // 清理传输错误连接失败属预期可忽略
+            log.debug("清理传输错误连接失败: sessionId={}", session.getId());
+        }
     }
 
     // ── 连接断开 ──
@@ -183,6 +189,8 @@ public class WebSocketServer extends TextWebSocketHandler {
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
+            // 序列化失败会丢弃该条推送:需要告警,而非静默返回 "{}"
+            log.warn("WebSocket 消息序列化失败,该条推送将被丢弃: {}", e.getMessage());
             return "{}";
         }
     }

@@ -146,7 +146,12 @@ public class AdminUserController {
         if (body.containsKey("birthday") && body.get("birthday") != null) {
             String bd = body.get("birthday").toString();
             if (!bd.isEmpty()) {
-                try { user.setBirthday(java.time.LocalDate.parse(bd)); } catch (Exception ignored) {}
+                try {
+                    user.setBirthday(java.time.LocalDate.parse(bd));
+                } catch (Exception e) {
+                    // 管理员输入不合法日期属参数错误:显式报错,不再静默丢弃
+                    throw new BusinessException(ResultCode.PARAM_ERROR, "生日格式不正确，应为 yyyy-MM-dd");
+                }
             }
         }
         if (body.containsKey("email") && body.get("email") != null)

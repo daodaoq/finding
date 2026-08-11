@@ -13,6 +13,7 @@ import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserResumeService;
 import com.finding.user.vo.ResumeViewVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserResumeServiceImpl implements UserResumeService {
@@ -124,8 +126,9 @@ public class UserResumeServiceImpl implements UserResumeService {
                     f.setAccessible(true);
                     String v = (String) f.get(dto);
                     if (v != null && !v.isEmpty()) texts.add(v);
-                } catch (IllegalAccessException ignored) {
-                    // 反射失败不影响发布
+                } catch (IllegalAccessException e) {
+                    // 反射失败不影响发布(理论不会发生),debug 记录便于排查
+                    log.debug("简历文本反射收集失败: field={}, cause={}", f.getName(), e.getMessage());
                 }
             }
         }

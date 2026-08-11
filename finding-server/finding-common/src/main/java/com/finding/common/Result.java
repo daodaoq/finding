@@ -2,6 +2,7 @@ package com.finding.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
+import org.slf4j.MDC;
 
 import java.io.Serializable;
 
@@ -13,9 +14,12 @@ public class Result<T> implements Serializable {
     private String message;
     private T data;
     private Long timestamp;
+    /** 请求追踪 ID:由 RequestLogInterceptor 写入 MDC,客户端可据此关联后端日志 */
+    private String traceId;
 
     private Result() {
         this.timestamp = System.currentTimeMillis();
+        this.traceId = MDC.get("traceId");
     }
 
     private Result(int code, String message, T data) {
@@ -23,6 +27,7 @@ public class Result<T> implements Serializable {
         this.message = message;
         this.data = data;
         this.timestamp = System.currentTimeMillis();
+        this.traceId = MDC.get("traceId");
     }
 
     // ── Success ──
