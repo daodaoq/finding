@@ -9,6 +9,7 @@ import com.finding.user.entity.UserResume;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserResumeMapper;
 import com.finding.user.service.InfoShareQuery;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserResumeService;
 import com.finding.user.vo.ResumeViewVO;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class UserResumeServiceImpl implements UserResumeService {
     private final UserMapper userMapper;
     private final InfoShareQuery infoShareQuery;
     private final SensitiveWordFilter sensitiveWordFilter;
+    private final UserRelationshipService relationshipService;
 
     @Override
     public UserResume getMyResume(Long userId) {
@@ -98,7 +100,9 @@ public class UserResumeServiceImpl implements UserResumeService {
         int status = currentUserId == null ? InfoShareQuery.STATUS_NONE
                 : infoShareQuery.getShareStatus(currentUserId, targetUserId);
         vo.setShareStatus(status);
-        boolean shared = status == InfoShareQuery.STATUS_APPROVED;
+        // 拉黑后即使已互换也不再返回详细资料(限制已互换资料可见)
+        boolean shared = status == InfoShareQuery.STATUS_APPROVED
+                && !relationshipService.isBlockedEitherWay(currentUserId, targetUserId);
         vo.setInfoShared(shared);
         if (shared) {
             vo.setResume(selectByUserId(targetUserId));

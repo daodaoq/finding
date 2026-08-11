@@ -4,10 +4,12 @@ import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
 import com.finding.user.dto.UserResumeDTO;
+import com.finding.user.entity.User;
 import com.finding.user.entity.UserResume;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserResumeMapper;
 import com.finding.user.service.impl.UserResumeServiceImpl;
+import com.finding.user.vo.ResumeViewVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +21,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -33,13 +37,14 @@ class UserResumeServiceImplTest {
     @Mock private UserMapper userMapper;
     @Mock private InfoShareQuery infoShareQuery;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
+    @Mock private UserRelationshipService relationshipService;
 
     private UserResumeServiceImpl service;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        service = new UserResumeServiceImpl(resumeMapper, userMapper, infoShareQuery, sensitiveWordFilter);
+        service = new UserResumeServiceImpl(resumeMapper, userMapper, infoShareQuery, sensitiveWordFilter, relationshipService);
     }
 
     @Test
@@ -93,5 +98,17 @@ class UserResumeServiceImplTest {
 
         verify(resumeMapper).insert(any());
         verify(resumeMapper).updateById(existing);
+    }
+
+    @Test
+    void getResumeForView_blocked_hidesResume() {
+        when(userMapper.selectById(2L)).thenReturn(new User());
+        when(infoShareQuery.getShareStatus(1L, 2L)).thenReturn(InfoShareQuery.STATUS_APPROVED);
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(true);
+
+        ResumeViewVO vo = service.getResumeForView(1L, 2L);
+
+        assertFalse(vo.getInfoShared());
+        assertNull(vo.getResume());
     }
 }
