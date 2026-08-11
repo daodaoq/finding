@@ -14,6 +14,7 @@ import com.finding.post.mapper.PostCommentLikeMapper;
 import com.finding.post.mapper.PostCommentMapper;
 import com.finding.post.mapper.PostLikeMapper;
 import com.finding.post.mapper.PostMapper;
+import com.finding.post.vo.PostVO;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
@@ -28,13 +29,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +58,7 @@ class PostServiceImplTest {
     @Mock private UserService userService;
     @Mock private MessageService messageService;
     @Mock private RedisTemplate<String, Object> redisTemplate;
+    @Mock private ValueOperations<String, Object> valueOps;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserWriteGuard userWriteGuard;
 
@@ -179,6 +185,64 @@ class PostServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.listComments(1L, 1, 10, 2L)); // 他人查评论
         assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    // ── 3.10 图片约束 / 3.11 JSON存储 / 3.13 浏览量去重 ──
+
+    @Test
+    void createPost_tooManyImages_rejected() {
+        List<String> imgs = java.util.stream.IntStream.range(0, 10)
+                .mapToObj(i -> "/api/v1/images/img" + i + ".jpg").toList();
+        PostCreateDTO dto = dto("内容");
+        dto.setImages(imgs);
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPost(1L, dto));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void createPost_externalImageUrl_rejected() {
+        PostCreateDTO dto = dto("内容");
+        dto.setImages(List.of("https://evil.com/x.jpg"));
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPost(1L, dto));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void createPost_storesImagesAsJson() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        when(userService.getUserProfile(any(), any())).thenReturn(new com.finding.user.vo.UserVO());
+        when(likeMapper.selectCount(any())).thenReturn(0L);
+        PostCreateDTO dto = dto("内容");
+        // 含逗号的 URL 必须原样保存与回显
+        dto.setImages(List.of("/api/v1/images/a,b.jpg", "/api/v1/images/c.jpg"));
+
+        PostVO vo = service.createPost(1L, dto);
+
+        ArgumentCaptor<Post> cap = ArgumentCaptor.forClass(Post.class);
+        verify(postMapper).insert(cap.capture());
+        assertTrue(cap.getValue().getImages().startsWith("["), "应存储为 JSON 数组");
+        assertEquals(2, vo.getImages().size());
+        assertEquals("/api/v1/images/a,b.jpg", vo.getImages().get(0));
+    }
+
+    @Test
+    void getPostDetail_viewDeduped_noIncrement() {
+        Post post = post(1L, 2L, 0);
+        when(postMapper.selectById(1L)).thenReturn(post);
+        when(commentMapper.selectCount(any())).thenReturn(5L);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.setIfAbsent(any(), any(), any())).thenReturn(false); // 已计过浏览
+
+        service.getPostDetail(1L, 9L);
+
+        verify(postMapper, never()).updateById(any()); // 去重后不累加浏览量
     }
 
     private PostCreateDTO dto(String content) {

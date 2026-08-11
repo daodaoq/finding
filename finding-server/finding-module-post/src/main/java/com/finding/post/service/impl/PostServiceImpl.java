@@ -2,6 +2,9 @@ package com.finding.post.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.post.dto.PostCreateDTO;
@@ -23,6 +26,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -56,6 +60,9 @@ public class PostServiceImpl implements PostService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserWriteGuard userWriteGuard;
+
+    /** 图片 JSON 序列化(独立实例,避免受全局 ObjectMapper 日期格式影响) */
+    private static final ObjectMapper IMAGE_OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId) {
@@ -121,13 +128,25 @@ public class PostServiceImpl implements PostService {
     @Override
     public PostVO getPostDetail(Long postId, Long currentUserId) {
         Post post = assertPostVisible(postId, currentUserId);
-        // 自动同步实际评论数
+        // 自动同步实际评论数(仅统计正常评论,与列表一致)
         Long realCount = commentMapper.selectCount(
-                new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, postId));
+                new LambdaQueryWrapper<PostComment>().eq(PostComment::getPostId, postId)
+                        .eq(PostComment::getStatus, 0));
         post.setCommentCount(realCount.intValue());
-        // 增加浏览量
-        post.setViewCount(post.getViewCount() + 1);
-        postMapper.updateById(post);
+        // 浏览量去重:同一用户/匿名在 1 小时窗口内只计一次,防刷
+        try {
+            String viewerKey = currentUserId != null ? String.valueOf(currentUserId) : "anon";
+            Boolean firstView = redisTemplate.opsForValue().setIfAbsent(
+                    "post:view:" + postId + ":" + viewerKey, "1", Duration.ofHours(1));
+            if (Boolean.TRUE.equals(firstView)) {
+                post.setViewCount(post.getViewCount() + 1);
+                postMapper.updateById(post);
+            }
+        } catch (Exception e) {
+            // Redis 不可用时降级为直接累加,不影响详情访问
+            post.setViewCount(post.getViewCount() + 1);
+            postMapper.updateById(post);
+        }
         return toVO(post, currentUserId);
     }
 
@@ -155,10 +174,11 @@ public class PostServiceImpl implements PostService {
         // 拦截词 → 拒绝发布;送审词 → 进入审核队列;干净 → 直接发布
         ReviewResult review = sensitiveWordFilter.classifyReview(content);
         throwIfBlocked(review);
+        validateImages(dto.getImages());
         Post post = new Post();
         post.setUserId(userId);
         post.setContent(content);
-        post.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
+        post.setImages(toJsonImages(dto.getImages()));
         post.setLocation(dto.getLocation());
         post.setCity(dto.getCity());
         post.setLatitude(dto.getLatitude());
@@ -180,7 +200,8 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "只能编辑自己的动态");
         }
         post.setContent(XssUtil.clean(dto.getContent()));
-        post.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
+        validateImages(dto.getImages());
+        post.setImages(toJsonImages(dto.getImages()));
         post.setLocation(dto.getLocation());
         post.setCity(dto.getCity());
         if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
@@ -443,6 +464,49 @@ public class PostServiceImpl implements PostService {
         return PageVO.of(records, result.getTotal(), page, size);
     }
 
+    /** 图片后端约束:数量≤9、URL长度、仅允许本地上传代理地址 */
+    private void validateImages(List<String> images) {
+        if (images == null) return;
+        if (images.size() > 9) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "图片最多 9 张");
+        }
+        for (String url : images) {
+            if (url == null || url.isBlank()) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "图片 URL 不能为空");
+            }
+            if (url.length() > 1000) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "图片 URL 过长");
+            }
+            if (!url.startsWith("/api/v1/images/")) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "图片仅允许使用平台上传地址");
+            }
+        }
+    }
+
+    /** 图片列表序列化为 JSON 数组存储(替代逗号拼接,避免含逗号 URL 被拆坏) */
+    private String toJsonImages(List<String> images) {
+        if (images == null) return null;
+        try {
+            return IMAGE_OBJECT_MAPPER.writeValueAsString(images);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "图片数据格式错误");
+        }
+    }
+
+    /** 读取图片列表:优先解析 JSON,兼容旧数据逗号分隔 */
+    private List<String> parseImages(String images) {
+        if (images == null || images.isBlank()) return List.of();
+        String trimmed = images.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                return IMAGE_OBJECT_MAPPER.readValue(trimmed, new TypeReference<List<String>>() {});
+            } catch (Exception e) {
+                return List.of();
+            }
+        }
+        return List.of(trimmed.split(","));
+    }
+
     /** 命中「拦截」动作的违禁词 → 拒绝发布(提示具体词) */
     private void throwIfBlocked(ReviewResult review) {
         if (review.hasBlocking()) {
@@ -456,7 +520,7 @@ public class PostServiceImpl implements PostService {
         vo.setId(post.getId());
         vo.setUserId(post.getUserId());
         vo.setContent(post.getContent());
-        vo.setImages(post.getImages() != null ? List.of(post.getImages().split(",")) : List.of());
+        vo.setImages(parseImages(post.getImages()));
         vo.setLocation(post.getLocation());
         vo.setCity(post.getCity());
         vo.setLatitude(post.getLatitude());
