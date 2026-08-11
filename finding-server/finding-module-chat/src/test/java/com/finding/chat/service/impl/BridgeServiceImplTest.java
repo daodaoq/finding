@@ -4,6 +4,7 @@ import com.finding.chat.config.MatchScoreWeights;
 import com.finding.chat.dto.UserCardConfigDTO;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.RecommendEvent;
+import com.finding.chat.entity.RecommendExclude;
 import com.finding.chat.entity.UserCardConfig;
 import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.mapper.ChatApplyMapper;
@@ -43,6 +44,8 @@ import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -434,6 +437,70 @@ class BridgeServiceImplTest {
         assertNull(vo.getAge());
         assertNull(vo.getVerified());
         assertNull(vo.getTargetType());
+    }
+
+    // ── 推荐反馈闭环评分 ──
+
+    @Test
+    void scoreCandidate_likedSchool_boosts() {
+        when(weights.getLikedSchool()).thenReturn(8);
+        User me = new User(); me.setId(1L); me.setSchool("A大学");
+        User cand = new User(); cand.setId(2L); cand.setSchool("B大学"); // 与我申请过的人同校
+        var profile = new BridgeServiceImpl.RecommendPreferenceProfile(
+                Set.of("B大学"), Set.of(), Set.of(), Set.of(), true);
+
+        var result = service.scoreCandidate(me, cand, null, null, profile);
+
+        assertEquals(8, result.score());
+        assertTrue(result.reasons().contains("偏好同校"));
+    }
+
+    @Test
+    void scoreCandidate_skippedSchool_demotes() {
+        when(weights.getSkippedSchool()).thenReturn(8);
+        User me = new User(); me.setId(1L); me.setSchool("A大学");
+        User cand = new User(); cand.setId(2L); cand.setSchool("C大学"); // 与我跳过的人同校
+        var profile = new BridgeServiceImpl.RecommendPreferenceProfile(
+                Set.of(), Set.of(), Set.of("C大学"), Set.of(), true);
+
+        var result = service.scoreCandidate(me, cand, null, null, profile);
+
+        assertEquals(-8, result.score());
+    }
+
+    @Test
+    void scoreCandidate_coldStart_verifiedAndActiveBoost() {
+        when(weights.getColdStartVerified()).thenReturn(4);
+        when(weights.getColdStartActive()).thenReturn(3);
+        User me = new User(); me.setId(1L); me.setSchool("A大学");
+        User cand = new User(); cand.setId(2L); cand.setSchool("B大学");
+        cand.setRealNameVerified(2);
+        cand.setLastLoginAt(LocalDateTime.now());
+        var profile = new BridgeServiceImpl.RecommendPreferenceProfile(
+                Set.of(), Set.of(), Set.of(), Set.of(), false); // 无历史反馈 → 冷启动
+
+        var result = service.scoreCandidate(me, cand, null, null, profile);
+
+        assertEquals(7, result.score()); // 冷启动:已认证4 + 近期活跃3
+    }
+
+    @Test
+    void buildPreferenceProfile_extractsSignals() {
+        User liked = new User(); liked.setId(2L); liked.setSchool("B大学"); liked.setCity("淄博");
+        User skipped = new User(); skipped.setId(3L); skipped.setSchool("C大学"); skipped.setCity("济南");
+        ChatApply apply = new ChatApply(); apply.setFromUserId(1L); apply.setToUserId(2L);
+        RecommendExclude ex = new RecommendExclude(); ex.setUserId(1L); ex.setTargetUserId(3L);
+        when(chatApplyMapper.selectList(any())).thenReturn(List.of(apply));
+        when(excludeMapper.selectList(any())).thenReturn(List.of(ex));
+        when(userMapper.selectBatchIds(List.of(2L))).thenReturn(List.of(liked));
+        when(userMapper.selectBatchIds(List.of(3L))).thenReturn(List.of(skipped));
+
+        var profile = service.buildPreferenceProfile(1L);
+
+        assertTrue(profile.likedSchools().contains("B大学"));
+        assertTrue(profile.likedCities().contains("淄博"));
+        assertTrue(profile.skipSchools().contains("C大学"));
+        assertTrue(profile.hasFeedback());
     }
 
     private ChatApply pending(Long id, Long from, Long to) {

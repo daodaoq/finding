@@ -180,6 +180,8 @@ public class BridgeServiceImpl implements BridgeService {
 
         // ── 候选全量过滤(内存:年龄/距离) → 可解释打分 → 稳定排序 → 分页 ──
         List<User> candidates = userMapper.selectList(wrapper);
+        // 反馈闭环:构建我的申请/跳过偏好画像(每请求一次)
+        RecommendPreferenceProfile prefProfile = buildPreferenceProfile(userId);
         List<Scored> scored = new ArrayList<>();
         for (User c : candidates) {
             // 年龄范围过滤
@@ -202,7 +204,7 @@ public class BridgeServiceImpl implements BridgeService {
                     && completeness(c) < pref.getMinCompleteness()) {
                 continue;
             }
-            scored.add(new Scored(c, scoreCandidate(currentUser, c, pref, dist)));
+            scored.add(new Scored(c, scoreCandidate(currentUser, c, pref, dist, prefProfile)));
         }
         scored.sort((a, b) -> {
             int cmp = Integer.compare(b.score.score, a.score.score); // 得分降序
@@ -253,14 +255,15 @@ public class BridgeServiceImpl implements BridgeService {
         }
     }
 
-    private record ScoreResult(int score, List<String> reasons) {}
+    record ScoreResult(int score, List<String> reasons) {}
     private record Scored(User user, ScoreResult score) {}
 
     /**
      * 可解释相亲评分:同校/同城/已认证/近期活跃/兴趣相投/距离/资料完整度,权重可配置(finding.recommend.*)。
      * 不再用"异性优先"硬编码:性别偏好由 user_match_preference.prefer_gender 在候选阶段过滤。
      */
-    private ScoreResult scoreCandidate(User me, User candidate, UserMatchPreference pref, Double distanceKm) {
+    ScoreResult scoreCandidate(User me, User candidate, UserMatchPreference pref, Double distanceKm,
+                               RecommendPreferenceProfile profile) {
         List<String> reasons = new ArrayList<>();
         int score = 0;
         if (me == null) return new ScoreResult(score, reasons);
@@ -298,7 +301,66 @@ public class BridgeServiceImpl implements BridgeService {
             reasons.add("距离较近");
         }
         score += weights.getCompleteness() * completeness(candidate);
+
+        // ── 反馈闭环:根据我的申请/跳过历史调整 ──
+        if (profile != null) {
+            if (candidate.getSchool() != null && profile.likedSchools().contains(candidate.getSchool())) {
+                score += weights.getLikedSchool();
+                reasons.add("偏好同校");
+            } else if (candidate.getSchool() != null && profile.skipSchools().contains(candidate.getSchool())) {
+                score -= weights.getSkippedSchool();
+            }
+            if (candidate.getCity() != null && profile.likedCities().contains(candidate.getCity())) {
+                score += weights.getLikedCity();
+                reasons.add("偏好同城");
+            } else if (candidate.getCity() != null && profile.skipCities().contains(candidate.getCity())) {
+                score -= weights.getSkippedCity();
+            }
+            // 冷启动:无历史反馈时,优先已认证/近期活跃的候选
+            if (!profile.hasFeedback()) {
+                if (candidate.getRealNameVerified() != null && candidate.getRealNameVerified() == 2) {
+                    score += weights.getColdStartVerified();
+                }
+                if (candidate.getLastLoginAt() != null
+                        && candidate.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24))) {
+                    score += weights.getColdStartActive();
+                }
+            }
+        }
         return new ScoreResult(score, reasons);
+    }
+
+    /** 用户反馈画像:从申请(正反馈)与跳过(负反馈)历史提取偏好,用于推荐反馈闭环 */
+    record RecommendPreferenceProfile(Set<String> likedSchools, Set<String> likedCities,
+                                      Set<String> skipSchools, Set<String> skipCities, boolean hasFeedback) {
+    }
+
+    /** 构建当前用户的偏好画像:申请过的人的学校/城市(正),跳过的人的学校/城市(负) */
+    RecommendPreferenceProfile buildPreferenceProfile(Long userId) {
+        List<Long> appliedIds = chatApplyMapper.selectList(
+                        new LambdaQueryWrapper<ChatApply>().eq(ChatApply::getFromUserId, userId))
+                .stream().map(ChatApply::getToUserId).toList();
+        List<Long> skippedIds = excludeMapper.selectList(
+                        new LambdaQueryWrapper<RecommendExclude>().eq(RecommendExclude::getUserId, userId))
+                .stream().map(RecommendExclude::getTargetUserId).toList();
+        Set<String> likedSchools = new HashSet<>();
+        Set<String> likedCities = new HashSet<>();
+        Set<String> skipSchools = new HashSet<>();
+        Set<String> skipCities = new HashSet<>();
+        if (!appliedIds.isEmpty()) {
+            userMapper.selectBatchIds(appliedIds).forEach(u -> {
+                if (u.getSchool() != null && !u.getSchool().isBlank()) likedSchools.add(u.getSchool());
+                if (u.getCity() != null && !u.getCity().isBlank()) likedCities.add(u.getCity());
+            });
+        }
+        if (!skippedIds.isEmpty()) {
+            userMapper.selectBatchIds(skippedIds).forEach(u -> {
+                if (u.getSchool() != null && !u.getSchool().isBlank()) skipSchools.add(u.getSchool());
+                if (u.getCity() != null && !u.getCity().isBlank()) skipCities.add(u.getCity());
+            });
+        }
+        return new RecommendPreferenceProfile(likedSchools, likedCities, skipSchools, skipCities,
+                !appliedIds.isEmpty() || !skippedIds.isEmpty());
     }
 
     private int interestMatches(String mySig, String theirSig) {

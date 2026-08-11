@@ -67,6 +67,13 @@ finding:
     interest-per-keyword: 2
     distance-close: 4
     completeness: 1
+    # 反馈闭环:根据用户申请/跳过历史调整
+    liked-school: 8
+    liked-city: 2
+    skipped-school: 8
+    skipped-city: 2
+    cold-start-verified: 4
+    cold-start-active: 3
   # 图片内容安全(鉴黄 + OCR 违禁词)。密钥放环境变量或 gitignored 的 application-local.yml
   image-safety:
     enabled: ${IMAGE_SAFETY_ENABLED:false}
