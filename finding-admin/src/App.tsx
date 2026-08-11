@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import AdminLayout from './components/AdminLayout';
+import RequireAdminAuth from './components/RequireAdminAuth';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Verification from './pages/Verification';
@@ -26,7 +27,9 @@ export default function App() {
       <BrowserRouter basename="/admin">
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<AdminLayout />}>
+          {/* 受保护路由:未登录一律跳登录页 */}
+          <Route element={<RequireAdminAuth />}>
+            <Route path="/" element={<AdminLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<Users />} />
@@ -44,6 +47,7 @@ export default function App() {
             <Route path="banned-words" element={<ForbiddenWords />} />
             <Route path="chat-audit" element={<ChatAudit />} />
             <Route path="feedback" element={<Feedback />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>

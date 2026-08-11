@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, Form, Input, Button, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -7,13 +7,17 @@ import axios from 'axios';
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  // 被守卫拦下时携带的原目标地址,登录后回跳
+  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
 
-  // 已登录则直接跳转控制台
+  // 已登录则直接跳转(优先回原目标)
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (token) {
-      navigate('/dashboard', { replace: true });
+      navigate(from, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const onFinish = async (values: { username: string; password: string }) => {
@@ -28,7 +32,7 @@ export default function Login() {
       if (token) {
         localStorage.setItem('adminToken', token);
         message.success('登录成功');
-        navigate('/dashboard', { replace: true });
+        navigate(from, { replace: true });
       } else {
         message.error('登录失败，未获取到令牌');
       }

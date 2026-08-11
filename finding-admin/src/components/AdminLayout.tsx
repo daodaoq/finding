@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, theme, Breadcrumb } from 'antd';
 import {
   DashboardOutlined, UserOutlined, SafetyOutlined,
@@ -48,45 +48,17 @@ const breadcrumbMap: Record<string, string> = {
   '/feedback': '用户反馈',
 };
 
-function getToken() {
-  return localStorage.getItem('adminToken');
-}
-
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
-  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = theme.useToken();
 
-  // 路由鉴权守卫：没有 token 直接重定向到登录页
-  useEffect(() => {
-    const t = getToken();
-    if (!t) {
-      navigate('/login', { replace: true });
-    } else {
-      setReady(true);
-    }
-  }, [navigate]);
-
+  // 登出:清除 token 后回登录页(路由级守卫 RequireAdminAuth 负责拦截未登录访问)
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     navigate('/login', { replace: true });
   };
-
-  // token 检查完成前不渲染内容
-  if (!ready) {
-    return (
-      <Layout style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: '#999' }}>加载中...</span>
-      </Layout>
-    );
-  }
-
-  // 登录页不需要 sidebar（由 App.tsx 的路由结构控制，这里只是兜底）
-  if (location.pathname === '/login') {
-    return <Outlet />;
-  }
 
   const pathSnippets = location.pathname.split('/').filter((i) => i);
   const breadcrumbItems = [
