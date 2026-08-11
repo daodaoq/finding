@@ -8,6 +8,8 @@ import com.finding.common.ResultCode;
 import com.finding.common.audit.OperationAuditService;
 import com.finding.common.PageVO;
 import com.finding.common.constant.MateCategoryEnum;
+import com.finding.common.util.XssUtil;
+import com.finding.common.word.SensitiveWordFilter;
 import com.finding.mate.entity.MateInvitation;
 import com.finding.mate.entity.MateParticipant;
 import com.finding.mate.mapper.MateInvitationMapper;
@@ -37,6 +39,7 @@ public class AdminMateController {
     private final UserMapper userMapper;
     private final OperationAuditService operationAuditService;
     private final MessageService messageService;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     @GetMapping("/mates")
     public Result<PageVO<Map<String, Object>>> listMates(
@@ -89,10 +92,12 @@ public class AdminMateController {
     public Result<Void> updateMate(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         MateInvitation m = invitationMapper.selectById(id);
         if (m == null) throw new BusinessException(ResultCode.MATE_NOT_FOUND);
-        if (body.get("title") != null) m.setTitle((String) body.get("title"));
-        if (body.get("description") != null) m.setDescription((String) body.get("description"));
+        // 管理端同样走 XSS 清洗 + 违禁词拦截,堵住经后台注入的同类漏洞
+        if (body.get("title") != null) m.setTitle(XssUtil.clean(body.get("title").toString()));
+        if (body.get("description") != null) m.setDescription(XssUtil.clean(body.get("description").toString()));
         if (body.get("category") != null) m.setCategory((String) body.get("category"));
-        if (body.get("location") != null) m.setLocation((String) body.get("location"));
+        if (body.get("location") != null) m.setLocation(XssUtil.clean(body.get("location").toString()));
+        sensitiveWordFilter.assertClean(m.getTitle(), m.getDescription(), m.getLocation());
         if (body.get("activityTime") != null && !body.get("activityTime").toString().isEmpty()) {
             try {
                 m.setActivityTime(LocalDateTime.parse(body.get("activityTime").toString().replace(' ', 'T')));

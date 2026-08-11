@@ -26,4 +26,7 @@ public interface MateService {
 
     /** 发起人查看某邀约的申请人列表(含待审核/已通过/已拒绝),仅发起人可查 */
     java.util.List<Map<String, Object>> listParticipants(Long invitationId, Long currentUserId);
+
+    /** 全局搜索:复用公开可见性过滤(进行中+已发布+未过期+排除拉黑),匿名不返回发起人 */
+    PageVO<Map<String, Object>> searchInvitations(Long currentUserId, String keyword, int page, int size);
 }

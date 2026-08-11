@@ -59,10 +59,9 @@ public class MateServiceImpl implements MateService {
 
     @Override
     public PageVO<MateVO> listInvitations(MateQueryDTO query, Long currentUserId) {
-        LambdaQueryWrapper<MateInvitation> wrapper = new LambdaQueryWrapper<MateInvitation>()
-                .eq(MateInvitation::getStatus, 1)
-                .eq(MateInvitation::getReviewStatus, 0) // 只显示已发布(审核通过)
-                .ge(MateInvitation::getActivityTime, java.time.LocalDateTime.now()); // 只显示未过期的
+        // 公开可见性:进行中 + 已发布 + 未过期 + 排除被拉黑发起人(与全局搜索共用同一条件)
+        LambdaQueryWrapper<MateInvitation> wrapper = new LambdaQueryWrapper<>();
+        applyPublicFilter(wrapper, currentUserId);
 
         if (StringUtils.hasText(query.getCategory())) {
             wrapper.eq(MateInvitation::getCategory, query.getCategory());
@@ -85,6 +84,47 @@ public class MateServiceImpl implements MateService {
     }
 
     @Override
+    public PageVO<Map<String, Object>> searchInvitations(Long currentUserId, String keyword, int page, int size) {
+        LambdaQueryWrapper<MateInvitation> wrapper = new LambdaQueryWrapper<>();
+        applyPublicFilter(wrapper, currentUserId);
+        if (StringUtils.hasText(keyword)) {
+            wrapper.like(MateInvitation::getTitle, keyword);
+        }
+        wrapper.orderByDesc(MateInvitation::getCreatedAt);
+
+        Page<MateInvitation> matePage = invitationMapper.selectPage(new Page<>(page, size), wrapper);
+        List<Map<String, Object>> records = matePage.getRecords().stream().map(mv -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", mv.getId());
+            m.put("title", mv.getTitle());
+            m.put("category", mv.getCategory());
+            m.put("location", mv.getLocation());
+            m.put("activityTime", mv.getActivityTime());
+            m.put("createdAt", mv.getCreatedAt());
+            // 匿名活动不返回发起人 ID
+            m.put("userId", mv.getIsAnonymous() != null && mv.getIsAnonymous() == 1 ? null : mv.getUserId());
+            return m;
+        }).toList();
+        return PageVO.of(records, matePage.getTotal(), page, size);
+    }
+
+    /**
+     * 公开可见性过滤:活动进行中 + 已发布(审核通过) + 未过期 + 排除被拉黑发起人。
+     * 搭子列表与全局搜索共同复用,保证两处可见性一致。
+     */
+    private void applyPublicFilter(LambdaQueryWrapper<MateInvitation> wrapper, Long currentUserId) {
+        wrapper.eq(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode())
+                .eq(MateInvitation::getReviewStatus, 0)
+                .ge(MateInvitation::getActivityTime, LocalDateTime.now());
+        if (currentUserId != null) {
+            Set<Long> blocked = relationshipService.blockedUserIds(currentUserId);
+            if (blocked != null && !blocked.isEmpty()) {
+                wrapper.notIn(MateInvitation::getUserId, blocked);
+            }
+        }
+    }
+
+    @Override
     public MateVO getInvitationDetail(Long id, Long currentUserId) {
         MateInvitation invitation = invitationMapper.selectById(id);
         if (invitation == null) {
@@ -102,34 +142,47 @@ public class MateServiceImpl implements MateService {
     @Transactional
     public MateVO createInvitation(Long userId, MateCreateDTO dto) {
         userWriteGuard.checkWritable(userId);
-        // XSS 清洗 + 拦截/送审分类
-        dto.setTitle(XssUtil.clean(dto.getTitle()));
-        dto.setDescription(XssUtil.clean(dto.getDescription()));
-        ReviewResult review = sensitiveWordFilter.classifyReview(dto.getTitle(), dto.getDescription());
-        if (review.hasBlocking()) {
-            String joined = review.blocking().stream().map(w -> "「" + w + "」").collect(Collectors.joining());
-            throw new BusinessException(ResultCode.CONTENT_BLOCKED, "内容包含违禁词:" + joined);
-        }
+        // 统一内容准备:先清洗后赋值 + 拦截/送审分类(标题/描述/地点一并清洗)
+        PreparedContent pc = prepareInvitationContent(dto);
         MateInvitation invitation = new MateInvitation();
         invitation.setUserId(userId);
         invitation.setCategory(dto.getCategory());
-        invitation.setTitle(dto.getTitle());
-        invitation.setDescription(dto.getDescription());
+        invitation.setTitle(pc.title());
+        invitation.setDescription(pc.description());
         invitation.setActivityTime(dto.getActivityTime());
-        invitation.setLocation(dto.getLocation());
+        invitation.setLocation(pc.location());
         invitation.setLatitude(dto.getLatitude());
         invitation.setLongitude(dto.getLongitude());
         invitation.setMaxParticipants(dto.getMaxParticipants());
         invitation.setCurrentParticipants(1);
         invitation.setIsAnonymous(dto.getIsAnonymous());
         invitation.setStatus(1);
-        invitation.setReviewStatus(review.hasReview() ? 1 : 0);
+        invitation.setReviewStatus(pc.review().hasReview() ? 1 : 0);
         invitationMapper.insert(invitation);
         return toVO(invitation, userId, null, null);
     }
 
+    /** 清洗 + 审核分类结果 */
+    private record PreparedContent(String title, String description, String location, ReviewResult review) {
+    }
+
+    /** 统一内容准备:XSS 清洗 + 拦截/送审分类(创建与编辑共用;先清洗,命中拦截词直接拒绝) */
+    private PreparedContent prepareInvitationContent(MateCreateDTO dto) {
+        String title = XssUtil.clean(dto.getTitle() != null ? dto.getTitle() : "");
+        String description = XssUtil.clean(dto.getDescription() != null ? dto.getDescription() : "");
+        String location = XssUtil.clean(dto.getLocation() != null ? dto.getLocation() : "");
+        ReviewResult review = sensitiveWordFilter.classifyReview(title, description, location);
+        if (review.hasBlocking()) {
+            String joined = review.blocking().stream().map(w -> "「" + w + "」").collect(Collectors.joining());
+            throw new BusinessException(ResultCode.CONTENT_BLOCKED, "内容包含违禁词:" + joined);
+        }
+        return new PreparedContent(title, description, location, review);
+    }
+
     @Override
+    @Transactional
     public void updateInvitation(Long userId, Long id, MateCreateDTO dto) {
+        userWriteGuard.checkWritable(userId);
         MateInvitation invitation = invitationMapper.selectById(id);
         if (invitation == null) {
             throw new BusinessException(ResultCode.MATE_NOT_FOUND);
@@ -137,15 +190,26 @@ public class MateServiceImpl implements MateService {
         if (!invitation.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.NOT_CREATOR);
         }
+        // 统一内容准备:先清洗后赋值,命中拦截词直接拒绝(数据库不变,不写入未清洗内容)
+        PreparedContent pc = prepareInvitationContent(dto);
         invitation.setCategory(dto.getCategory());
-        invitation.setTitle(dto.getTitle());
-        invitation.setDescription(dto.getDescription());
+        invitation.setTitle(pc.title());
+        invitation.setDescription(pc.description());
         invitation.setActivityTime(dto.getActivityTime());
-        invitation.setLocation(dto.getLocation());
+        invitation.setLocation(pc.location());
+        invitation.setLatitude(dto.getLatitude());
+        invitation.setLongitude(dto.getLongitude());
         invitation.setMaxParticipants(dto.getMaxParticipants());
-        dto.setTitle(XssUtil.clean(dto.getTitle()));
-        dto.setDescription(XssUtil.clean(dto.getDescription()));
-        sensitiveWordFilter.assertClean(dto.getTitle(), dto.getDescription());
+        // 重新计算审核状态:被拒活动编辑后一律重新送审(不直接恢复公开);其余按是否命中送审词
+        Integer oldRs = invitation.getReviewStatus() != null ? invitation.getReviewStatus() : 0;
+        if (oldRs == 2) {
+            invitation.setReviewStatus(1);
+            invitation.setReviewReason(null);
+            invitation.setReviewBy(null);
+            invitation.setReviewTime(null);
+        } else {
+            invitation.setReviewStatus(pc.review().hasReview() ? 1 : 0);
+        }
         invitationMapper.updateById(invitation);
     }
 
@@ -403,7 +467,9 @@ public class MateServiceImpl implements MateService {
                 map.put("location", inv.getLocation());
                 map.put("activityTime", inv.getActivityTime());
                 map.put("invitationStatus", inv.getStatus());
-                map.put("authorNickname", nicknameMap.getOrDefault(inv.getUserId(), ""));
+                // 匿名活动不泄露发起人昵称
+                map.put("authorNickname", inv.getIsAnonymous() != null && inv.getIsAnonymous() == 1
+                        ? "匿名" : nicknameMap.getOrDefault(inv.getUserId(), ""));
             }
             return map;
         }).collect(Collectors.toList());
@@ -453,7 +519,10 @@ public class MateServiceImpl implements MateService {
     private MateVO toVO(MateInvitation m, Long currentUserId, Double userLat, Double userLng) {
         MateVO vo = new MateVO();
         vo.setId(m.getId());
-        vo.setUserId(m.getUserId());
+        // 匿名活动:非发起人/未登录时不返回发起人 ID,避免还原匿名身份(本人仍可见自己)
+        boolean anon = m.getIsAnonymous() != null && m.getIsAnonymous() == 1;
+        boolean viewerIsOwner = currentUserId != null && m.getUserId().equals(currentUserId);
+        vo.setUserId(anon && !viewerIsOwner ? null : m.getUserId());
         vo.setCategory(m.getCategory());
         vo.setTitle(m.getTitle());
         vo.setDescription(m.getDescription());
@@ -480,8 +549,8 @@ public class MateServiceImpl implements MateService {
                     m.getLatitude().doubleValue(), m.getLongitude().doubleValue()));
         }
 
-        // Author (mask if anonymous)
-        if (m.getIsAnonymous() != 1) {
+        // Author:非匿名,或本人查看自己的匿名活动
+        if (!anon || viewerIsOwner) {
             vo.setAuthor(userService.getUserProfile(m.getUserId(), currentUserId));
         }
 

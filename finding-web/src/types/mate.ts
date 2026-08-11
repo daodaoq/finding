@@ -1,6 +1,7 @@
 export interface Mate {
   id: number;
-  userId: number;
+  /** 发起人 ID;匿名活动对非发起人/游客为 null(不泄露匿名身份) */
+  userId: number | null;
   category: string;
   categoryDesc: string;
   title: string;

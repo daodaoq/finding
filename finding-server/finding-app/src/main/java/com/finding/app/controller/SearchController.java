@@ -3,11 +3,10 @@ package com.finding.app.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.Result;
-import com.finding.mate.entity.MateInvitation;
+import com.finding.mate.service.MateService;
 import com.finding.post.entity.Post;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserSettings;
-import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
@@ -28,7 +27,7 @@ public class SearchController {
 
     private final UserMapper userMapper;
     private final PostMapper postMapper;
-    private final MateInvitationMapper mateMapper;
+    private final MateService mateService;
     private final UserSettingsMapper userSettingsMapper;
     private final UserRelationshipService relationshipService;
 
@@ -98,25 +97,12 @@ public class SearchController {
             return m;
         }).toList();
 
-        // 搭子：按标题模糊匹配
-        Page<MateInvitation> matePage = mateMapper.selectPage(new Page<>(page, size),
-                new LambdaQueryWrapper<MateInvitation>()
-                        .like(MateInvitation::getTitle, keyword)
-                        .orderByDesc(MateInvitation::getCreatedAt));
-        List<Map<String, Object>> mates = matePage.getRecords().stream().map(mv -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", mv.getId());
-            m.put("title", mv.getTitle());
-            m.put("category", mv.getCategory());
-            m.put("location", mv.getLocation());
-            m.put("activityTime", mv.getActivityTime());
-            m.put("createdAt", mv.getCreatedAt());
-            return m;
-        }).toList();
+        // 搭子:按标题模糊匹配(复用公开可见性过滤:进行中/已发布/未过期/排除拉黑;匿名不返回发起人)
+        PageVO<Map<String, Object>> matePage = mateService.searchInvitations(currentUserId, keyword, page, size);
 
         result.put("users", PageVO.of(users, userPage.getTotal(), page, size));
         result.put("posts", PageVO.of(posts, postPage.getTotal(), page, size));
-        result.put("mates", PageVO.of(mates, matePage.getTotal(), page, size));
+        result.put("mates", matePage);
 
         return Result.ok(result);
     }
