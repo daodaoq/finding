@@ -7,7 +7,6 @@ import com.finding.chat.mapper.InfoShareMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.framework.util.InMemoryRateLimiter;
-import com.finding.framework.websocket.WebSocketServer;
 import com.finding.message.service.MessageService;
 import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
@@ -20,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,10 +41,10 @@ class InfoShareServiceImplTest {
     @Mock private InfoShareMapper infoShareMapper;
     @Mock private UserMapper userMapper;
     @Mock private MessageService messageService;
-    @Mock private WebSocketServer webSocketServer;
     @Mock private VerificationGuard verificationGuard;
     @Mock private UserRelationshipService relationshipService;
     @Mock private InMemoryRateLimiter rateLimiter;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private InfoShareServiceImpl service;
@@ -113,7 +113,6 @@ class InfoShareServiceImplTest {
         when(infoShareMapper.selectOne(any())).thenReturn(null);
         when(infoShareMapper.insert(any())).thenReturn(1);
         when(userMapper.selectById(1L)).thenReturn(activeUser());
-        when(webSocketServer.isOnline(2L)).thenReturn(false);
 
         assertDoesNotThrow(() -> service.requestShare(1L, 2L));
         verify(infoShareMapper).insert(any());
@@ -127,7 +126,6 @@ class InfoShareServiceImplTest {
         InfoShare share = pendingShare(100L, 2L, 1L);
         when(infoShareMapper.selectById(100L)).thenReturn(share);
         when(infoShareMapper.update(any(), any())).thenReturn(1);
-        when(webSocketServer.isOnline(2L)).thenReturn(false);
 
         assertDoesNotThrow(() -> service.handleShare(1L, 100L, 1));
         verify(messageService).notify(any(), any(), any(), any(), any());
