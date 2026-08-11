@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bridgeApi } from '../../api/bridge';
+import { useAuthStore } from '../../store/authStore';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import AppIcon from '../../components/AppIcon';
+import MatchOverlay from './components/MatchOverlay';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
 
@@ -29,7 +31,10 @@ export default function ReceiveApplyList() {
   const [hasMore, setHasMore] = useState(false);
   const [filter, setFilter] = useState('all');
   const [rejectTarget, setRejectTarget] = useState<ChatApply | null>(null);
+  // 匹配成功弹层:通过申请后展示
+  const [matched, setMatched] = useState<ChatApply | null>(null);
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
 
   const loadApplies = async (targetPage: number, statusKey: string, append = false) => {
     if (append) setLoadingMore(true);
@@ -66,9 +71,8 @@ export default function ReceiveApplyList() {
           a.id === apply.id ? { ...a, status: 1, statusDesc: '已通过' } : a
         )
       );
-      showToast('已通过申请，可以开始聊天了');
-      // 立即跳转到私聊页面
-      navigate(`/messages/chat?userId=${apply.fromUserId}&name=${encodeURIComponent(apply.fromUserNickname || '')}&avatar=${encodeURIComponent(apply.fromUserAvatar || '')}`);
+      // 展示「匹配成功」时刻
+      setMatched(apply);
     } catch (e) {
       // 对方账号异常/已被处理等具体原因透出服务端文案,并刷新列表
       showToast((e as Error)?.message || '操作失败');
@@ -189,6 +193,21 @@ export default function ReceiveApplyList() {
         onConfirm={handleReject}
         onCancel={() => setRejectTarget(null)}
       />
+
+      {/* 匹配成功时刻 */}
+      {matched && (
+        <MatchOverlay
+          apply={matched}
+          myAvatar={currentUser?.avatar || ''}
+          myNickname={currentUser?.nickname || ''}
+          onGoChat={() => navigate(
+            `/messages/chat?userId=${matched.fromUserId}` +
+            `&name=${encodeURIComponent(matched.fromUserNickname || '')}` +
+            `&avatar=${encodeURIComponent(matched.fromUserAvatar || '')}`
+          )}
+          onClose={() => setMatched(null)}
+        />
+      )}
     </div>
   );
 }
