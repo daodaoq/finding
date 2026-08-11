@@ -13,8 +13,8 @@ export const chatApi = {
       params: { targetUserId }
     }),
 
-  /** 发送消息(以 roomId 指定会话,返回真实消息回执;clientMessageId 用于弱网重试幂等) */
-  sendMessage: (data: { roomId: number; content: string; messageType?: string; clientMessageId?: string }) =>
+  /** 发送消息(以 roomId 指定会话,返回真实消息回执;clientMessageId 用于弱网重试幂等;replyToMessageId 回复引用) */
+  sendMessage: (data: { roomId: number; content: string; messageType?: string; clientMessageId?: string; replyToMessageId?: number }) =>
     request.post<ApiResponse<any>>('/chat/send', data),
 
   /** 消息历史（id=room_id） */
@@ -52,4 +52,8 @@ export const chatApi = {
   /** 撤回自己发送的消息(2分钟内) */
   recallMessage: (messageId: number) =>
     request.post<ApiResponse<null>>(`/chat/messages/${messageId}/recall`),
+
+  /** 隐藏/恢复会话(单侧,不删除房间;收到新消息自动恢复) */
+  hideConversation: (roomId: number, hidden: boolean) =>
+    request.put<ApiResponse<null>>(`/chat/conversations/${roomId}/hidden`, { hidden }),
 };

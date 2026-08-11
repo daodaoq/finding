@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 聊天 REST 接口 —— 会话列表、消息历史、发送消息。
@@ -108,6 +109,15 @@ public class ChatController {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         chatService.clearMessages(userId, id);
+        return Result.ok();
+    }
+
+    /** 隐藏/恢复会话(单侧,不删除房间;收到新消息自动恢复) */
+    @PutMapping("/conversations/{id}/hidden")
+    public Result<Void> hideConversation(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.hideConversation(userId, id, Boolean.TRUE.equals(body.get("hidden")));
         return Result.ok();
     }
 

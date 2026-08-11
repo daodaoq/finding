@@ -246,6 +246,7 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `content` TEXT,
     `message_type` VARCHAR(10) DEFAULT 'text' COMMENT 'text / image',
     `client_message_id` VARCHAR(64) DEFAULT NULL COMMENT '客户端幂等ID(senderId+clientMessageId 唯一)',
+    `parent_message_id` BIGINT DEFAULT NULL COMMENT '被回复消息ID',
     `is_recalled` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=已撤回',
     `is_read` TINYINT DEFAULT 0,
     `uid1_hidden` TINYINT NOT NULL DEFAULT 0 COMMENT 'uid1(较小者)是否已单侧清空',
@@ -253,8 +254,11 @@ CREATE TABLE IF NOT EXISTS `private_chat` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_from_client` (`from_user_id`, `client_message_id`),
+    KEY `idx_chat_parent` (`parent_message_id`),
     KEY `idx_chat_conv` (`conversation_id`, `created_at`),
-    KEY `idx_chat_room` (`room_id`, `created_at`)
+    KEY `idx_chat_room` (`room_id`, `created_at`),
+    KEY `idx_chat_room_id` (`room_id`, `id`),
+    KEY `idx_chat_unread` (`to_user_id`, `is_read`, `room_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -300,6 +304,7 @@ CREATE TABLE IF NOT EXISTS `contact` (
     `last_msg_id` BIGINT DEFAULT NULL,
     `pinned` TINYINT DEFAULT 0 COMMENT '0=否 1=置顶',
     `muted` TINYINT DEFAULT 0 COMMENT '0=否 1=消息免打扰',
+    `hidden` TINYINT NOT NULL DEFAULT 0 COMMENT '0=否 1=从会话列表隐藏',
     `background` VARCHAR(500) DEFAULT NULL COMMENT '聊天背景(preset key 或图片URL)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

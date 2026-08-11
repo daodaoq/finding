@@ -95,3 +95,21 @@
   cursor: pointer;
 }
 .mention-item:active { background: #f5f5f5; }
+
+/* 回复/引用条 */
+.chat-reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border-top: 1px solid #eee;
+}
+.chat-reply-info { flex: 1; min-width: 0; }
+.chat-reply-name { font-size: 12px; color: #888; margin-right: 6px; }
+.chat-reply-content { font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.chat-reply-cancel { border: none; background: none; color: #999; font-size: 14px; cursor: pointer; }
+/* 图片上传进度 */
+.chat-upload-progress { position: relative; height: 3px; background: #eee; }
+.chat-upload-bar { height: 100%; background: #ff6b81; transition: width .2s; }
+.chat-upload-text { position: absolute; right: 8px; top: 6px; font-size: 11px; color: #999; }

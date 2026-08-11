@@ -44,6 +44,9 @@ public interface ChatService {
     /** 清空会话聊天记录(双方) */
     void clearMessages(Long userId, Long roomId);
 
+    /** 隐藏/恢复会话(单侧,不删除房间;收到新消息自动恢复) */
+    void hideConversation(Long userId, Long roomId, boolean hidden);
+
     /** 投诉用户 */
     void reportUser(Long fromUserId, Long toUserId, Long roomId, String reason);
 

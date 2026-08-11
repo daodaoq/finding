@@ -80,6 +80,17 @@ public class WebSocketServer extends TextWebSocketHandler {
                 WsMessage pong = new WsMessage();
                 pong.setType("pong");
                 sendToSession(session, pong);
+            } else if ("typing".equals(wsMsg.getType())) {
+                // 输入状态轻量透传:仅转发 conversationId/toUserId,服务端填 fromUserId,不透传内容(安全)
+                if (wsMsg.getToUserId() != null) {
+                    WsMessage typing = new WsMessage();
+                    typing.setType("typing");
+                    typing.setFromUserId(userId);
+                    typing.setToUserId(wsMsg.getToUserId());
+                    typing.setConversationId(wsMsg.getConversationId());
+                    typing.setTimestamp(System.currentTimeMillis());
+                    sendToUser(wsMsg.getToUserId(), typing);
+                }
             }
         } catch (Exception e) {
             log.error("处理 WebSocket 消息失败", e);

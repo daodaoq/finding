@@ -19,3 +19,16 @@
   padding: 4px 12px;
   border-radius: 10px;
 }
+/* 日期分组头(今天/昨天/具体日期) */
+.chat-date-sep {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 2px;
+}
+.chat-date-sep span {
+  font-size: 12px;
+  color: #999;
+  background: rgba(0,0,0,0.04);
+  padding: 2px 10px;
+  border-radius: 10px;
+}

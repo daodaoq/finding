@@ -20,6 +20,7 @@ import com.finding.common.BusinessException;
 import com.finding.common.PageVO;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
+import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.message.vo.ConversationVO;
 import com.finding.user.entity.User;
@@ -47,6 +48,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -71,10 +75,16 @@ class ChatServiceImplTest {
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserRelationshipService relationshipService;
     @Mock private UserWriteGuard userWriteGuard;
+    @Mock private InMemoryRateLimiter rateLimiter;
     @Mock private WebSocketServer webSocketServer;
 
     @InjectMocks
     private ChatServiceImpl service;
+
+    /** 放行反骚扰限流(mock 默认 false 会让所有发送被限流) */
+    private void allowRateLimit() {
+        when(rateLimiter.tryAcquire(anyString(), anyInt(), anyLong())).thenReturn(true);
+    }
 
     @BeforeEach
     void initMybatisLambdaCache() {
@@ -290,6 +300,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_noRoom_throwsConversationNotFound() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(null);
 
         BusinessException ex = assertThrows(BusinessException.class,
@@ -299,6 +310,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_nonMember_throwsForbidden() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
 
         BusinessException ex = assertThrows(BusinessException.class,
@@ -308,6 +320,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_member_derivesToUserIdFromRoom_andWritesOutbox() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
         when(privateChatMapper.insert(any())).thenAnswer(inv -> {
@@ -342,6 +355,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_blocked_throwsRelationBlocked() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(true);
 
@@ -354,6 +368,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_idempotentClientMessageId_returnsExistingWithoutInsert() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
         when(privateChatMapper.selectOne(any())).thenReturn(msg(99L, 100L, 1L, 2L));
@@ -369,6 +384,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_invalidMessageType_rejected() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
 
@@ -380,6 +396,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_untrustedImageUrl_rejected() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
 
@@ -392,6 +409,7 @@ class ChatServiceImplTest {
 
     @Test
     void sendMessage_trustedImageUrl_ok() {
+        allowRateLimit();
         when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
         when(privateChatMapper.insert(any())).thenReturn(1);
@@ -404,5 +422,47 @@ class ChatServiceImplTest {
         ArgumentCaptor<PrivateChat> captor = ArgumentCaptor.forClass(PrivateChat.class);
         verify(privateChatMapper).insert(captor.capture());
         assertEquals("image", captor.getValue().getMessageType());
+    }
+
+    // ── P2-5a 回复/引用 + P2-5b 反骚扰限流 ──
+
+    @Test
+    void sendMessage_replyToMessage_invalidRoom_rejected() {
+        allowRateLimit();
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        // 被回复消息在另一个房间
+        when(privateChatMapper.selectById(999L)).thenReturn(msg(999L, 200L, 2L, 1L));
+
+        MessageSendDTO dto = dto(100L, "hi");
+        dto.setReplyToMessageId(999L);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.sendMessage(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void sendMessage_replyToMessage_sameRoom_storesParent() {
+        allowRateLimit();
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(privateChatMapper.selectById(999L)).thenReturn(msg(999L, 100L, 2L, 1L)); // 同房间
+        when(privateChatMapper.insert(any())).thenReturn(1);
+        when(chatOutboxMapper.insert(any())).thenReturn(1);
+
+        MessageSendDTO dto = dto(100L, "hi");
+        dto.setReplyToMessageId(999L);
+        service.sendMessage(1L, dto);
+
+        ArgumentCaptor<PrivateChat> captor = ArgumentCaptor.forClass(PrivateChat.class);
+        verify(privateChatMapper).insert(captor.capture());
+        assertEquals(999L, captor.getValue().getParentMessageId());
+    }
+
+    @Test
+    void sendMessage_rateLimited_throwsTooFrequent() {
+        // 不调用 allowRateLimit():mock 默认 false → 触发反骚扰限流
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.sendMessage(1L, dto(100L, "hi")));
+        assertEquals(ResultCode.TOO_FREQUENT.getCode(), ex.getCode());
     }
 }

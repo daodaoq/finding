@@ -40,6 +40,9 @@ public class WsMessage {
     /** 消息ID（服务端返回） */
     private Long messageId;
 
+    /** 回复/引用:被回复消息 ID */
+    private Long parentMessageId;
+
     /** 接收方是否对该会话免打扰(推送仍会发送,前端据此抑制声音/弹窗,不影响数据同步) */
     private Boolean muted;
 

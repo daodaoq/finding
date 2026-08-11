@@ -103,6 +103,7 @@ public class MsgSendConsumer {
         wsMsg.setContent(chat.getContent());
         wsMsg.setMessageType(chat.getMessageType());
         wsMsg.setMessageId(chat.getId());
+        wsMsg.setParentMessageId(chat.getParentMessageId());
         wsMsg.setMuted(muted);
         wsMsg.setTimestamp(System.currentTimeMillis());
         return wsMsg;
@@ -130,12 +131,14 @@ public class MsgSendConsumer {
                 if (contact != null) {
                     contact.setActiveTime(LocalDateTime.now());
                     contact.setLastMsgId(msgId);
+                    contact.setHidden(0); // 收到新消息 → 隐藏会话自动恢复
                     contactMapper.updateById(contact);
                 }
             }
         } else {
             contact.setActiveTime(LocalDateTime.now());
             contact.setLastMsgId(msgId);
+            contact.setHidden(0); // 收到新消息 → 隐藏会话自动恢复
             contactMapper.updateById(contact);
         }
     }

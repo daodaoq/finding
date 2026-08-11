@@ -49,6 +49,19 @@ export function formatClockTime(dateStr: string): string {
   return formatHm(new Date(dateStr));
 }
 
+/** 消息日期分组头：今天 / 昨天 / yyyy年M月d日 */
+export function formatDateHeader(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if (date.getTime() === today.getTime()) return '今天';
+  if (date.getTime() === yesterday.getTime()) return '昨天';
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
 /** 完整日期时间：YYYY-MM-DD HH:mm */
 export function formatDateTime(dateStr: string): string {
   const d = new Date(dateStr);

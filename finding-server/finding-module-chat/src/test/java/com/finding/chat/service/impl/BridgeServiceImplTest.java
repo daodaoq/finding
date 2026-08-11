@@ -15,6 +15,7 @@ import com.finding.chat.service.ChatService;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
+import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.message.service.MessageService;
 import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
@@ -42,6 +43,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,9 +73,15 @@ class BridgeServiceImplTest {
     @Mock private RecommendEventMapper eventMapper;
     @Mock private MatchScoreWeights weights;
     @Mock private UserWriteGuard userWriteGuard;
+    @Mock private InMemoryRateLimiter rateLimiter;
 
     @InjectMocks
     private BridgeServiceImpl service;
+
+    /** 放行反骚扰限流(mock 默认 false 会让所有申请被限流) */
+    private void allowRateLimit() {
+        when(rateLimiter.tryAcquire(anyString(), anyInt(), anyLong())).thenReturn(true);
+    }
 
     @BeforeEach
     void initMybatisLambdaCache() {
@@ -93,6 +103,7 @@ class BridgeServiceImplTest {
 
     @Test
     void applyChat_recentRejection_blocksReapply() {
+        allowRateLimit();
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
         when(userMapper.selectById(2L)).thenReturn(new User());
         when(userSettingsMapper.selectOne(any())).thenReturn(settings(1));
@@ -107,6 +118,7 @@ class BridgeServiceImplTest {
 
     @Test
     void applyChat_noRecentRejection_insertsAndNotifies() {
+        allowRateLimit();
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
         when(userMapper.selectById(2L)).thenReturn(new User());
         when(userSettingsMapper.selectOne(any())).thenReturn(settings(1)); // 需验证
@@ -121,6 +133,7 @@ class BridgeServiceImplTest {
 
     @Test
     void applyChat_pendingExists_blocksDuplicate() {
+        allowRateLimit();
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
         when(userMapper.selectById(2L)).thenReturn(new User());
         when(userSettingsMapper.selectOne(any())).thenReturn(settings(1));

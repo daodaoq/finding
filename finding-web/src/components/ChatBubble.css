@@ -119,3 +119,16 @@
   cursor: pointer;
 }
 .chat-retry:active { background: #ffccc7; }
+
+/* 回复/引用条 */
+.chat-quote {
+  border-left: 3px solid rgba(0,0,0,0.15);
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.chat-quote-name { color: #999; margin-right: 6px; }
+.chat-quote-content { color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 220px; }

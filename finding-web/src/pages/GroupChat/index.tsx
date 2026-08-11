@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { groupChatApi } from '../../api/groupChat';
 import { useAuthStore } from '../../store/authStore';
 import { useMessageStore } from '../../store/messageStore';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { useWebSocket, useWsReconnect } from '../../hooks/useWebSocket';
 import { showToast } from '../../components/Toast';
 import ChatInputBar from '../../components/ChatInputBar';
 import ReportDialog from '../../components/ReportDialog';
@@ -95,6 +95,9 @@ export default function GroupChatPage() {
     groupChatApi.markRead(groupId).catch(() => {});
     useMessageStore.getState().refreshTotal();
   };
+
+  // 断线补偿:WS 重连成功后刷新群消息(补拉断线期间缺失)
+  useWsReconnect(() => { if (groupId && !isNaN(groupId)) loadMessages(); });
 
   // 向上滚动加载更早的群消息(分页)
   const loadOlder = async () => {

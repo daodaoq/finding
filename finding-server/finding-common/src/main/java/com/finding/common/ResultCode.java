@@ -68,6 +68,7 @@ public enum ResultCode {
     PARAM_ERROR(9001, "参数错误"),
     PARAM_VALIDATION_FAILED(9002, "参数校验失败"),
     CONTENT_BLOCKED(9010, "内容包含违禁词"),
+    TOO_FREQUENT(9011, "操作过于频繁，请稍后再试"),
     INTERNAL_ERROR(9999, "服务器内部错误");
 
     private final int code;

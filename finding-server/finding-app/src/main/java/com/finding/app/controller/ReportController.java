@@ -6,8 +6,11 @@ import com.finding.common.Result;
 import com.finding.common.ResultCode;
 import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Report;
+import com.finding.chat.entity.RoomFriend;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
+import com.finding.chat.mapper.RoomFriendMapper;
+import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.group.entity.GroupChat;
 import com.finding.group.entity.GroupMessage;
 import com.finding.group.mapper.GroupChatMapper;
@@ -42,6 +45,8 @@ public class ReportController {
 
     private final ReportMapper reportMapper;
     private final PrivateChatMapper privateChatMapper;
+    private final RoomFriendMapper roomFriendMapper;
+    private final InMemoryRateLimiter rateLimiter;
     private final GroupMessageMapper groupMessageMapper;
     private final GroupChatMapper groupChatMapper;
     private final PostMapper postMapper;
@@ -53,6 +58,7 @@ public class ReportController {
     @PostMapping
     public Result<Void> report(@RequestBody Map<String, Object> body) {
         Long fromUserId = JwtInterceptor.getCurrentUserId();
+        if (fromUserId == null) return Result.error(ResultCode.UNAUTHORIZED);
         String targetType = body.get("targetType") != null ? body.get("targetType").toString() : null;
         Long targetId = body.get("targetId") != null ? Long.valueOf(body.get("targetId").toString()) : null;
         String reason = body.get("reason") != null ? body.get("reason").toString() : null;
@@ -70,6 +76,14 @@ public class ReportController {
             case "message" -> {
                 PrivateChat m = privateChatMapper.selectById(targetId);
                 if (m != null) {
+                    // 私聊消息:举报者必须是该房间成员,防借举报接口探测他人消息
+                    if (m.getRoomId() != null) {
+                        RoomFriend rf = roomFriendMapper.selectOne(new LambdaQueryWrapper<RoomFriend>()
+                                .eq(RoomFriend::getRoomId, m.getRoomId()));
+                        if (rf == null || (!fromUserId.equals(rf.getUid1()) && !fromUserId.equals(rf.getUid2()))) {
+                            throw new BusinessException(ResultCode.FORBIDDEN);
+                        }
+                    }
                     targetUserId = m.getFromUserId();
                     snapshot = "[私聊消息] " + (m.getContent() != null ? m.getContent() : "");
                     if (roomId == null) roomId = m.getRoomId();
@@ -117,6 +131,19 @@ public class ReportController {
 
         if (targetUserId != null && targetUserId.equals(fromUserId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能投诉自己");
+        }
+
+        // 反骚扰限流:同一举报人 1 小时内最多 10 次
+        if (!rateLimiter.tryAcquire("report:" + fromUserId, 10, 3_600_000)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT);
+        }
+        // 重复举报:同一(from, targetType, targetId) 已存在 → 拒绝
+        Long dup = reportMapper.selectCount(new LambdaQueryWrapper<Report>()
+                .eq(Report::getFromUserId, fromUserId)
+                .eq(Report::getTargetType, targetType)
+                .eq(Report::getTargetId, targetId));
+        if (dup != null && dup > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "已举报过该内容");
         }
 
         Report r = new Report();

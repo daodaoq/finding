@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { chatApi } from '../../api/chat';
 import { bridgeApi } from '../../api/bridge';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { useWebSocket, useWsReconnect } from '../../hooks/useWebSocket';
+import { chatSocket } from '../../ws/chatSocket';
 import { useAuthStore } from '../../store/authStore';
 import { useMessageStore } from '../../store/messageStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
@@ -50,6 +51,11 @@ export default function ChatDetailPage() {
   const [reportTarget, setReportTarget] = useState<{
     targetType: string; targetId: number; roomId?: number; title: string;
   } | null>(null);
+  // 回复/引用目标(输入栏显示引用条)
+  const [replyTo, setReplyTo] = useState<{ id: number; content: string; nickname: string } | null>(null);
+  // 对方正在输入…
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const shareVersion = useInfoShareStore((s) => s.version);
@@ -61,6 +67,13 @@ export default function ChatDetailPage() {
     if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
       setMessages((prev) => prev.map((m) =>
         m.id === wsMsg.messageId ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
+      return;
+    }
+    // 对方正在输入…(3 秒后自动消失)
+    if (wsMsg.type === 'typing' && wsMsg.fromUserId === targetUserId) {
+      setIsTyping(true);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => setIsTyping(false), 3000);
       return;
     }
     // 接收对方消息 + 自己其他设备发送的消息(多端同步);按真实 messageId 去重
@@ -76,6 +89,7 @@ export default function ChatDetailPage() {
           content: wsMsg.content,
           messageType: wsMsg.messageType || 'text',
           isRead: 0,
+          parentMessageId: wsMsg.parentMessageId,
           createdAt: new Date().toISOString(),
         }];
       });
@@ -88,6 +102,19 @@ export default function ChatDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetUserId]);
 
+  /** 后端消息记录 → 本地消息结构 */
+  const toMsg = (r: any): ChatMessage => ({
+    id: r.id,
+    fromUserId: r.fromUserId,
+    toUserId: r.toUserId,
+    content: r.content,
+    messageType: r.messageType || 'text',
+    isRecalled: r.isRecalled,
+    isRead: r.isRead,
+    parentMessageId: r.parentMessageId,
+    createdAt: r.createdAt,
+  });
+
   const initConversation = async () => {
     try {
       setLoading(true);
@@ -98,16 +125,7 @@ export default function ChatDetailPage() {
       // 使用 roomId 加载消息历史
       const roomId = conv.roomId || conv.id;
       const msgRes = await chatApi.getMessageHistory(roomId);
-      const records = (msgRes.data.data.records || []).map((r: any) => ({
-        id: r.id,
-        fromUserId: r.fromUserId,
-        toUserId: r.toUserId,
-        content: r.content,
-        messageType: r.messageType || 'text',
-        isRecalled: r.isRecalled,
-        isRead: r.isRead,
-        createdAt: r.createdAt,
-      }));
+      const records = (msgRes.data.data.records || []).map(toMsg);
       setMessages(records);
       // 进入会话已标记已读 → 刷新汇总角标
       useMessageStore.getState().refreshTotal();
@@ -118,6 +136,33 @@ export default function ChatDetailPage() {
       setLoading(false);
     }
   };
+
+  /** 断线补偿/回前台:拉取最新 50 条,按 id 合并去重(补回断线期间缺失的消息) */
+  const refreshFromServer = async () => {
+    const roomId = conversation?.roomId || conversation?.id;
+    if (!roomId || !user) return;
+    try {
+      const res = await chatApi.getMessageHistory(roomId);
+      const fresh = (res.data.data.records || []).map(toMsg);
+      setMessages((prev) => {
+        const merged = [...prev];
+        for (const m of fresh) {
+          if (!merged.some((x) => x.id === m.id)) merged.push(m);
+        }
+        return merged.sort((a, b) => a.id - b.id);
+      });
+      useMessageStore.getState().refreshTotal();
+    } catch { /* 忽略 */ }
+  };
+
+  // 断线补偿:WS 重连成功后补拉当前会话
+  useWsReconnect(refreshFromServer);
+  // 应用切回前台时刷新
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshFromServer(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  });
 
   // 自动滚动到底部（含图片加载后的二次矫正）
   const scrollToBottom = () => {
@@ -183,16 +228,7 @@ export default function ChatDetailPage() {
     setLoadingMore(true);
     try {
       const res = await chatApi.getMessageHistory(roomId, minId, 50);
-      const older = (res.data.data.records || []).map((r: any) => ({
-        id: r.id,
-        fromUserId: r.fromUserId,
-        toUserId: r.toUserId,
-        content: r.content,
-        messageType: r.messageType || 'text',
-        isRecalled: r.isRecalled,
-        isRead: r.isRead,
-        createdAt: r.createdAt,
-      }));
+      const older = (res.data.data.records || []).map(toMsg);
       setMessages((prev) => {
         const merged = [...older, ...prev];
         const seen = new Set<number>();
@@ -230,13 +266,14 @@ export default function ChatDetailPage() {
       isRead: 0,
       createdAt: new Date().toISOString(),
       clientMessageId: `${user.id}_${tempId}`,
+      parentMessageId: replyTo?.id,
       sendState: 'sending',
     };
     setMessages((prev) => [...prev, newMsg]);
 
     try {
       const res = await chatApi.sendMessage({
-        roomId, content, messageType, clientMessageId: newMsg.clientMessageId,
+        roomId, content, messageType, clientMessageId: newMsg.clientMessageId, replyToMessageId: replyTo?.id,
       });
       const real = res.data.data;
       // 用真实消息替换临时消息(避免与 WS 推送重复;同一 clientMessageId 重试返回同一条)
@@ -250,6 +287,8 @@ export default function ChatDetailPage() {
       setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, sendState: 'failed' as const } : m));
       showToast(e?.message || '发送失败，请稍后重试');
     }
+    // 无论成败都清除引用条(失败消息保留 parentMessageId,重试时复用)
+    setReplyTo(null);
   };
 
   // 重试失败的发送(复用同一 clientMessageId,服务端幂等去重)
@@ -261,7 +300,8 @@ export default function ChatDetailPage() {
     setMessages((prev) => prev.map((m) => m.id === failed.id ? { ...m, sendState: 'sending' as const } : m));
     try {
       const res = await chatApi.sendMessage({
-        roomId, content: failed.content, messageType: failed.messageType, clientMessageId: failed.clientMessageId,
+        roomId, content: failed.content, messageType: failed.messageType,
+        clientMessageId: failed.clientMessageId, replyToMessageId: failed.parentMessageId,
       });
       const real = res.data.data;
       setMessages((prev) =>
@@ -291,6 +331,7 @@ export default function ChatDetailPage() {
     <div className="chat-page">
       <ChatHeader
         title={targetNickname}
+        subtitle={isTyping ? '对方正在输入…' : undefined}
         avatar={targetAvatar}
         onBack={() => navigate(-1)}
         extra={
@@ -337,13 +378,27 @@ export default function ChatDetailPage() {
         })}
         onRecallMessage={handleRecallMessage}
         onRetryMessage={retryMessage}
+        onReplyMessage={(msg) => setReplyTo({
+          id: msg.id,
+          content: msg.messageType === 'image' ? '[图片]' : msg.content,
+          nickname: msg.fromUserId === user?.id ? '我' : targetNickname,
+        })}
         onLoadMore={loadOlder}
         loadingMore={loadingMore}
         hasMore={hasMore}
       />
 
       {/* 输入栏 */}
-      <ChatInputBar onSend={handleSend} onUploading={setUploading} />
+      <ChatInputBar
+        onSend={handleSend}
+        onUploading={setUploading}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+        onTyping={() => {
+          const roomId = conversation?.roomId || conversation?.id;
+          if (roomId && user) chatSocket.sendTyping(roomId, targetUserId);
+        }}
+      />
 
       {/* 对方申请互换信息确认弹窗 */}
       <ConfirmDialog

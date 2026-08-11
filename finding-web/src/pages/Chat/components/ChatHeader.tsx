@@ -4,6 +4,8 @@ import './ChatHeader.css';
 
 interface Props {
   title: string;
+  /** 标题下方小字(如"对方正在输入…") */
+  subtitle?: string;
   avatar?: string;
   onBack: () => void;
   /** 标题右侧扩展区（信息互换标签 / 群聊信息按钮等） */
@@ -13,7 +15,7 @@ interface Props {
 }
 
 /** 聊天页顶部栏 —— 私聊 / 群聊共用 */
-export default function ChatHeader({ title, avatar, onBack, extra, right }: Props) {
+export default function ChatHeader({ title, subtitle, avatar, onBack, extra, right }: Props) {
   return (
     <div className="chat-header">
       <button className="back-btn" onClick={onBack}>←</button>
@@ -22,7 +24,7 @@ export default function ChatHeader({ title, avatar, onBack, extra, right }: Prop
           {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={18} />}
         </div>
       )}
-      <span className="chat-header-name">{title}</span>
+      <span className="chat-header-name">{subtitle ? `${title} · ${subtitle}` : title}</span>
       {extra}
       {right}
     </div>

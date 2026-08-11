@@ -7,6 +7,7 @@ import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.chat.dto.MessageSendDTO;
 
+import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.framework.websocket.WsMessage;
 
@@ -67,6 +68,7 @@ public class ChatServiceImpl implements ChatService {
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
     private final UserWriteGuard userWriteGuard;
+    private final InMemoryRateLimiter rateLimiter;
     private final WebSocketServer webSocketServer;
 
     @Override
@@ -179,10 +181,11 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public List<ConversationVO> listConversations(Long userId) {
-        // 从 contact 表查询会话列表（置顶优先，再按活跃时间倒序）
+        // 从 contact 表查询会话列表(隐藏会话不出现在列表;置顶优先,再按活跃时间倒序)
         List<Contact> contacts = contactMapper.selectList(
                 new LambdaQueryWrapper<Contact>()
                         .eq(Contact::getUid, userId)
+                        .eq(Contact::getHidden, 0)
                         .orderByDesc(Contact::getPinned)
                         .orderByDesc(Contact::getActiveTime));
 
@@ -204,20 +207,21 @@ public class ChatServiceImpl implements ChatService {
 
         Map<Long, User> userMap = new HashMap<>();
         if (!targetUids.isEmpty()) {
-            List<User> users = userMapper.selectBatchIds(targetUids);
-            users.forEach(u -> userMap.put(u.getId(), u));
+            userMapper.selectBatchIds(targetUids).forEach(u -> userMap.put(u.getId(), u));
         }
 
-        // 查询每个 room 的最后消息时间(仅当前用户这一侧可见的消息)
+        // 批量:每房间最后一条可见消息 + 未读数(替换原 per-room N+1 循环)
         Map<Long, PrivateChat> lastMsgMap = new HashMap<>();
-        for (Long roomId : roomIds) {
-            LambdaQueryWrapper<PrivateChat> lastWrapper = new LambdaQueryWrapper<PrivateChat>()
-                    .eq(PrivateChat::getRoomId, roomId);
-            applySideFilter(lastWrapper, userId, roomToTargetUser.get(roomId));
-            List<PrivateChat> msgs = privateChatMapper.selectList(lastWrapper
-                    .orderByDesc(PrivateChat::getCreatedAt)
-                    .last("LIMIT 1"));
-            if (!msgs.isEmpty()) lastMsgMap.put(roomId, msgs.get(0));
+        for (PrivateChat m : privateChatMapper.selectLastVisibleMessageByRoom(userId, roomIds)) {
+            lastMsgMap.put(m.getRoomId(), m);
+        }
+        Map<Long, Integer> unreadMap = new HashMap<>();
+        for (Map<String, Object> row : privateChatMapper.countUnreadByRoom(userId, roomIds)) {
+            Object rid = row.get("roomId");
+            Object cnt = row.get("cnt");
+            if (rid != null && cnt != null) {
+                unreadMap.put(((Number) rid).longValue(), ((Number) cnt).intValue());
+            }
         }
 
         // 组装结果
@@ -243,36 +247,20 @@ public class ChatServiceImpl implements ChatService {
                 vo.setLastMessage("image".equals(lastMsg.getMessageType()) ? "[图片]" : lastMsg.getContent());
             }
 
-            // 计算未读数(同样只统计我这一侧可见的未读)
-            LambdaQueryWrapper<PrivateChat> unreadWrapper = new LambdaQueryWrapper<PrivateChat>()
-                    .eq(PrivateChat::getRoomId, contact.getRoomId())
-                    .eq(PrivateChat::getToUserId, userId)
-                    .eq(PrivateChat::getIsRead, 0);
-            applySideFilter(unreadWrapper, userId, targetUserId);
-            vo.setUnreadCount(Math.toIntExact(privateChatMapper.selectCount(unreadWrapper)));
-
+            vo.setUnreadCount(unreadMap.getOrDefault(contact.getRoomId(), 0));
             result.add(vo);
         }
         return result;
-    }
-
-    /**
-     * 单侧清空过滤: 只在当前用户这一侧未隐藏的消息上生效。
-     * room_friend 约定 uid1 = 较小的用户ID, uid2 = 较大的用户ID。
-     */
-    private void applySideFilter(LambdaQueryWrapper<PrivateChat> wrapper, Long userId, Long targetUserId) {
-        if (targetUserId == null) return;
-        if (userId < targetUserId) {
-            wrapper.eq(PrivateChat::getUid1Hidden, 0);
-        } else {
-            wrapper.eq(PrivateChat::getUid2Hidden, 0);
-        }
     }
 
     @Override
     @Transactional
     public ChatMessageVO sendMessage(Long userId, MessageSendDTO dto) {
         userWriteGuard.checkWritable(userId);
+        // 反骚扰限流:同用户 1 分钟内私信上限
+        if (!rateLimiter.tryAcquire("msg:" + userId, 30, 60_000)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT);
+        }
         // 房间成员鉴权:房间不存在/非成员一律拒绝,并确定接收者(客户端不能指定任意 toUserId)
         RoomFriend rf = requireRoomMember(userId, dto.getRoomId());
         Long toUserId = rf.getUid1().equals(userId) ? rf.getUid2() : rf.getUid1();
@@ -321,6 +309,14 @@ public class ChatServiceImpl implements ChatService {
         chat.setMessageType(messageType);
         chat.setIsRead(0);
         chat.setClientMessageId(dto.getClientMessageId()); // null 时不落库
+        // 回复/引用:被回复消息必须存在于同一房间
+        if (dto.getReplyToMessageId() != null) {
+            PrivateChat parent = privateChatMapper.selectById(dto.getReplyToMessageId());
+            if (parent == null || !dto.getRoomId().equals(parent.getRoomId())) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "回复的消息不存在");
+            }
+            chat.setParentMessageId(parent.getId());
+        }
         try {
             privateChatMapper.insert(chat);
         } catch (DuplicateKeyException e) {
@@ -483,6 +479,10 @@ public class ChatServiceImpl implements ChatService {
         if (userMapper.selectById(toUserId) == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
+        // 反骚扰限流:同一举报人 1 小时内举报上限
+        if (!rateLimiter.tryAcquire("report:" + fromUserId, 10, 3_600_000)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT);
+        }
         // 基于房间的举报:举报者必须是房间成员,且被投诉人是房间另一成员
         if (roomId != null) {
             RoomFriend rf = requireRoomMember(fromUserId, roomId);
@@ -491,11 +491,15 @@ public class ChatServiceImpl implements ChatService {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "不能投诉该会话外的用户");
             }
         }
+        // 快照:记录被投诉人公开资料,避免无证据的举报记录
+        User target = userMapper.selectById(toUserId);
         Report report = new Report();
         report.setFromUserId(fromUserId);
         report.setTargetUserId(toUserId);
         report.setRoomId(roomId);
+        report.setTargetType("user");
         report.setReason(reason);
+        report.setContentSnapshot(target != null ? "昵称:" + target.getNickname() : null);
         report.setStatus(0);
         reportMapper.insert(report);
     }
@@ -535,6 +539,15 @@ public class ChatServiceImpl implements ChatService {
         webSocketServer.sendToUser(chat.getToUserId(), ws);
     }
 
+    @Override
+    public void hideConversation(Long userId, Long roomId, boolean hidden) {
+        requireRoomMember(userId, roomId);
+        contactMapper.update(null, new LambdaUpdateWrapper<Contact>()
+                .eq(Contact::getUid, userId)
+                .eq(Contact::getRoomId, roomId)
+                .set(Contact::getHidden, hidden ? 1 : 0));
+    }
+
     private Contact findContact(Long uid, Long roomId) {
         return contactMapper.selectOne(new LambdaQueryWrapper<Contact>()
                 .eq(Contact::getUid, uid)
@@ -552,6 +565,7 @@ public class ChatServiceImpl implements ChatService {
         vo.setMessageType(m.getMessageType());
         vo.setIsRecalled(m.getIsRecalled());
         vo.setIsRead(m.getIsRead());
+        vo.setParentMessageId(m.getParentMessageId());
         vo.setCreatedAt(m.getCreatedAt());
         return vo;
     }

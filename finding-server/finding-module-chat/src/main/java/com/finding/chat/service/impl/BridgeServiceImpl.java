@@ -33,6 +33,7 @@ import com.finding.user.service.UserWriteGuard;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.service.ChatService;
 import com.finding.message.service.MessageService;
+import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.common.GeoUtils;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
@@ -80,6 +81,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final RecommendEventMapper eventMapper;
     private final MatchScoreWeights weights;
     private final UserWriteGuard userWriteGuard;
+    private final InMemoryRateLimiter rateLimiter;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -281,6 +283,10 @@ public class BridgeServiceImpl implements BridgeService {
     @Transactional
     public void applyChat(Long fromUserId, Long toUserId, String remark) {
         userWriteGuard.checkWritable(fromUserId);
+        // 反骚扰限流:同一用户 1 小时内申请上限(冷却期之外的额外频率限制)
+        if (!rateLimiter.tryAcquire("apply:" + fromUserId, 10, 3_600_000)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT);
+        }
         if (fromUserId.equals(toUserId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能给自己发送申请");
         }
@@ -649,12 +655,14 @@ public class BridgeServiceImpl implements BridgeService {
                 if (contact != null) {
                     contact.setActiveTime(LocalDateTime.now());
                     contact.setLastMsgId(msgId);
+                    contact.setHidden(0); // 新消息/新会话 → 隐藏会话自动恢复
                     contactMapper.updateById(contact);
                 }
             }
         } else {
             contact.setActiveTime(LocalDateTime.now());
             contact.setLastMsgId(msgId);
+            contact.setHidden(0); // 新消息/新会话 → 隐藏会话自动恢复
             contactMapper.updateById(contact);
         }
     }

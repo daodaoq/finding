@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatClockTime } from '../utils/format';
+import { showToast } from './Toast';
 import AppIcon from './AppIcon';
 import './ChatBubble.css';
 
@@ -10,6 +11,7 @@ interface ChatMessage {
   content: string;
   messageType: string;
   isRecalled?: number;
+  parentMessageId?: number;
   createdAt: string;
   /** 自己刚发送/失败的消息状态(失败可点击重试) */
   sendState?: 'sending' | 'sent' | 'failed';
@@ -20,15 +22,23 @@ interface Props {
   isMine: boolean;
   avatar?: string;
   nickname?: string;
+  /** 回复/引用:被回复消息(本地消息中查到的原文,可能为 null) */
+  replyTo?: ChatMessage | null;
+  replyToName?: string;
   /** 长按消息触发举报 */
   onReport?: (message: ChatMessage) => void;
   /** 长按消息触发撤回(仅自己的消息) */
   onRecall?: (message: ChatMessage) => void;
   /** 点击失败消息重试 */
   onRetry?: (message: ChatMessage) => void;
+  /** 长按消息「回复」 */
+  onReply?: (message: ChatMessage) => void;
 }
 
-export default function ChatBubble({ message, isMine, avatar, nickname, onReport, onRecall, onRetry }: Props) {
+export default function ChatBubble({
+  message, isMine, avatar, nickname, replyTo, replyToName,
+  onReport, onRecall, onRetry, onReply,
+}: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
@@ -52,6 +62,15 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
 
   const recalled = message.isRecalled === 1;
 
+  const copyMessage = async () => {
+    try {
+      await navigator.clipboard?.writeText(message.content);
+      showToast('已复制');
+    } catch {
+      showToast('复制失败');
+    }
+  };
+
   return (
     <>
       <div
@@ -67,6 +86,15 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
         <div className="chat-bubble-wrapper">
           {!isMine && <span className="chat-sender">{nickname}</span>}
           <div className={`chat-bubble ${isMine ? 'bubble-mine' : 'bubble-other'}${recalled ? ' bubble-recalled' : ''}`}>
+            {replyTo && !recalled && (
+              <div className="chat-quote">
+                <span className="chat-quote-name">{replyToName || '引用'}</span>
+                <span className="chat-quote-content">
+                  {replyTo.isRecalled === 1 ? '原消息已撤回'
+                    : replyTo.messageType === 'image' ? '[图片]' : replyTo.content}
+                </span>
+              </div>
+            )}
             {recalled ? (
               <span style={{ color: '#bbb', fontStyle: 'italic' }}>该消息已撤回</span>
             ) : message.messageType === 'image' ? (
@@ -96,6 +124,16 @@ export default function ChatBubble({ message, isMine, avatar, nickname, onReport
       {showMenu && (
         <div className="chat-menu-overlay" onClick={() => setShowMenu(false)}>
           <div className="chat-menu" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="chat-menu-item"
+              onClick={() => { setShowMenu(false); copyMessage(); }}
+            >复制</button>
+            {onReply && !recalled && (
+              <button
+                className="chat-menu-item"
+                onClick={() => { setShowMenu(false); onReply(message); }}
+              >回复</button>
+            )}
             {isMine && (
               <button
                 className="chat-menu-item"

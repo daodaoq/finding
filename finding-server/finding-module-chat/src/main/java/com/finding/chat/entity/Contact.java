@@ -17,6 +17,7 @@ public class Contact {
     private Long lastMsgId;
     private Integer pinned;         // 0=否 1=置顶
     private Integer muted;          // 0=否 1=消息免打扰
+    private Integer hidden;         // 0=否 1=从会话列表隐藏(收到新消息自动恢复)
     private String background;      // 聊天背景(preset key 或图片URL)
 
     @TableField(fill = FieldFill.INSERT)

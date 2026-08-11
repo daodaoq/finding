@@ -20,6 +20,8 @@ export interface WsMessage {
   content: string;
   messageType: string;
   messageId: number;
+  /** 回复/引用:被回复消息 ID */
+  parentMessageId?: number;
   muted?: boolean;
   timestamp: number;
 }
@@ -31,6 +33,7 @@ const BACKOFF_MS = [1000, 2000, 4000, 8000, 16000, 30000];
 class ChatSocket {
   private ws: WebSocket | null = null;
   private handlers = new Set<WsHandler>();
+  private connectHandlers = new Set<() => void>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private retryCount = 0;
@@ -66,6 +69,24 @@ class ChatSocket {
     return () => { this.handlers.delete(handler); };
   }
 
+  /** 订阅"连接建立"(首次连接或断线重连成功)事件,用于断线补偿补拉缺失消息 */
+  onReconnect(handler: () => void) {
+    this.connectHandlers.add(handler);
+    return () => { this.connectHandlers.delete(handler); };
+  }
+
+  /** 当前连接是否已打开 */
+  isOpen() {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  /** 发送输入状态轻量事件(仅 typing,不透传聊天内容;服务端仅透传 conversationId) */
+  sendTyping(conversationId: number, toUserId: number) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'typing', conversationId, toUserId }));
+    }
+  }
+
   private open() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
@@ -76,6 +97,7 @@ class ChatSocket {
     ws.onopen = () => {
       this.everOpened = true;
       this.retryCount = 0;
+      this.connectHandlers.forEach((h) => h());
       if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'heartbeat' }));

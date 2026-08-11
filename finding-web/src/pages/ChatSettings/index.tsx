@@ -84,6 +84,18 @@ export default function ChatSettingsPage() {
     }
   };
 
+  // ── 隐藏会话 ──
+  const handleHide = async () => {
+    if (!roomId) return;
+    try {
+      await chatApi.hideConversation(roomId, true);
+      showToast('已隐藏会话，对方发来新消息时会自动恢复');
+      navigate(-1);
+    } catch (e: any) {
+      showToast(e?.message || '隐藏失败');
+    }
+  };
+
   // ── 投诉 ──
   const handleReport = async () => {
     const reason = reportCustom.trim() || reportReason;
@@ -201,6 +213,12 @@ export default function ChatSettingsPage() {
         <button className="cs-item" onClick={() => setShowClearConfirm(true)}>
           <AppIcon name="trash" className="cs-item-icon" size={19} />
           <span className="cs-item-label">清空聊天记录</span>
+          <span className="cs-item-arrow">›</span>
+        </button>
+
+        <button className="cs-item" onClick={handleHide}>
+          <AppIcon name="eye" className="cs-item-icon" size={19} />
+          <span className="cs-item-label">隐藏会话</span>
           <span className="cs-item-arrow">›</span>
         </button>
 

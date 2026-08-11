@@ -22,4 +22,7 @@ public class MessageSendDTO {
     /** 客户端生成的幂等 ID(同一 senderId+clientMessageId 弱网重试不重复落库) */
     @Size(max = 64, message = "clientMessageId 过长")
     private String clientMessageId;
+
+    /** 回复/引用:被回复消息 ID(可选) */
+    private Long replyToMessageId;
 }
