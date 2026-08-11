@@ -46,6 +46,12 @@ minio:
   secret-key: ${MINIO_SECRET_KEY:Finding@2026}
   bucket: ${MINIO_BUCKET:finding}
 
+# WebSocket 允许来源(origin 模式,逗号分隔)。请替换为实际前端域名;
+# 留空则允许所有来源(启动时告警,不建议)。例:
+# finding:
+#   websocket:
+#     allowed-origin-patterns: https://finding.example.com
+
 logging:
   level:
     com.finding: info

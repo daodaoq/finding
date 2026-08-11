@@ -13,8 +13,8 @@ export const chatApi = {
       params: { targetUserId }
     }),
 
-  /** 发送消息 */
-  sendMessage: (data: { toUserId: number; content: string; messageType?: string }) =>
+  /** 发送消息(以 roomId 指定会话,接收者由服务端从房间成员推导) */
+  sendMessage: (data: { roomId: number; content: string; messageType?: string }) =>
     request.post<ApiResponse<Conversation>>('/chat/send', data),
 
   /** 消息历史（id=room_id） */

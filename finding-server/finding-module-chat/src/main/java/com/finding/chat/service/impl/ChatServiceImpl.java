@@ -22,6 +22,7 @@ import com.finding.common.word.SensitiveWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -73,7 +74,7 @@ public class ChatServiceImpl implements ChatService {
     private final WebSocketServer webSocketServer;
 
     @Override
-    public ConversationVO getOrCreateConversation(Long userId, Long targetUserId) {
+    public ConversationVO getConversation(Long userId, Long targetUserId) {
         if (userId.equals(targetUserId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能和自己聊天");
         }
@@ -82,30 +83,17 @@ public class ChatServiceImpl implements ChatService {
         long uid2 = Math.max(userId, targetUserId);
         String roomKey = uid1 + "_" + uid2;
 
-        // 查找已有房间
+        // 只查找已有会话,绝不创建:新会话只能由聊天申请批准流程(createConversation)建立
         RoomFriend rf = roomFriendMapper.selectOne(
                 new LambdaQueryWrapper<RoomFriend>()
                         .eq(RoomFriend::getRoomKey, roomKey));
-
         if (rf == null) {
-            // 无既有会话 → 新建私聊:与被拉黑者不能建立新会话
-            if (relationshipService.isBlockedEitherWay(userId, targetUserId)) {
-                throw new BusinessException(ResultCode.RELATION_BLOCKED);
-            }
-            // 创建 Room
-            Room room = new Room();
-            room.setType(1); // 单聊
-            room.setActiveTime(LocalDateTime.now());
-            roomMapper.insert(room);
-
-            // 创建 RoomFriend
-            rf = new RoomFriend();
-            rf.setRoomId(room.getId());
-            rf.setUid1(uid1);
-            rf.setUid2(uid2);
-            rf.setRoomKey(roomKey);
-            rf.setStatus(1); // normal
-            roomFriendMapper.insert(rf);
+            throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND,
+                    "还没有会话，请先通过『相亲桥』发起聊天申请");
+        }
+        // room_key 已隐含成员关系,防御性再校验
+        if (!userId.equals(rf.getUid1()) && !userId.equals(rf.getUid2())) {
+            throw new BusinessException(ResultCode.FORBIDDEN);
         }
 
         // 确保双方都有 contact
@@ -114,6 +102,83 @@ public class ChatServiceImpl implements ChatService {
 
         // 构建返回
         return buildConvVO(rf.getRoomId(), userId, targetUserId);
+    }
+
+    /** 创建与指定用户的会话(仅供聊天申请批准流程调用;并发下按 uk_room_key 幂等) */
+    @Override
+    public ConversationVO createConversation(Long userId, Long targetUserId) {
+        if (userId.equals(targetUserId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不能和自己聊天");
+        }
+
+        long uid1 = Math.min(userId, targetUserId);
+        long uid2 = Math.max(userId, targetUserId);
+        String roomKey = uid1 + "_" + uid2;
+
+        // 并发兜底:已存在则直接复用
+        RoomFriend rf = roomFriendMapper.selectOne(
+                new LambdaQueryWrapper<RoomFriend>()
+                        .eq(RoomFriend::getRoomKey, roomKey));
+        if (rf != null) {
+            ensureContact(userId, rf.getRoomId());
+            ensureContact(targetUserId, rf.getRoomId());
+            return buildConvVO(rf.getRoomId(), userId, targetUserId);
+        }
+
+        // 与被拉黑者不能建立新会话
+        if (relationshipService.isBlockedEitherWay(userId, targetUserId)) {
+            throw new BusinessException(ResultCode.RELATION_BLOCKED);
+        }
+
+        // 创建 Room
+        Room room = new Room();
+        room.setType(1); // 单聊
+        room.setActiveTime(LocalDateTime.now());
+        roomMapper.insert(room);
+
+        // 创建 RoomFriend(uk_room_key 唯一约束兜底并发:冲突后重新查询已存在房间)
+        rf = new RoomFriend();
+        rf.setRoomId(room.getId());
+        rf.setUid1(uid1);
+        rf.setUid2(uid2);
+        rf.setRoomKey(roomKey);
+        rf.setStatus(1); // normal
+        try {
+            roomFriendMapper.insert(rf);
+        } catch (DuplicateKeyException e) {
+            RoomFriend existing = roomFriendMapper.selectOne(
+                    new LambdaQueryWrapper<RoomFriend>()
+                            .eq(RoomFriend::getRoomKey, roomKey));
+            if (existing == null) throw e;
+            rf = existing;
+        }
+
+        // 确保双方都有 contact
+        ensureContact(userId, rf.getRoomId());
+        ensureContact(targetUserId, rf.getRoomId());
+
+        // 构建返回
+        return buildConvVO(rf.getRoomId(), userId, targetUserId);
+    }
+
+    /**
+     * 房间成员鉴权:查询 room_friend 并确认当前用户为 uid1 或 uid2。
+     * 房间不存在 → CONVERSATION_NOT_FOUND;存在但非成员 → FORBIDDEN。
+     */
+    private RoomFriend requireRoomMember(Long userId, Long roomId) {
+        if (roomId == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "会话不存在");
+        }
+        RoomFriend rf = roomFriendMapper.selectOne(
+                new LambdaQueryWrapper<RoomFriend>()
+                        .eq(RoomFriend::getRoomId, roomId));
+        if (rf == null) {
+            throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
+        }
+        if (!userId.equals(rf.getUid1()) && !userId.equals(rf.getUid2())) {
+            throw new BusinessException(ResultCode.FORBIDDEN);
+        }
+        return rf;
     }
 
     @Override
@@ -212,23 +277,29 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public ConversationVO sendMessage(Long userId, MessageSendDTO dto) {
         userWriteGuard.checkWritable(userId);
-        // 拉黑拦截:任一方拉黑对方都禁止私聊
-        if (relationshipService.isBlockedEitherWay(userId, dto.getToUserId())) {
+        // 房间成员鉴权:房间不存在/非成员一律拒绝,并确定接收者(客户端不能指定任意 toUserId)
+        RoomFriend rf = requireRoomMember(userId, dto.getRoomId());
+        Long toUserId = rf.getUid1().equals(userId) ? rf.getUid2() : rf.getUid1();
+
+        // 拉黑拦截:任一方拉黑对方都禁止私聊(含 room_friend.status=0 的拉黑房间)
+        if (relationshipService.isBlockedEitherWay(userId, toUserId)
+                || (rf.getStatus() != null && rf.getStatus() == 0)) {
             throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
-        // 获取或创建房间
-        ConversationVO convVO = getOrCreateConversation(userId, dto.getToUserId());
 
         // XSS 清洗 + 违禁词拦截
         dto.setContent(XssUtil.clean(dto.getContent()));
         sensitiveWordFilter.assertClean(dto.getContent());
+        if (!StringUtils.hasText(dto.getContent())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "消息内容不能为空");
+        }
 
         // 保存消息（使用 room_id）
         PrivateChat chat = new PrivateChat();
-        chat.setConversationId(convVO.getRoomId()); // 兼容旧字段
-        chat.setRoomId(convVO.getRoomId());
+        chat.setConversationId(dto.getRoomId()); // 兼容旧字段
+        chat.setRoomId(dto.getRoomId());
         chat.setFromUserId(userId);
-        chat.setToUserId(dto.getToUserId());
+        chat.setToUserId(toUserId);
         chat.setContent(dto.getContent());
         chat.setMessageType(dto.getMessageType() != null ? dto.getMessageType() : "text");
         chat.setIsRead(0);
@@ -244,20 +315,17 @@ public class ChatServiceImpl implements ChatService {
             }
         });
 
-        return convVO;
+        return buildConvVO(dto.getRoomId(), userId, toUserId);
     }
 
     @Override
     public PageVO<ChatMessageVO> getMessageHistory(Long userId, Long roomId, Long lastId, int size) {
-        // 查询消息（按时间正序，最新的在后面），只返回我这一侧未隐藏的（单侧清空）
-        RoomFriend rf = roomFriendMapper.selectOne(new LambdaQueryWrapper<RoomFriend>()
-                .eq(RoomFriend::getRoomId, roomId));
+        // 房间成员鉴权(不存在→会话不存在;非成员→无权限);只返回我这一侧未隐藏的消息(单侧清空)
+        RoomFriend rf = requireRoomMember(userId, roomId);
         LambdaQueryWrapper<PrivateChat> wrapper = new LambdaQueryWrapper<PrivateChat>()
                 .eq(PrivateChat::getRoomId, roomId);
-        if (rf != null) {
-            if (rf.getUid1().equals(userId)) wrapper.eq(PrivateChat::getUid1Hidden, 0);
-            else wrapper.eq(PrivateChat::getUid2Hidden, 0);
-        }
+        if (rf.getUid1().equals(userId)) wrapper.eq(PrivateChat::getUid1Hidden, 0);
+        else wrapper.eq(PrivateChat::getUid2Hidden, 0);
         wrapper.orderByAsc(PrivateChat::getCreatedAt);
         if (lastId != null) wrapper.lt(PrivateChat::getId, lastId);
 
@@ -289,6 +357,8 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public void markConversationRead(Long userId, Long roomId) {
+        // 房间成员鉴权:非成员不可操作他人会话
+        requireRoomMember(userId, roomId);
         // 将发给当前用户的消息标记为已读
         PrivateChat update = new PrivateChat();
         update.setIsRead(1);
@@ -311,6 +381,8 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ConversationSettingsVO getConversationSettings(Long userId, Long roomId) {
+        // 房间成员鉴权:非成员不可读取他人会话设置
+        requireRoomMember(userId, roomId);
         ConversationSettingsVO vo = new ConversationSettingsVO();
         vo.setRoomId(roomId);
         Contact contact = findContact(userId, roomId);
@@ -330,6 +402,8 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public void updateConversationSettings(Long userId, Long roomId, Boolean pinned, Boolean muted, String background) {
+        // 房间成员鉴权:非成员不可修改他人会话设置
+        requireRoomMember(userId, roomId);
         Contact contact = findContact(userId, roomId);
         if (contact == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "会话不存在");
@@ -346,19 +420,15 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public PageVO<ChatMessageVO> searchMessages(Long userId, Long roomId, String keyword, int size) {
-        // 校验用户在该会话中
-        findContact(userId, roomId);
+        // 房间成员鉴权:非成员不可搜索他人会话
+        RoomFriend rf = requireRoomMember(userId, roomId);
 
         // 只搜索我这一侧未隐藏的消息(单侧清空后不再出现在搜索结果)
-        RoomFriend rf = roomFriendMapper.selectOne(new LambdaQueryWrapper<RoomFriend>()
-                .eq(RoomFriend::getRoomId, roomId));
         LambdaQueryWrapper<PrivateChat> wrapper = new LambdaQueryWrapper<PrivateChat>()
                 .eq(PrivateChat::getRoomId, roomId)
                 .like(StringUtils.hasText(keyword), PrivateChat::getContent, keyword);
-        if (rf != null) {
-            if (rf.getUid1().equals(userId)) wrapper.eq(PrivateChat::getUid1Hidden, 0);
-            else wrapper.eq(PrivateChat::getUid2Hidden, 0);
-        }
+        if (rf.getUid1().equals(userId)) wrapper.eq(PrivateChat::getUid1Hidden, 0);
+        else wrapper.eq(PrivateChat::getUid2Hidden, 0);
         Page<PrivateChat> page = new Page<>(1, Math.min(size, 100));
         Page<PrivateChat> result = privateChatMapper.selectPage(page, wrapper.orderByDesc(PrivateChat::getCreatedAt));
 
@@ -383,22 +453,17 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public void clearMessages(Long userId, Long roomId) {
+        // 房间成员鉴权(非成员→无权限),rf 供单侧清空判断
+        RoomFriend rf = requireRoomMember(userId, roomId);
         if (findContact(userId, roomId) == null) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "会话不存在");
-        }
-        RoomFriend rf = roomFriendMapper.selectOne(new LambdaQueryWrapper<RoomFriend>()
-                .eq(RoomFriend::getRoomId, roomId));
-        if (rf == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "会话不存在");
         }
         // 只把"我"这一侧的消息标记为已清空,对方视角不受影响
         PrivateChat update = new PrivateChat();
         if (rf.getUid1().equals(userId)) {
             update.setUid1Hidden(1);
-        } else if (rf.getUid2().equals(userId)) {
-            update.setUid2Hidden(1);
         } else {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "无权操作该会话");
+            update.setUid2Hidden(1);
         }
         privateChatMapper.update(update, new LambdaQueryWrapper<PrivateChat>()
                 .eq(PrivateChat::getRoomId, roomId));
@@ -411,6 +476,14 @@ public class ChatServiceImpl implements ChatService {
         }
         if (userMapper.selectById(toUserId) == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        // 基于房间的举报:举报者必须是房间成员,且被投诉人是房间另一成员
+        if (roomId != null) {
+            RoomFriend rf = requireRoomMember(fromUserId, roomId);
+            Long other = rf.getUid1().equals(fromUserId) ? rf.getUid2() : rf.getUid1();
+            if (!other.equals(toUserId)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "不能投诉该会话外的用户");
+            }
         }
         Report report = new Report();
         report.setFromUserId(fromUserId);
@@ -428,6 +501,8 @@ public class ChatServiceImpl implements ChatService {
         if (chat == null || (chat.getIsRecalled() != null && chat.getIsRecalled() == 1)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "消息不存在或已撤回");
         }
+        // 房间成员鉴权:非参与者不可撤回该房间消息
+        requireRoomMember(userId, chat.getRoomId());
         if (!chat.getFromUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "只能撤回自己发送的消息");
         }

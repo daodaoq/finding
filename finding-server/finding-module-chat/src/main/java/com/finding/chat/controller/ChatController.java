@@ -1,6 +1,7 @@
 package com.finding.chat.controller;
 
 import com.finding.common.Result;
+import com.finding.common.ResultCode;
 import com.finding.user.common.VerificationGuard;
 import com.finding.chat.dto.ConversationSettingsDTO;
 import com.finding.chat.dto.MessageSendDTO;
@@ -31,20 +32,24 @@ public class ChatController {
     /** 获取当前用户的会话列表 */
     @GetMapping("/conversations")
     public Result<List<ConversationVO>> listConversations() {
-        return Result.ok(chatService.listConversations(JwtInterceptor.getCurrentUserId()));
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.listConversations(userId));
     }
 
-    /** 创建或获取与指定用户的会话 */
+    /** 获取与指定用户的已有会话(不存在则拒绝——须先经聊天申请批准建立) */
     @PostMapping("/conversations")
-    public Result<ConversationVO> getOrCreateConversation(@RequestParam Long targetUserId) {
-        return Result.ok(chatService.getOrCreateConversation(
-                JwtInterceptor.getCurrentUserId(), targetUserId));
+    public Result<ConversationVO> getConversation(@RequestParam Long targetUserId) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.getConversation(userId, targetUserId));
     }
 
-    /** 发送消息（REST 方式，也支持 WebSocket 发送） */
+    /** 发送消息(REST 方式) */
     @PostMapping("/send")
     public Result<ConversationVO> sendMessage(@Valid @RequestBody MessageSendDTO dto) {
         Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         verificationGuard.checkVerified(userId); // 未认证用户不可发私信
         return Result.ok(chatService.sendMessage(userId, dto));
     }
@@ -55,27 +60,34 @@ public class ChatController {
             @PathVariable Long id,
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "50") int size) {
-        return Result.ok(chatService.getMessageHistory(
-                JwtInterceptor.getCurrentUserId(), id, lastId, size));
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.getMessageHistory(userId, id, lastId, size));
     }
 
     /** 标记会话已读（id=room_id） */
     @PutMapping("/conversations/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
-        chatService.markConversationRead(JwtInterceptor.getCurrentUserId(), id);
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.markConversationRead(userId, id);
         return Result.ok();
     }
 
     /** 获取会话设置(置顶/免打扰/聊天背景) */
     @GetMapping("/conversations/{id}/settings")
     public Result<ConversationSettingsVO> getSettings(@PathVariable Long id) {
-        return Result.ok(chatService.getConversationSettings(JwtInterceptor.getCurrentUserId(), id));
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.getConversationSettings(userId, id));
     }
 
     /** 更新会话设置(置顶/免打扰/聊天背景) */
     @PutMapping("/conversations/{id}/settings")
     public Result<Void> updateSettings(@PathVariable Long id, @RequestBody ConversationSettingsDTO dto) {
-        chatService.updateConversationSettings(JwtInterceptor.getCurrentUserId(), id,
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.updateConversationSettings(userId, id,
                 dto.getPinned(), dto.getMuted(), dto.getBackground());
         return Result.ok();
     }
@@ -85,27 +97,35 @@ public class ChatController {
     public Result<PageVO<ChatMessageVO>> searchMessages(@PathVariable Long id,
                                                          @RequestParam String keyword,
                                                          @RequestParam(defaultValue = "50") int size) {
-        return Result.ok(chatService.searchMessages(JwtInterceptor.getCurrentUserId(), id, keyword, size));
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.searchMessages(userId, id, keyword, size));
     }
 
     /** 清空会话聊天记录 */
     @DeleteMapping("/conversations/{id}/messages")
     public Result<Void> clearMessages(@PathVariable Long id) {
-        chatService.clearMessages(JwtInterceptor.getCurrentUserId(), id);
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.clearMessages(userId, id);
         return Result.ok();
     }
 
     /** 投诉用户 */
     @PostMapping("/report")
     public Result<Void> report(@Valid @RequestBody ReportDTO dto) {
-        chatService.reportUser(JwtInterceptor.getCurrentUserId(), dto.getTargetUserId(), dto.getRoomId(), dto.getReason());
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.reportUser(userId, dto.getTargetUserId(), dto.getRoomId(), dto.getReason());
         return Result.ok();
     }
 
     /** 撤回自己发送的消息(2分钟内) */
     @PostMapping("/messages/{messageId}/recall")
     public Result<Void> recallMessage(@PathVariable Long messageId) {
-        chatService.recallMessage(JwtInterceptor.getCurrentUserId(), messageId);
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.recallMessage(userId, messageId);
         return Result.ok();
     }
 }

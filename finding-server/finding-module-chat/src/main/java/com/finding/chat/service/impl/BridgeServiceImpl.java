@@ -574,7 +574,8 @@ public class BridgeServiceImpl implements BridgeService {
         chatApplyMapper.updateById(apply);
 
         try {
-            var convVO = chatService.getOrCreateConversation(apply.getToUserId(), apply.getFromUserId());
+            // 批准后创建会话(唯一入口:新会话只能由聊天申请批准流程建立)
+            var convVO = chatService.createConversation(apply.getToUserId(), apply.getFromUserId());
             Long roomId = convVO.getRoomId();
             log.info("Room created for applyId={}: user {} ↔ user {}, roomId={}", apply.getId(), apply.getToUserId(), apply.getFromUserId(), roomId);
 

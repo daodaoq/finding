@@ -85,7 +85,7 @@ export default function ChatDetailPage() {
   const initConversation = async () => {
     try {
       setLoading(true);
-      // 创建或获取会话
+      // 获取已有会话(不存在则服务端拒绝——新会话只能由『相亲桥』聊天申请批准建立)
       const convRes = await chatApi.getOrCreateConversation(targetUserId);
       const conv = convRes.data.data;
       setConversation(conv);
@@ -105,8 +105,9 @@ export default function ChatDetailPage() {
       setMessages(records);
       // 进入会话已标记已读 → 刷新汇总角标
       useMessageStore.getState().refreshTotal();
-    } catch (e) {
+    } catch (e: any) {
       console.error('初始化会话失败', e);
+      showToast(e?.message || '还没有会话，请先通过『相亲桥』发起聊天申请');
     } finally {
       setLoading(false);
     }
@@ -207,9 +208,11 @@ export default function ChatDetailPage() {
     }
   };
 
-  // 发送消息
+  // 发送消息(以 roomId 指定会话;接收者由服务端从房间成员推导)
   const handleSend = async (content: string, messageType = 'text') => {
     if (!user || !conversation) return;
+    const roomId = conversation.roomId || conversation.id;
+    if (!roomId) return;
     const newMsg: ChatMessage = {
       id: Date.now(), // 临时 ID
       fromUserId: user.id,
@@ -223,7 +226,7 @@ export default function ChatDetailPage() {
     setMessages((prev) => [...prev, newMsg]);
 
     try {
-      await chatApi.sendMessage({ toUserId: targetUserId, content, messageType });
+      await chatApi.sendMessage({ roomId, content, messageType });
     } catch (e: any) {
       setMessages((prev) => prev.filter((m) => m.id !== newMsg.id));
       showToast(e?.message || '发送失败，请稍后重试');

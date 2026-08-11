@@ -14,13 +14,16 @@ import java.util.List;
  */
 public interface ChatService {
 
-    /** 创建或获取与另一个用户的会话（返回 roomId） */
-    ConversationVO getOrCreateConversation(Long userId, Long targetUserId);
+    /** 获取与另一个用户的已有会话（不存在/非成员则拒绝，绝不创建） */
+    ConversationVO getConversation(Long userId, Long targetUserId);
+
+    /** 创建与另一个用户的会话（仅供聊天申请批准流程调用） */
+    ConversationVO createConversation(Long userId, Long targetUserId);
 
     /** 获取当前用户的所有会话列表 */
     List<ConversationVO> listConversations(Long userId);
 
-    /** 发送私聊消息（REST方式，也供 WebSocket 调用） */
+    /** 发送私聊消息（REST 方式，客户端只能以 roomId 指定会话） */
     ConversationVO sendMessage(Long userId, MessageSendDTO dto);
 
     /** 获取会话消息历史（id=room_id，游标分页） */

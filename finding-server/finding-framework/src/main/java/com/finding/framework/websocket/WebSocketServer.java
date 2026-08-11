@@ -68,8 +68,13 @@ public class WebSocketServer extends TextWebSocketHandler {
 
             // 根据消息类型分发
             if ("chat".equals(wsMsg.getType())) {
-                // 私聊消息：推送给接收者
-                sendToUser(wsMsg.getToUserId(), wsMsg);
+                // 已禁用：客户端不能通过 WebSocket 直发聊天内容(会绕过落库/认证/拉黑/联系权限/敏感词)。
+                // 聊天内容只能走 REST /chat/send,由服务端事务落库后经 MQ/WS 推送标准消息。
+                log.warn("拒绝 WebSocket 直发聊天消息: fromUserId={}, toUserId={}", userId, wsMsg.getToUserId());
+                WsMessage reject = new WsMessage();
+                reject.setType("chat_rejected");
+                reject.setToUserId(userId);
+                sendToSession(session, reject);
             } else if ("heartbeat".equals(wsMsg.getType())) {
                 // 心跳：回复 pong
                 WsMessage pong = new WsMessage();

@@ -40,7 +40,7 @@ export default function SendApplyList() {
 
   const handleRowClick = (apply: ChatApply) => {
     if (apply.status === 1 && apply.toUserId) {
-      navigate(`/messages/chat?targetUserId=${apply.toUserId}&name=${encodeURIComponent(apply.toUserNickname || '')}&avatar=${encodeURIComponent(apply.toUserAvatar || '')}`);
+      navigate(`/messages/chat?userId=${apply.toUserId}&name=${encodeURIComponent(apply.toUserNickname || '')}&avatar=${encodeURIComponent(apply.toUserAvatar || '')}`);
     }
   };
 
