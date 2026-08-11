@@ -47,22 +47,24 @@ public class BridgeController {
         return Result.ok();
     }
 
-    /** 我发出的申请列表 */
+    /** 我发出的申请列表(status 可空,按状态筛选) */
     @GetMapping("/apply/sent")
     public Result<PageVO<ChatApplyVO>> sentApplies(@RequestParam(defaultValue = "1") int page,
-                                                    @RequestParam(defaultValue = "20") int size) {
+                                                    @RequestParam(defaultValue = "20") int size,
+                                                    @RequestParam(required = false) Integer status) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
-        return Result.ok(bridgeService.getSentApplies(userId, page, size));
+        return Result.ok(bridgeService.getSentApplies(userId, page, size, status));
     }
 
-    /** 我收到的申请列表 */
+    /** 我收到的申请列表(status 可空,按状态筛选) */
     @GetMapping("/apply/received")
     public Result<PageVO<ChatApplyVO>> receivedApplies(@RequestParam(defaultValue = "1") int page,
-                                                        @RequestParam(defaultValue = "20") int size) {
+                                                        @RequestParam(defaultValue = "20") int size,
+                                                        @RequestParam(required = false) Integer status) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
-        return Result.ok(bridgeService.getReceivedApplies(userId, page, size));
+        return Result.ok(bridgeService.getReceivedApplies(userId, page, size, status));
     }
 
     /** 我收到的待处理申请数（情书入口角标） */

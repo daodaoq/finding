@@ -393,12 +393,13 @@ public class BridgeServiceImpl implements BridgeService {
     }
 
     @Override
-    public PageVO<ChatApplyVO> getSentApplies(Long userId, int page, int size) {
+    public PageVO<ChatApplyVO> getSentApplies(Long userId, int page, int size, Integer status) {
         expireStalePending();
         Page<ChatApply> pg = new Page<>(page, size);
         Page<ChatApply> result = chatApplyMapper.selectPage(pg,
                 new LambdaQueryWrapper<ChatApply>()
                         .eq(ChatApply::getFromUserId, userId)
+                        .eq(status != null, ChatApply::getStatus, status)
                         .orderByDesc(ChatApply::getApplyTime));
 
         List<ChatApplyVO> records = result.getRecords().stream()
@@ -408,12 +409,13 @@ public class BridgeServiceImpl implements BridgeService {
     }
 
     @Override
-    public PageVO<ChatApplyVO> getReceivedApplies(Long userId, int page, int size) {
+    public PageVO<ChatApplyVO> getReceivedApplies(Long userId, int page, int size, Integer status) {
         expireStalePending();
         Page<ChatApply> pg = new Page<>(page, size);
         Page<ChatApply> result = chatApplyMapper.selectPage(pg,
                 new LambdaQueryWrapper<ChatApply>()
                         .eq(ChatApply::getToUserId, userId)
+                        .eq(status != null, ChatApply::getStatus, status)
                         .orderByDesc(ChatApply::getApplyTime));
 
         List<ChatApplyVO> records = result.getRecords().stream()

@@ -23,13 +23,13 @@ export const bridgeApi = {
   apply: (toUserId: number, remark?: string) =>
     request.post<ApiResponse<null>>('/bridge/apply', { toUserId, remark }),
 
-  /** 我发出的申请列表 */
-  sentApplies: (page = 1, size = 20) =>
-    request.get<ApiResponse<PageResult<ChatApply>>>('/bridge/apply/sent', { params: { page, size } }),
+  /** 我发出的申请列表(status 可空,按状态筛选) */
+  sentApplies: (page = 1, size = 20, status?: number) =>
+    request.get<ApiResponse<PageResult<ChatApply>>>('/bridge/apply/sent', { params: { page, size, status } }),
 
-  /** 我收到的申请列表 */
-  receivedApplies: (page = 1, size = 20) =>
-    request.get<ApiResponse<PageResult<ChatApply>>>('/bridge/apply/received', { params: { page, size } }),
+  /** 我收到的申请列表(status 可空,按状态筛选) */
+  receivedApplies: (page = 1, size = 20, status?: number) =>
+    request.get<ApiResponse<PageResult<ChatApply>>>('/bridge/apply/received', { params: { page, size, status } }),
 
   /** 我收到的待处理申请数（情书入口角标） */
   receivedPendingCount: () =>

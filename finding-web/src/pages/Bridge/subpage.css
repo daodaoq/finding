@@ -191,3 +191,35 @@
   padding: 0 4px;
   color: #333;
 }
+
+/* ── 加载更多 ── */
+.apply-loadmore {
+  padding: 14px 0 20px;
+  text-align: center;
+}
+
+.apply-loadmore button {
+  padding: 8px 24px;
+  border-radius: 16px;
+  border: 1px solid #ff6b81;
+  background: #fff;
+  color: #ff6b81;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.apply-loadmore button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.apply-loadmore button:active:not(:disabled) {
+  background: #fff0f3;
+  transform: scale(0.96);
+}
+
+.apply-end {
+  color: #bbb;
+  font-size: 12px;
+}

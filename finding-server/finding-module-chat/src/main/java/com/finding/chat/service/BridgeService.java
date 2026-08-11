@@ -16,11 +16,11 @@ public interface BridgeService {
     /** 发送聊天申请 */
     void applyChat(Long fromUserId, Long toUserId, String remark);
 
-    /** 我发出的申请列表 */
-    PageVO<ChatApplyVO> getSentApplies(Long userId, int page, int size);
+    /** 我发出的申请列表(status 可空,按状态筛选) */
+    PageVO<ChatApplyVO> getSentApplies(Long userId, int page, int size, Integer status);
 
-    /** 我收到的申请列表 */
-    PageVO<ChatApplyVO> getReceivedApplies(Long userId, int page, int size);
+    /** 我收到的申请列表(status 可空,按状态筛选) */
+    PageVO<ChatApplyVO> getReceivedApplies(Long userId, int page, int size, Integer status);
 
     /** 我收到的待处理(未处理)申请数量 —— 用于「情书」入口角标 */
     long countPendingReceived(Long userId);

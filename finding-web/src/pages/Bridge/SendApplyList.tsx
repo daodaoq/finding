@@ -8,35 +8,55 @@ import AppIcon from '../../components/AppIcon';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
 
+const PAGE_SIZE = 20;
+
+/** 全部 + 各状态(0待通过/1已通过/2已拒绝/3已撤回/4已过期) */
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
   { key: '0', label: '待通过' },
   { key: '1', label: '已通过' },
   { key: '2', label: '已拒绝' },
+  { key: '3', label: '已撤回' },
+  { key: '4', label: '已过期' },
 ] as const;
 
 export default function SendApplyList() {
   const [applies, setApplies] = useState<ChatApply[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadApplies();
-  }, []);
-
-  const loadApplies = async () => {
-    setLoading(true);
+  /** 服务端按状态分页拉取;append=true 追加(加载更多),否则替换 */
+  const loadApplies = async (targetPage: number, statusKey: string, append = false) => {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     try {
-      const res = await bridgeApi.sentApplies(1, 50);
-      setApplies(res.data.data.records);
-    } catch { showToast('加载申请列表失败'); }
-    finally { setLoading(false); }
+      const status = statusKey === 'all' ? undefined : Number(statusKey);
+      const res = await bridgeApi.sentApplies(targetPage, PAGE_SIZE, status);
+      const data = res.data.data;
+      setApplies((prev) => (append ? [...prev, ...data.records] : data.records));
+      setHasMore(data.hasMore);
+      setPage(data.page);
+    } catch (e) {
+      // 服务端业务原因(冷却/拉黑/过期等)直接透出
+      showToast((e as Error)?.message || '加载申请列表失败');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   };
 
-  const filtered = filter === 'all'
-    ? applies
-    : applies.filter((a) => a.status === Number(filter));
+  useEffect(() => {
+    loadApplies(1, filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  const handleTabChange = (key: string) => {
+    if (key !== filter) setFilter(key);
+  };
 
   const handleRowClick = (apply: ChatApply) => {
     if (apply.status === 1 && apply.toUserId) {
@@ -51,7 +71,10 @@ export default function SendApplyList() {
       setApplies((prev) => prev.map((a) =>
         a.id === apply.id ? { ...a, status: 3, statusDesc: '已撤回' } : a));
       showToast('已撤回申请');
-    } catch { showToast('撤回失败'); }
+    } catch (e) {
+      // 已被处理等具体原因透出服务端文案
+      showToast((e as Error)?.message || '撤回失败');
+    }
   };
 
   const formatTime = (dateStr: string): string => {
@@ -72,13 +95,13 @@ export default function SendApplyList() {
         <h2>我发出的申请</h2>
       </div>
 
-      {/* 状态筛选 Tab */}
+      {/* 状态筛选 Tab(服务端筛选) */}
       <div className="subpage-tabs">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.key}
             className={`subpage-tab ${filter === tab.key ? 'active' : ''}`}
-            onClick={() => setFilter(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
           >
             {tab.label}
           </button>
@@ -89,7 +112,7 @@ export default function SendApplyList() {
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
 
-        {!loading && filtered.map((apply) => (
+        {!loading && applies.map((apply) => (
           <div
             key={apply.id}
             className="apply-row"
@@ -119,8 +142,21 @@ export default function SendApplyList() {
           </div>
         ))}
 
-        {!loading && filtered.length === 0 && (
+        {!loading && applies.length === 0 && (
           <EmptyState icon="send" message="还没有发出过申请" />
+        )}
+
+        {/* 加载更多 */}
+        {!loading && applies.length > 0 && (
+          <div className="apply-loadmore">
+            {hasMore ? (
+              <button disabled={loadingMore} onClick={() => loadApplies(page + 1, filter, true)}>
+                {loadingMore ? '加载中...' : '加载更多'}
+              </button>
+            ) : (
+              <span className="apply-end">没有更多了</span>
+            )}
+          </div>
         )}
       </div>
     </div>
