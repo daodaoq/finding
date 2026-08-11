@@ -87,7 +87,7 @@ export default function BridgePage() {
         prev.map((u) => (u.userId === applyTarget ? { ...u, isLiked: true } : u))
       );
       showToast('申请已发送');
-    } catch { showToast('发送申请失败'); }
+    } catch (e: any) { showToast(e?.message || '发送申请失败'); }
     finally { setApplyTarget(null); }
   };
 

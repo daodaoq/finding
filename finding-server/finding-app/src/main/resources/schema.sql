@@ -691,3 +691,20 @@ CREATE TABLE IF NOT EXISTS `recommend_event` (
     PRIMARY KEY (`id`),
     KEY `idx_user_type` (`user_id`, `event_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 29. operation_log - 敏感操作审计日志
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `operation_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `operator_id` BIGINT DEFAULT NULL COMMENT '操作者',
+    `action` VARCHAR(50) NOT NULL COMMENT '动作:ban/report_handle/post_review/mate_status',
+    `target_type` VARCHAR(50) DEFAULT NULL COMMENT '目标类型',
+    `target_id` BIGINT DEFAULT NULL COMMENT '目标ID',
+    `detail` VARCHAR(1000) DEFAULT NULL COMMENT '操作详情',
+    `result` VARCHAR(500) DEFAULT NULL COMMENT '结果/备注',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_operator` (`operator_id`),
+    KEY `idx_action` (`action`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

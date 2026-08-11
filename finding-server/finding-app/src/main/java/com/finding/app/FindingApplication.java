@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
         "com.finding.chat.mapper",
         "com.finding.group.mapper",
         "com.finding.framework.mapper",
+        "com.finding.common.audit",
         "com.finding.app.mapper"
 })
 @EnableCaching

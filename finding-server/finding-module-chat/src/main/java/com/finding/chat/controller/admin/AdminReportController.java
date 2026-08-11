@@ -7,6 +7,7 @@ import com.finding.common.Result;
 import com.finding.common.ResultCode;
 import com.finding.chat.entity.Report;
 import com.finding.chat.mapper.ReportMapper;
+import com.finding.common.audit.OperationAuditService;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.security.JwtInterceptor;
@@ -29,6 +30,7 @@ public class AdminReportController {
     private final ReportMapper reportMapper;
     private final UserMapper userMapper;
     private final MessageService messageService;
+    private final OperationAuditService operationAuditService;
 
     @GetMapping("/reports")
     public Result<PageVO<Map<String, Object>>> listReports(
@@ -118,6 +120,8 @@ public class AdminReportController {
             messageService.notify(adminId, report.getFromUserId(),
                     status == 1 ? "report_handled" : "report_rejected", content, id);
         }
+        operationAuditService.record(adminId, "report_handle", "report", report.getId(),
+                status == 1 ? "处理投诉" : "驳回投诉", note);
         return Result.ok();
     }
 

@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.Result;
 import com.finding.common.ResultCode;
+import com.finding.common.audit.OperationAuditService;
 import com.finding.user.dto.UserResumeDTO;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserResume;
 import com.finding.user.event.UserBannedEvent;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.UserResumeService;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class AdminUserController {
     private final PasswordEncoder passwordEncoder;
     private final UserResumeService userResumeService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OperationAuditService operationAuditService;
 
     @GetMapping("/users")
     public Result<PageVO<Map<String, Object>>> listUsers(
@@ -196,6 +199,8 @@ public class AdminUserController {
         userMapper.updateById(user);
         // 实时通知在线用户(前端弹提示框并强制退出)
         eventPublisher.publishEvent(new UserBannedEvent(user.getId(), reason, user.getBannedUntil()));
+        operationAuditService.record(JwtInterceptor.getCurrentUserId(), "ban", "user", user.getId(),
+                "封禁用户 " + (days > 0 ? days + "天" : "永久"), reason);
         return Result.ok();
     }
 

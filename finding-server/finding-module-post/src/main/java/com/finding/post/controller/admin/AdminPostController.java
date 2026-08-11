@@ -8,6 +8,7 @@ import com.finding.common.ResultCode;
 import com.finding.post.dto.PostCreateDTO;
 import com.finding.post.entity.Post;
 import com.finding.post.mapper.PostMapper;
+import com.finding.common.audit.OperationAuditService;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.message.service.MessageService;
@@ -30,6 +31,7 @@ public class AdminPostController {
     private final PostMapper postMapper;
     private final UserMapper userMapper;
     private final MessageService messageService;
+    private final OperationAuditService operationAuditService;
 
     @GetMapping("/posts")
     public Result<PageVO<Map<String, Object>>> listPosts(
@@ -154,6 +156,8 @@ public class AdminPostController {
             String content = reason != null && !reason.isBlank() ? "你的动态审核未通过：" + reason : "你的动态审核未通过";
             messageService.notify(JwtInterceptor.getCurrentUserId(), post.getUserId(), "post_rejected", content, post.getId());
         }
+        operationAuditService.record(JwtInterceptor.getCurrentUserId(), "post_review", "post", post.getId(),
+                pass ? "审核通过" : "审核拒绝", reason);
         return Result.ok();
     }
 }

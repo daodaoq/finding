@@ -44,6 +44,8 @@ public enum ResultCode {
     ALREADY_JOINED(4004, "已申请加入该邀约"),
     NOT_CREATOR(4005, "只有发起者可以执行此操作"),
     JOIN_REQUEST_NOT_FOUND(4006, "申请记录不存在"),
+    MATE_EXPIRED(4007, "搭子活动已过期"),
+    MATE_APPLY_HANDLED(4008, "该申请已处理，不能重复操作"),
 
     // Message errors (5xxx)
     MESSAGE_NOT_FOUND(5001, "消息不存在"),

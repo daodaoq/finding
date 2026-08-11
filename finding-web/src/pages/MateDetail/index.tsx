@@ -43,7 +43,7 @@ export default function MateDetailPage() {
         await mateApi.join(mateId);
         showToast('申请已发送');
         loadDetail(); // 刷新剩余名额/报名状态(满员时可能进入候补)
-      } catch { showToast('加入失败'); }
+      } catch (e: any) { showToast(e?.message || '加入失败'); }
     });
   };
 
@@ -81,7 +81,7 @@ export default function MateDetailPage() {
       const res = await mateApi.participants(mateId);
       setParticipants(res.data.data || []);
       loadDetail(); // 刷新参与人数
-    } catch { showToast('操作失败，请重试'); }
+    } catch (e: any) { showToast(e?.message || '操作失败，请重试'); }
     finally { setManaging(false); }
   };
 

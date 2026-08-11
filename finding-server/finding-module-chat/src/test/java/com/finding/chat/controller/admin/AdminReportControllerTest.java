@@ -3,6 +3,7 @@ package com.finding.chat.controller.admin;
 import com.finding.chat.entity.Report;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.common.BusinessException;
+import com.finding.common.audit.OperationAuditService;
 import com.finding.message.service.MessageService;
 import com.finding.user.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ class AdminReportControllerTest {
     @Mock private ReportMapper reportMapper;
     @Mock private UserMapper userMapper;
     @Mock private MessageService messageService;
+    @Mock private OperationAuditService operationAuditService;
 
     @InjectMocks
     private AdminReportController controller;

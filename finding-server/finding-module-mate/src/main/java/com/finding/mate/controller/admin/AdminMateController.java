@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.Result;
 import com.finding.common.ResultCode;
+import com.finding.common.audit.OperationAuditService;
 import com.finding.common.PageVO;
 import com.finding.common.constant.MateCategoryEnum;
 import com.finding.mate.entity.MateInvitation;
@@ -32,6 +33,7 @@ public class AdminMateController {
     private final MateInvitationMapper invitationMapper;
     private final MateParticipantMapper participantMapper;
     private final UserMapper userMapper;
+    private final OperationAuditService operationAuditService;
 
     @GetMapping("/mates")
     public Result<PageVO<Map<String, Object>>> listMates(
@@ -107,6 +109,8 @@ public class AdminMateController {
         if (status == null) throw new BusinessException(ResultCode.PARAM_ERROR, "status 必填");
         invitation.setStatus(status);
         invitationMapper.updateById(invitation);
+        operationAuditService.record(com.finding.user.security.JwtInterceptor.getCurrentUserId(), "mate_status", "mate", invitation.getId(),
+                "管理员变更搭子状态", "status=" + status);
         return Result.ok();
     }
 

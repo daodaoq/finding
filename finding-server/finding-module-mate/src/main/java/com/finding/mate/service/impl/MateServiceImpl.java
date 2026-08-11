@@ -167,7 +167,7 @@ public class MateServiceImpl implements MateService {
             throw new BusinessException(ResultCode.MATE_CLOSED);
         }
         if (isExpired(invitation)) {
-            throw new BusinessException(ResultCode.MATE_CLOSED, "活动已过期，无法报名");
+            throw new BusinessException(ResultCode.MATE_EXPIRED);
         }
         // 拉黑:任一方拉黑不能相互报名
         if (relationshipService.isBlockedEitherWay(userId, invitation.getUserId())) {
@@ -232,7 +232,7 @@ public class MateServiceImpl implements MateService {
             throw new BusinessException(ResultCode.MATE_CLOSED);
         }
         if (isExpired(invitation)) {
-            throw new BusinessException(ResultCode.MATE_CLOSED, "活动已过期，无法处理申请");
+            throw new BusinessException(ResultCode.MATE_EXPIRED);
         }
 
         MateParticipant participant = participantMapper.selectById(participantId);
@@ -252,7 +252,7 @@ public class MateServiceImpl implements MateService {
                             MateParticipantStatus.PENDING.getCode(), MateParticipantStatus.WAITLISTED.getCode())
                     .set(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
             if (pRows == 0) {
-                throw new BusinessException(ResultCode.ALREADY_JOINED, "该申请已处理");
+                throw new BusinessException(ResultCode.MATE_APPLY_HANDLED);
             }
             // 原子占用名额:current < max 才自增,并发下防超卖
             int rows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
@@ -270,7 +270,7 @@ public class MateServiceImpl implements MateService {
                             MateParticipantStatus.PENDING.getCode(), MateParticipantStatus.WAITLISTED.getCode())
                     .set(MateParticipant::getStatus, MateParticipantStatus.REJECTED.getCode()));
             if (pRows == 0) {
-                throw new BusinessException(ResultCode.ALREADY_JOINED, "该申请已处理");
+                throw new BusinessException(ResultCode.MATE_APPLY_HANDLED);
             }
             messageService.notify(userId, participant.getUserId(), "mate_rejected", "你的搭子申请已被拒绝", id);
         }
