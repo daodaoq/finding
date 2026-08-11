@@ -15,6 +15,8 @@ public class MateParticipant {
     private Long userId;
     private Integer status;         // 0=pending, 1=accepted, 2=rejected
     private String message;
+    private Integer applyCount;
+    private LocalDateTime lastAppliedAt;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

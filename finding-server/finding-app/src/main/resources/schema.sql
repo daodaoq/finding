@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS `mate_invitation` (
     `max_participants` INT DEFAULT 10,
     `current_participants` INT DEFAULT 1,
     `is_anonymous` TINYINT DEFAULT 0,
-    `status` TINYINT DEFAULT 1 COMMENT '0=cancelled, 1=active, 2=closed',
+    `status` TINYINT DEFAULT 1 COMMENT '0=cancelled, 1=active, 2=closed, 3=expired',
     `review_status` TINYINT DEFAULT 0 COMMENT '0=已发布 1=待审 2=拒绝',
     `review_reason` VARCHAR(500) DEFAULT NULL COMMENT '审核拒绝原因',
     `review_by` BIGINT DEFAULT NULL COMMENT '审核人',
@@ -181,6 +181,8 @@ CREATE TABLE IF NOT EXISTS `mate_invitation` (
     KEY `idx_activity_time` (`activity_time`),
     KEY `idx_user` (`user_id`),
     KEY `idx_status_time` (`status`, `created_at`)
+    ,KEY `idx_public_activity` (`status`, `review_status`, `activity_time`)
+    ,KEY `idx_category_activity` (`category`, `status`, `review_status`, `activity_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -190,12 +192,16 @@ CREATE TABLE IF NOT EXISTS `mate_participant` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `invitation_id` BIGINT NOT NULL,
     `user_id` BIGINT NOT NULL,
-    `status` TINYINT DEFAULT 0 COMMENT '0=pending, 1=accepted, 2=rejected',
-    `message` VARCHAR(500) DEFAULT NULL COMMENT 'Applicant message',
+      `status` TINYINT DEFAULT 0 COMMENT '0=pending, 1=accepted, 2=rejected, 3=left, 4=waitlisted, 5=invalidated',
+      `message` VARCHAR(500) DEFAULT NULL COMMENT 'Applicant message',
+      `apply_count` INT NOT NULL DEFAULT 1 COMMENT '累计申请次数',
+      `last_applied_at` DATETIME DEFAULT NULL COMMENT '最近一次申请时间',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_mate_user` (`invitation_id`, `user_id`),
-    KEY `idx_user_id` (`user_id`)
+      KEY `idx_user_id` (`user_id`),
+      KEY `idx_mate_participant_status` (`invitation_id`, `status`, `created_at`),
+      KEY `idx_mate_user_status` (`user_id`, `status`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

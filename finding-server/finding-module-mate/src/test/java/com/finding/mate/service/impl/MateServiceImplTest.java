@@ -76,7 +76,7 @@ class MateServiceImplTest {
         inv.setUserId(100L);
         when(invitationMapper.selectById(1L)).thenReturn(inv);
         when(relationshipService.isBlockedEitherWay(2L, 100L)).thenReturn(false);
-        when(participantMapper.selectCount(any())).thenReturn(0L);
+        when(participantMapper.selectOne(any())).thenReturn(null);
         when(participantMapper.insert(any())).thenReturn(1);
 
         service.joinInvitation(2L, 1L, "hi");
@@ -92,7 +92,7 @@ class MateServiceImplTest {
         inv.setUserId(100L);
         when(invitationMapper.selectById(1L)).thenReturn(inv);
         when(relationshipService.isBlockedEitherWay(2L, 100L)).thenReturn(false);
-        when(participantMapper.selectCount(any())).thenReturn(0L);
+        when(participantMapper.selectOne(any())).thenReturn(null);
         when(participantMapper.insert(any())).thenReturn(1);
 
         service.joinInvitation(2L, 1L, "hi");
@@ -123,7 +123,6 @@ class MateServiceImplTest {
         when(invitationMapper.selectById(1L)).thenReturn(inv);
         when(participantMapper.selectById(2L)).thenReturn(part);
         when(relationshipService.isBlockedEitherWay(100L, 200L)).thenReturn(false);
-        when(participantMapper.update(any(), any())).thenReturn(1); // 报名置为已通过
         when(invitationMapper.update(any(), any())).thenReturn(0);  // 原子名额自增失败 → 已满
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.handleJoinRequest(100L, 1L, 2L, true));

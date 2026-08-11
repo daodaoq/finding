@@ -21,9 +21,12 @@ import com.finding.mate.vo.MateVO;
 import com.finding.common.PageVO;
 import com.finding.common.util.XssUtil;
 import com.finding.common.word.SensitiveWordFilter;
+import com.finding.common.event.UserBlockedEvent;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.event.EventListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -69,6 +72,19 @@ public class MateServiceImpl implements MateService {
         if (StringUtils.hasText(query.getCategory())) {
             wrapper.eq(MateInvitation::getCategory, query.getCategory());
         }
+        if (StringUtils.hasText(query.getCity())) {
+            wrapper.like(MateInvitation::getLocation, query.getCity().trim());
+        }
+        if (Boolean.TRUE.equals(query.getAnonymousOnly())) {
+            wrapper.eq(MateInvitation::getIsAnonymous, 1);
+        }
+        if (query.getDaysAhead() != null && query.getDaysAhead() > 0) {
+            wrapper.le(MateInvitation::getActivityTime, LocalDateTime.now().plusDays(Math.min(query.getDaysAhead(), 30)));
+        }
+        if (Boolean.TRUE.equals(query.getAvailableOnly())) {
+            wrapper.apply("current_participants < max_participants");
+        }
+        applyGeoBounds(wrapper, query);
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(w -> w.like(MateInvitation::getTitle, query.getKeyword())
                     .or().like(MateInvitation::getDescription, query.getKeyword()));
@@ -101,7 +117,7 @@ public class MateServiceImpl implements MateService {
             m.put("id", mv.getId());
             m.put("title", mv.getTitle());
             m.put("category", mv.getCategory());
-            m.put("location", mv.getLocation());
+            m.put("location", "报名通过后可查看集合地点");
             m.put("activityTime", mv.getActivityTime());
             m.put("createdAt", mv.getCreatedAt());
             // 匿名活动不返回发起人 ID
@@ -183,6 +199,19 @@ public class MateServiceImpl implements MateService {
         return new PreparedContent(title, description, location, review);
     }
 
+    private void applyGeoBounds(LambdaQueryWrapper<MateInvitation> wrapper, MateQueryDTO query) {
+        if (query.getLatitude() == null || query.getLongitude() == null || query.getRadiusKm() == null
+                || query.getRadiusKm() <= 0) return;
+        double radius = Math.min(query.getRadiusKm(), 200d);
+        double latDelta = radius / 111.0;
+        double cos = Math.max(0.1, Math.cos(Math.toRadians(query.getLatitude().doubleValue())));
+        double lngDelta = radius / (111.0 * cos);
+        wrapper.between(MateInvitation::getLatitude, query.getLatitude().doubleValue() - latDelta,
+                        query.getLatitude().doubleValue() + latDelta)
+                .between(MateInvitation::getLongitude, query.getLongitude().doubleValue() - lngDelta,
+                        query.getLongitude().doubleValue() + lngDelta);
+    }
+
     private void validateInvitationRules(MateCreateDTO dto) {
         if (!StringUtils.hasText(dto.getCategory()) || !SUPPORTED_CATEGORIES.contains(dto.getCategory())) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的活动分类");
@@ -198,6 +227,10 @@ public class MateServiceImpl implements MateService {
         }
         if ((dto.getLatitude() == null) != (dto.getLongitude() == null)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "经纬度必须同时填写或同时留空");
+        }
+        if (dto.getLatitude() != null && (dto.getLatitude().doubleValue() < -90 || dto.getLatitude().doubleValue() > 90
+                || dto.getLongitude().doubleValue() < -180 || dto.getLongitude().doubleValue() > 180)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "经纬度不在合法范围内");
         }
     }
 
@@ -319,12 +352,22 @@ public class MateServiceImpl implements MateService {
             throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
 
-        // 已有报名记录(任意状态)不可再报
-        long count = participantMapper.selectCount(new LambdaQueryWrapper<MateParticipant>()
+        // 待审/已通过/候补不可重复；拒绝或退出记录保留审计，并允许冷却期后复用
+        MateParticipant previous = participantMapper.selectOne(new LambdaQueryWrapper<MateParticipant>()
                 .eq(MateParticipant::getInvitationId, id)
-                .eq(MateParticipant::getUserId, userId));
-        if (count > 0) {
+                .eq(MateParticipant::getUserId, userId)
+                .orderByDesc(MateParticipant::getCreatedAt)
+                .last("LIMIT 1"));
+        if (previous != null && previous.getStatus() != null
+                && previous.getStatus() != MateParticipantStatus.REJECTED.getCode()
+                && previous.getStatus() != MateParticipantStatus.CANCELLED.getCode()
+                && previous.getStatus() != MateParticipantStatus.INVALIDATED.getCode()) {
             throw new BusinessException(ResultCode.ALREADY_JOINED);
+        }
+        LocalDateTime previousApplyTime = previous == null ? null
+                : (previous.getLastAppliedAt() != null ? previous.getLastAppliedAt() : previous.getCreatedAt());
+        if (previousApplyTime != null && previousApplyTime.isAfter(LocalDateTime.now().minusHours(24))) {
+            throw new BusinessException(ResultCode.ALREADY_JOINED, "申请被拒绝或退出后24小时内不能重复申请");
         }
 
         // XSS 清洗 + 违禁词拦截
@@ -334,10 +377,20 @@ public class MateServiceImpl implements MateService {
         participant.setInvitationId(id);
         participant.setUserId(userId);
         participant.setMessage(message);
+        participant.setApplyCount(1);
+        participant.setLastAppliedAt(LocalDateTime.now());
         // 名额已满 → 进入候补;否则待审批
         boolean full = invitation.getCurrentParticipants() >= invitation.getMaxParticipants();
         participant.setStatus(full ? MateParticipantStatus.WAITLISTED.getCode() : MateParticipantStatus.PENDING.getCode());
-        participantMapper.insert(participant);
+        if (previous != null) {
+            previous.setMessage(message);
+            previous.setStatus(participant.getStatus());
+            previous.setApplyCount((previous.getApplyCount() == null ? 1 : previous.getApplyCount()) + 1);
+            previous.setLastAppliedAt(LocalDateTime.now());
+            participantMapper.updateById(previous);
+        } else {
+            participantMapper.insert(participant);
+        }
 
         // Notify creator
         messageService.notify(userId, invitation.getUserId(), "mate_request", "申请加入你的搭子邀约", id);
@@ -390,7 +443,14 @@ public class MateServiceImpl implements MateService {
         }
 
         if (accept) {
-            // 条件更新报名:仅待审批/候补可被通过,防并发重复审批
+            // 先原子占用名额，再条件更新报名；任一步失败均回滚，避免“已通过但未占位”。
+            int rows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                    .eq(MateInvitation::getId, id)
+                    .lt(MateInvitation::getCurrentParticipants, invitation.getMaxParticipants())
+                    .setSql("current_participants = current_participants + 1"));
+            if (rows == 0) {
+                throw new BusinessException(ResultCode.MATE_FULL);
+            }
             int pRows = participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
                     .eq(MateParticipant::getId, participantId)
                     .in(MateParticipant::getStatus,
@@ -398,14 +458,6 @@ public class MateServiceImpl implements MateService {
                     .set(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
             if (pRows == 0) {
                 throw new BusinessException(ResultCode.MATE_APPLY_HANDLED);
-            }
-            // 原子占用名额:current < max 才自增,并发下防超卖
-            int rows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
-                    .eq(MateInvitation::getId, id)
-                    .lt(MateInvitation::getCurrentParticipants, invitation.getMaxParticipants())
-                    .setSql("current_participants = current_participants + 1"));
-            if (rows == 0) {
-                throw new BusinessException(ResultCode.MATE_FULL);
             }
             messageService.notify(userId, participant.getUserId(), "mate_accepted", "你的搭子申请已通过", id);
         } else {
@@ -439,60 +491,26 @@ public class MateServiceImpl implements MateService {
 
     @Override
     public PageVO<MateVO> getMyJoinedInvitations(Long userId, MateQueryDTO query) {
-        // 查到所有加入的搭子
-        List<MateParticipant> allParticipants = participantMapper.selectList(
-                new LambdaQueryWrapper<MateParticipant>()
-                        .eq(MateParticipant::getUserId, userId)
-                        .eq(MateParticipant::getStatus, 1));
-
-        if (allParticipants.isEmpty()) {
-            return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
-        }
-
-        List<Long> invitationIds = allParticipants.stream()
-                .map(MateParticipant::getInvitationId).distinct().toList();
-
-        // 查搭子详情
-        List<MateInvitation> allInvitations = invitationMapper.selectBatchIds(invitationIds);
+        LambdaQueryWrapper<MateInvitation> wrapper = new LambdaQueryWrapper<MateInvitation>()
+                .inSql(MateInvitation::getId, "SELECT invitation_id FROM mate_participant WHERE user_id = " + userId
+                        + " AND status = " + MateParticipantStatus.ACCEPTED.getCode());
         LocalDateTime now = LocalDateTime.now();
-
-        // 按状态过滤
-        List<MateInvitation> filtered;
-        if (query.getStatus() == null) {
-            // 全部
-            filtered = new ArrayList<>(allInvitations);
-        } else if (query.getStatus() == 1) {
-            // 进行中：status=1 且 activityTime 未过
-            filtered = allInvitations.stream()
-                    .filter(m -> m.getStatus() == 1 &&
-                            (m.getActivityTime() == null || m.getActivityTime().isAfter(now)))
-                    .collect(Collectors.toList());
-        } else {
-            // 已结束：已取消、已关闭或活动时间已过
-            filtered = allInvitations.stream()
-                    .filter(m -> m.getStatus() != MateInvitationStatus.ACTIVE.getCode() ||
-                            (m.getActivityTime() != null && !m.getActivityTime().isAfter(now)))
-                    .collect(Collectors.toList());
+        if (query.getStatus() != null && query.getStatus() == 1) {
+            wrapper.eq(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode())
+                    .gt(MateInvitation::getActivityTime, now);
+        } else if (query.getStatus() != null) {
+            wrapper.and(w -> w.ne(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode())
+                    .or().le(MateInvitation::getActivityTime, now));
         }
-
-        // 按活动时间排序（最近的在前）
-        filtered.sort((a, b) -> {
-            LocalDateTime ta = a.getActivityTime() != null ? a.getActivityTime() : a.getCreatedAt();
-            LocalDateTime tb = b.getActivityTime() != null ? b.getActivityTime() : b.getCreatedAt();
-            return tb.compareTo(ta); // 降序
-        });
-
-        long total = filtered.size();
-        int from = Math.min((query.getPage() - 1) * query.getSize(), filtered.size());
-        int to = Math.min(from + query.getSize(), filtered.size());
-        List<MateInvitation> paged = filtered.subList(from, to);
+        wrapper.orderByDesc(MateInvitation::getActivityTime);
+        Page<MateInvitation> result = invitationMapper.selectPage(new Page<>(query.getPage(), query.getSize()), wrapper);
 
         Double lat = query.getLatitude() != null ? query.getLatitude().doubleValue() : null;
         Double lng = query.getLongitude() != null ? query.getLongitude().doubleValue() : null;
-        List<MateVO> records = paged.stream()
+        List<MateVO> records = result.getRecords().stream()
                 .map(m -> toVO(m, userId, lat, lng))
                 .collect(Collectors.toList());
-        return PageVO.of(records, total, query.getPage(), query.getSize());
+        return PageVO.of(records, result.getTotal(), query.getPage(), query.getSize());
     }
 
     @Override
@@ -529,7 +547,8 @@ public class MateServiceImpl implements MateService {
             if (inv != null) {
                 map.put("title", inv.getTitle());
                 map.put("category", inv.getCategory());
-                map.put("location", inv.getLocation());
+                map.put("location", p.getStatus() != null && p.getStatus() == MateParticipantStatus.ACCEPTED.getCode()
+                        ? inv.getLocation() : "报名通过后可查看集合地点");
                 map.put("activityTime", inv.getActivityTime());
                 map.put("invitationStatus", inv.getStatus());
                 // 匿名活动不泄露发起人昵称
@@ -548,12 +567,18 @@ public class MateServiceImpl implements MateService {
         if (invitation == null) {
             throw new BusinessException(ResultCode.MATE_NOT_FOUND);
         }
-        if (!invitation.getUserId().equals(currentUserId)) {
-            throw new BusinessException(ResultCode.NOT_CREATOR);
+        boolean owner = invitation.getUserId().equals(currentUserId);
+        boolean acceptedMember = !owner && participantMapper.selectCount(new LambdaQueryWrapper<MateParticipant>()
+                .eq(MateParticipant::getInvitationId, invitationId)
+                .eq(MateParticipant::getUserId, currentUserId)
+                .eq(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode())) > 0;
+        if (!owner && !acceptedMember) {
+            throw new BusinessException(ResultCode.NOT_CREATOR, "仅发起人和已通过成员可查看参与者");
         }
         List<MateParticipant> participants = participantMapper.selectList(
                 new LambdaQueryWrapper<MateParticipant>()
                         .eq(MateParticipant::getInvitationId, invitationId)
+                        .eq(acceptedMember, MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode())
                         .orderByDesc(MateParticipant::getCreatedAt));
         if (participants.isEmpty()) {
             return List.of();
@@ -567,7 +592,7 @@ public class MateServiceImpl implements MateService {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("participantId", p.getId());
             map.put("userId", p.getUserId());
-            map.put("message", p.getMessage());
+            if (owner) map.put("message", p.getMessage());
             map.put("status", p.getStatus()); // 0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补
             map.put("statusDesc", MateParticipantStatus.descOf(p.getStatus()));
             map.put("applyTime", p.getCreatedAt());
@@ -587,14 +612,21 @@ public class MateServiceImpl implements MateService {
         // 匿名活动:非发起人/未登录时不返回发起人 ID,避免还原匿名身份(本人仍可见自己)
         boolean anon = m.getIsAnonymous() != null && m.getIsAnonymous() == 1;
         boolean viewerIsOwner = currentUserId != null && m.getUserId().equals(currentUserId);
+        MateParticipant mine = currentUserId == null ? null : participantMapper.selectOne(new LambdaQueryWrapper<MateParticipant>()
+                .eq(MateParticipant::getInvitationId, m.getId())
+                .eq(MateParticipant::getUserId, currentUserId)
+                .last("LIMIT 1"));
+        boolean viewerAccepted = mine != null && mine.getStatus() != null
+                && mine.getStatus() == MateParticipantStatus.ACCEPTED.getCode();
         vo.setUserId(anon && !viewerIsOwner ? null : m.getUserId());
         vo.setCategory(m.getCategory());
         vo.setTitle(m.getTitle());
         vo.setDescription(m.getDescription());
         vo.setActivityTime(m.getActivityTime());
-        vo.setLocation(m.getLocation());
-        vo.setLatitude(m.getLatitude());
-        vo.setLongitude(m.getLongitude());
+        boolean preciseLocationVisible = viewerIsOwner || viewerAccepted;
+        vo.setLocation(preciseLocationVisible ? m.getLocation() : "报名通过后可查看集合地点");
+        vo.setLatitude(preciseLocationVisible ? m.getLatitude() : null);
+        vo.setLongitude(preciseLocationVisible ? m.getLongitude() : null);
         vo.setMaxParticipants(m.getMaxParticipants());
         vo.setCurrentParticipants(m.getCurrentParticipants());
         vo.setIsAnonymous(m.getIsAnonymous());
@@ -621,10 +653,6 @@ public class MateServiceImpl implements MateService {
 
         // 当前用户报名状态(待审核/已通过/候补视为已参与;已退出不算)
         if (currentUserId != null) {
-            MateParticipant mine = participantMapper.selectOne(new LambdaQueryWrapper<MateParticipant>()
-                    .eq(MateParticipant::getInvitationId, m.getId())
-                    .eq(MateParticipant::getUserId, currentUserId)
-                    .last("LIMIT 1"));
             if (mine != null && mine.getStatus() != null
                     && mine.getStatus() != MateParticipantStatus.CANCELLED.getCode()) {
                 vo.setHasJoined(true);
@@ -638,7 +666,83 @@ public class MateServiceImpl implements MateService {
     }
 
     private boolean isExpired(MateInvitation invitation) {
-        return invitation.getActivityTime() != null && invitation.getActivityTime().isBefore(LocalDateTime.now());
+        return invitation.getStatus() == MateInvitationStatus.EXPIRED.getCode()
+                || (invitation.getActivityTime() != null && invitation.getActivityTime().isBefore(LocalDateTime.now()));
+    }
+
+    /** 每分钟收敛过期活动及其未完成申请，通知在事务提交后由消息模块异步处理。 */
+    @Scheduled(fixedDelay = 60_000)
+    @Transactional
+    public void expireInvitations() {
+        List<MateInvitation> expired = invitationMapper.selectList(new LambdaQueryWrapper<MateInvitation>()
+                .eq(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode())
+                .lt(MateInvitation::getActivityTime, LocalDateTime.now()));
+        for (MateInvitation invitation : expired) {
+            int rows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                    .eq(MateInvitation::getId, invitation.getId())
+                    .eq(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode())
+                    .set(MateInvitation::getStatus, MateInvitationStatus.EXPIRED.getCode()));
+            if (rows == 0) continue;
+            notifyMembersAndApplicants(invitation, "该搭子活动已过期，申请已结束");
+            participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
+                    .eq(MateParticipant::getInvitationId, invitation.getId())
+                    .in(MateParticipant::getStatus, MateParticipantStatus.PENDING.getCode(), MateParticipantStatus.WAITLISTED.getCode())
+                    .set(MateParticipant::getStatus, MateParticipantStatus.INVALIDATED.getCode()));
+        }
+    }
+
+    /** 定期校正冗余计数，确保 currentParticipants 始终等于发起人加已通过成员数。 */
+    @Scheduled(fixedDelay = 300_000)
+    @Transactional
+    public void reconcileParticipantCounts() {
+        List<MateInvitation> invitations = invitationMapper.selectList(new LambdaQueryWrapper<MateInvitation>()
+                .in(MateInvitation::getStatus, MateInvitationStatus.ACTIVE.getCode(), MateInvitationStatus.CLOSED.getCode()));
+        for (MateInvitation invitation : invitations) {
+            long accepted = participantMapper.selectCount(new LambdaQueryWrapper<MateParticipant>()
+                    .eq(MateParticipant::getInvitationId, invitation.getId())
+                    .eq(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
+            int expected = (int) accepted + 1;
+            if (!java.util.Objects.equals(invitation.getCurrentParticipants(), expected)) {
+                invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                        .eq(MateInvitation::getId, invitation.getId())
+                        .set(MateInvitation::getCurrentParticipants, expected));
+            }
+        }
+    }
+
+    /** 拉黑联动：双方之间待审、候补和已通过关系立即失效，且不向对方暴露拉黑者身份。 */
+    @EventListener
+    @Transactional
+    public void handleUserBlocked(UserBlockedEvent event) {
+        invalidateBlockedRelations(event.getUserId(), event.getBlockedUserId());
+        invalidateBlockedRelations(event.getBlockedUserId(), event.getUserId());
+    }
+
+    private void invalidateBlockedRelations(Long creatorId, Long participantUserId) {
+        List<MateInvitation> invitations = invitationMapper.selectList(new LambdaQueryWrapper<MateInvitation>()
+                .eq(MateInvitation::getUserId, creatorId));
+        if (invitations.isEmpty()) return;
+        List<Long> ids = invitations.stream().map(MateInvitation::getId).toList();
+        List<MateParticipant> relations = participantMapper.selectList(new LambdaQueryWrapper<MateParticipant>()
+                .in(MateParticipant::getInvitationId, ids)
+                .eq(MateParticipant::getUserId, participantUserId)
+                .in(MateParticipant::getStatus, MateParticipantStatus.PENDING.getCode(),
+                        MateParticipantStatus.WAITLISTED.getCode(), MateParticipantStatus.ACCEPTED.getCode()));
+        for (MateParticipant relation : relations) {
+            int previousStatus = relation.getStatus();
+            int rows = participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
+                    .eq(MateParticipant::getId, relation.getId())
+                    .eq(MateParticipant::getStatus, previousStatus)
+                    .set(MateParticipant::getStatus, MateParticipantStatus.INVALIDATED.getCode()));
+            if (rows == 0) continue;
+            if (previousStatus == MateParticipantStatus.ACCEPTED.getCode()) {
+                invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                        .eq(MateInvitation::getId, relation.getInvitationId())
+                        .gt(MateInvitation::getCurrentParticipants, 1)
+                        .setSql("current_participants = current_participants - 1"));
+            }
+            messageService.notify(null, participantUserId, "mate_relation_ended", "你与该搭子活动的参与关系已结束", relation.getInvitationId());
+        }
     }
 
     /** 候补补位:活动进行中且有名额时,按报名时间把最早的候补提升为已通过 */

@@ -16,6 +16,10 @@ import './index.css';
 
 export default function MatePage() {
   const [category, setCategory] = useState('');
+  const [anonymousOnly, setAnonymousOnly] = useState(false);
+  const [city, setCity] = useState('');
+  const [daysAhead, setDaysAhead] = useState(0);
+  const [availableOnly, setAvailableOnly] = useState(false);
   const navigate = useNavigate();
   const { lat, lng } = useGeolocation(true);
 
@@ -24,12 +28,16 @@ export default function MatePage() {
       fetcher: async (p, cat, la, ln) => {
         const params: Record<string, unknown> = { page: p, size: 10 };
         if (cat) params.category = cat;
-        if (la != null && ln != null) { params.lat = la; params.lng = ln; }
+        if (anonymousOnly) params.anonymousOnly = true;
+        if (city.trim()) params.city = city.trim();
+        if (daysAhead) params.daysAhead = daysAhead;
+        if (availableOnly) params.availableOnly = true;
+        if (la != null && ln != null) { params.latitude = la; params.longitude = ln; params.radiusKm = 20; }
         const res = await mateApi.list(params);
         return res.data.data;
       },
       args: [category, lat, lng],
-      deps: [category, lat, lng],
+      deps: [category, lat, lng, anonymousOnly, city, daysAhead, availableOnly],
       onError: () => showToast('加载失败'),
     });
 
@@ -53,11 +61,11 @@ export default function MatePage() {
       {/* Filter bar */}
       <div className="mate-filter">
         <label className="filter-anonymous">
-          <input type="checkbox" /> 匿名匹配
+          <input type="checkbox" checked={anonymousOnly} onChange={e => setAnonymousOnly(e.target.checked)} /> 匿名匹配
         </label>
-        <span className="filter-item">类型</span>
-        <span className="filter-item">时间</span>
-        <span className="filter-item">地点</span>
+          <label className="filter-item"><span>时间</span><select value={daysAhead} onChange={e => setDaysAhead(Number(e.target.value))}><option value={0}>不限时间</option><option value={1}>今天起</option><option value={7}>7天内</option><option value={30}>30天内</option></select></label>
+          <label className="filter-item"><span>地点</span><input value={city} onChange={e => setCity(e.target.value)} placeholder="校区/区域" /></label>
+          <label className="filter-anonymous"><input type="checkbox" checked={availableOnly} onChange={e => setAvailableOnly(e.target.checked)} /> 有空位</label>
         <button className="filter-search"><AppIcon name="search" size={18} /></button>
       </div>
 

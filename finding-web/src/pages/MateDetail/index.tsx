@@ -66,10 +66,10 @@ export default function MateDetailPage() {
 
   // 发起人拉取申请人列表
   useEffect(() => {
-    if (!isOwner) return;
+    if (!isOwner && mate?.myApplicationStatus !== 1) return;
     mateApi.participants(mateId).then((res) => setParticipants(res.data.data || [])).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOwner, mateId]);
+  }, [isOwner, mate?.myApplicationStatus, mateId]);
 
   const handleJoinRequest = async (participantId: number, accept: boolean) => {
     setManaging(true);
@@ -169,10 +169,10 @@ export default function MateDetailPage() {
       )}
 
       {/* 发起人:申请管理 */}
-      {isOwner && (
+      {(isOwner || mate.myApplicationStatus === 1) && (
         <div className="md-section">
           <h4 className="md-section-title">
-            申请管理（{participants.filter(p => p.status === 0 || p.status === 4).length} 待处理）
+            {isOwner ? `申请管理（${participants.filter(p => p.status === 0 || p.status === 4).length} 待处理）` : '已通过成员'}
           </h4>
           {participants.length === 0 ? (
             <p className="md-desc" style={{ color: '#999' }}>暂无申请</p>
@@ -191,7 +191,7 @@ export default function MateDetailPage() {
                   </div>
                 )}
               </div>
-              {p.status === 0 || p.status === 4 ? (
+              {isOwner && (p.status === 0 || p.status === 4) ? (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                   {p.status === 4 && <span style={{ fontSize: 11, color: '#f59e0b', flexShrink: 0 }}>候补</span>}
                   <button
