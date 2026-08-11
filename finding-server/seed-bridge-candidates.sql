@@ -1,0 +1,56 @@
+USE finding;
+SET NAMES utf8mb4;
+
+-- 候选用户(相亲推荐测试)
+INSERT INTO `user` (`id`,`username`,`password`,`phone`,`nickname`,`avatar`,`gender`,`birthday`,`school`,`signature`,`city`,`latitude`,`longitude`,`real_name_verified`,`target_type`,`status`,`role`,`last_login_at`) VALUES
+(101,'u101','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000101','林晚晚','https://picsum.photos/seed/bridge101/300/300',2,'2003-04-23','济南大学','文学院大三在读，喜欢摄影和烘焙，性格温柔慢热，想找一起散步聊天的你 📷','济南',36.902358,117.85195,2,1,1,'user','2026-08-11 10:00:00'),
+(102,'u102','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000102','苏糖糖','https://picsum.photos/seed/bridge102/300/300',2,'2008-03-23','济南大学','大二艺术生，甜甜的女生，爱画画和追星，想谈一场甜甜的恋爱 🎨','潍坊',36.753828,118.079048,1,1,1,'user','2026-08-11 09:30:00'),
+(103,'u103','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000103','陈雨桐','https://picsum.photos/seed/bridge103/300/300',2,'2008-02-03','济南大学','工科女生但有一颗文艺心，周末爱去图书馆，想找个一起努力的学霸 💪','淄博',36.850932,118.092138,0,1,1,'user','2026-08-10 22:00:00'),
+(104,'u104','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000104','周心怡','https://picsum.photos/seed/bridge104/300/300',2,'2003-12-15','山东理工大学','医学生，作息规律，喜欢运动跑步，想找一个阳光健康的男生 🏃‍♀️','淄博',36.907351,118.035556,2,1,1,'user','2026-08-11 08:00:00'),
+(105,'u105','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000105','王若溪','https://picsum.photos/seed/bridge105/300/300',2,'2006-06-19','山东理工大学','外语系学姐，准备考研，温柔独立，期待双向奔赴的爱情 📚','淄博',36.893267,118.145566,2,2,1,'user','2026-08-09 20:00:00'),
+(106,'u106','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000106','赵晓雪','https://picsum.photos/seed/bridge106/300/300',2,'2007-04-28','山东理工大学','大一新生，活泼开朗自来熟，爱打游戏看电影，找游戏搭子兼对象 🎮','淄博',36.858921,117.95945,1,1,1,'user','2026-08-11 12:00:00'),
+(107,'u107','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000107','李思思','https://picsum.photos/seed/bridge107/300/300',2,'2007-06-12','山东理工大学','师范生，喜欢小朋友也喜欢你，会做饭会照顾人，想安稳恋爱 🍳','青岛',36.833535,117.923443,2,1,1,'user','2026-08-10 18:30:00'),
+(108,'u108','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000108','张梦洁','https://picsum.photos/seed/bridge108/300/300',2,'2007-08-13','山东师范大学','经管学院，社牛一枚，爱逛街爱美食，找个吃货男友一起探店 🍜','济南',36.757262,117.85963,0,1,1,'user','2026-08-11 14:00:00'),
+(109,'u109','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000109','刘诗涵','https://picsum.photos/seed/bridge109/300/300',2,'2003-06-13','山东师范大学','计算机专业，女程序员预备役，理性但不冷漠，找同频的男生 💻','淄博',36.753157,117.999769,2,1,1,'user','2026-08-08 21:00:00'),
+(110,'u110','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000110','孙雅静','https://picsum.photos/seed/bridge110/300/300',2,'2008-11-15','山东理工大学','舞蹈系，气质型女生，爱旅行爱拍照，想找个能一起看世界的人 🌍','青岛',36.886247,118.011693,2,2,1,'user','2026-08-11 11:00:00'),
+(111,'u111','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000111','杨子萱','https://picsum.photos/seed/bridge111/300/300',2,'2003-12-19','济南大学','药学专业，细心体贴，爱养猫爱生活，想找情绪稳定的另一半 🐱','淄博',36.949331,117.8915,0,2,1,'user','2026-08-10 16:00:00'),
+(112,'u112','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000112','吴佳琪','https://picsum.photos/seed/bridge112/300/300',2,'2003-08-03','山东理工大学','汉语言文学，文艺青年，喜欢写诗看书，想遇到灵魂契合的你 ✒️','淄博',36.89802,117.976648,2,1,1,'user','2026-08-09 23:00:00'),
+(113,'u113','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000113','郑欣怡','https://picsum.photos/seed/bridge113/300/300',2,'2004-02-13','济南大学','土木专业，性格直爽的女汉子，打篮球超棒，找个球友对象 🏀','淄博',36.870071,117.884366,1,1,1,'user','2026-08-11 07:30:00'),
+(114,'u114','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000114','马雨薇','https://picsum.photos/seed/bridge114/300/300',2,'2008-09-25','山东师范大学','学前教育，超级有耐心，喜欢小孩和猫狗，想找个有责任感的男生 🐶','潍坊',36.808691,117.986117,2,1,1,'user','2026-08-10 19:00:00'),
+(115,'u115','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000115','唐可心','https://picsum.photos/seed/bridge115/300/300',2,'2004-12-24','山东师范大学','金融专业，目标明确的女强人，但也想要温柔乡，找事业型男生 📈','淄博',36.910417,118.002299,2,1,1,'user','2026-08-11 13:00:00'),
+(116,'u116','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000116','王子豪','https://picsum.photos/seed/bridge116/300/300',1,'2001-04-05','青岛大学','体院学长，六块腹肌，阳光开朗，爱打球健身，想找个小鸟依人的女朋友 🏀','淄博',36.822151,117.88356,2,1,1,'user','2026-08-11 10:30:00'),
+(117,'u117','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000117','刘俊杰','https://picsum.photos/seed/bridge117/300/300',1,'2007-06-27','山东师范大学','计算机大四，准程序员，闷骚但专一，想找能一起写代码聊天的女生 💻','济南',36.919502,118.134085,2,2,1,'user','2026-08-11 09:00:00'),
+(118,'u118','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000118','陈志远','https://picsum.photos/seed/bridge118/300/300',1,'2007-02-24','山东理工大学','研究生在读，沉稳靠谱，爱读书爱思考，想找思想成熟的另一半 📚','淄博',36.864938,118.134055,2,1,1,'user','2026-08-10 21:00:00'),
+(119,'u119','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000119','赵天宇','https://picsum.photos/seed/bridge119/300/300',1,'2006-03-09','济南大学','大二学长，唱歌好听，会吉他，浪漫但靠谱，想找懂音乐的你 🎸','济南',36.799748,118.051506,2,1,1,'user','2026-08-11 15:00:00'),
+(120,'u120','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000120','孙浩然','https://picsum.photos/seed/bridge120/300/300',1,'2004-06-15','山东理工大学','建筑系，设计感满满，爱旅行爱摄影，想找个文艺的对象 📷','淄博',36.716006,117.85631,2,2,1,'user','2026-08-09 19:00:00'),
+(121,'u121','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000121','周子涵','https://picsum.photos/seed/bridge121/300/300',1,'2004-09-08','山东理工大学','医学系，白衣天使预备役，细心温柔，想找个互相照顾的人 🩺','淄博',36.757235,118.121626,2,1,1,'user','2026-08-11 08:30:00'),
+(122,'u122','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000122','吴泽宇','https://picsum.photos/seed/bridge122/300/300',1,'1999-06-03','山东理工大学','电竞少年，王者荣耀百星，手速一流，找一起开黑的女生 🎮','青岛',36.834808,118.067006,2,2,1,'user','2026-08-10 23:30:00'),
+(123,'u123','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000123','郑凯文','https://picsum.photos/seed/bridge123/300/300',1,'2007-10-19','山东理工大学','经管学院，实习中，目标明确，想找上进独立的另一半 💼','济南',36.747602,117.879079,2,2,1,'user','2026-08-11 12:30:00'),
+(124,'u124','$2a$10$pAEl9vM2h.sOYs25PXn3sOmfRU5UA/5g59gdgApLGUkIl0jGbTetW','13900000124','张一鸣','https://picsum.photos/seed/bridge124/300/300',1,'1999-07-12','济南大学','机械系，动手能力MAX，会修电脑会做饭，务实靠谱的理工男 🔧','淄博',36.868341,118.14525,2,1,1,'user','2026-08-09 22:30:00');
+
+-- 候选用户设置(searchable=1;每6个一个 friend_add_mode=0 自动通过)
+INSERT INTO `user_settings` (`user_id`,`chat_bg`,`friend_add_mode`,`profile_visible`,`searchable`) VALUES
+(101,NULL,0,1,1),
+(102,NULL,1,1,1),
+(103,NULL,1,1,1),
+(104,NULL,1,1,1),
+(105,NULL,1,1,1),
+(106,NULL,1,1,1),
+(107,NULL,0,1,1),
+(108,NULL,1,1,1),
+(109,NULL,1,1,1),
+(110,NULL,1,1,1),
+(111,NULL,1,1,1),
+(112,NULL,1,1,1),
+(113,NULL,0,1,1),
+(114,NULL,1,1,1),
+(115,NULL,1,1,1),
+(116,NULL,1,1,1),
+(117,NULL,1,1,1),
+(118,NULL,1,1,1),
+(119,NULL,0,1,1),
+(120,NULL,1,1,1),
+(121,NULL,1,1,1),
+(122,NULL,1,1,1),
+(123,NULL,1,1,1),
+(124,NULL,1,1,1);
