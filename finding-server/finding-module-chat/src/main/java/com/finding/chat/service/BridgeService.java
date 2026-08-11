@@ -1,5 +1,7 @@
 package com.finding.chat.service;
 
+import com.finding.chat.dto.UserCardConfigDTO;
+import com.finding.chat.entity.UserCardConfig;
 import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
@@ -39,4 +41,13 @@ public interface BridgeService {
 
     /** 对某候选「不感兴趣」:排除出推荐流并记录跳过事件 */
     void skipUser(Long userId, Long targetUserId);
+
+    /** 获取我的相识卡片展示配置(无记录返回全开默认) */
+    UserCardConfig getCardConfig(Long userId);
+
+    /** 更新我的相识卡片展示配置(不存在则插入) */
+    void updateCardConfig(Long userId, UserCardConfigDTO dto);
+
+    /** 预览我的卡片(别人视角,按我的配置裁剪字段) */
+    HomeFeedVO previewMyCard(Long userId);
 }

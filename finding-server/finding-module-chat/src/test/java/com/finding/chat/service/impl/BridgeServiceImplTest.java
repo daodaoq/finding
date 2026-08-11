@@ -1,8 +1,10 @@
 package com.finding.chat.service.impl;
 
 import com.finding.chat.config.MatchScoreWeights;
+import com.finding.chat.dto.UserCardConfigDTO;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.RecommendEvent;
+import com.finding.chat.entity.UserCardConfig;
 import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
@@ -12,6 +14,7 @@ import com.finding.chat.mapper.RecommendExcludeMapper;
 import com.finding.chat.mapper.RoomMapper;
 import com.finding.chat.mapper.UserMatchPreferenceMapper;
 import com.finding.chat.service.ChatService;
+import com.finding.chat.vo.HomeFeedVO;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
@@ -42,6 +45,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,6 +78,7 @@ class BridgeServiceImplTest {
     @Mock private UserMatchPreferenceMapper preferenceMapper;
     @Mock private RecommendExcludeMapper excludeMapper;
     @Mock private RecommendEventMapper eventMapper;
+    @Mock private com.finding.chat.mapper.UserCardConfigMapper cardConfigMapper;
     @Mock private MatchScoreWeights weights;
     @Mock private UserWriteGuard userWriteGuard;
     @Mock private InMemoryRateLimiter rateLimiter;
@@ -94,6 +99,7 @@ class BridgeServiceImplTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserSettings.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserMatchPreference.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), com.finding.chat.entity.RecommendExclude.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), com.finding.chat.entity.UserCardConfig.class);
     }
 
     private UserSettings settings(int friendAddMode) {
@@ -354,6 +360,49 @@ class BridgeServiceImplTest {
         when(eventMapper.insert(any())).thenThrow(new DuplicateKeyException("dedup_key"));
 
         assertDoesNotThrow(() -> service.skipUser(1L, 2L));
+    }
+
+    // ── 相识卡片配置 ──
+
+    @Test
+    void getCardConfig_noRow_returnsDefaults() {
+        when(cardConfigMapper.selectOne(any())).thenReturn(null);
+        UserCardConfig cfg = service.getCardConfig(1L);
+        assertEquals(1, cfg.getShowPhoto());
+        assertEquals(1, cfg.getShowNickname());
+    }
+
+    @Test
+    void updateCardConfig_insertsWhenNone() {
+        when(cardConfigMapper.selectOne(any())).thenReturn(null);
+        when(cardConfigMapper.insert(any())).thenReturn(1);
+        UserCardConfigDTO dto = new UserCardConfigDTO();
+        dto.setShowNickname(0);
+        service.updateCardConfig(1L, dto);
+
+        ArgumentCaptor<UserCardConfig> captor = ArgumentCaptor.forClass(UserCardConfig.class);
+        verify(cardConfigMapper).insert(captor.capture());
+        assertEquals(0, captor.getValue().getShowNickname());
+    }
+
+    @Test
+    void previewMyCard_appliesCardConfig() {
+        User me = new User();
+        me.setId(1L);
+        me.setNickname("测试");
+        me.setAvatar("a.jpg");
+        me.setGender(1);
+        me.setSchool("山东理工大学");
+        me.setCity("淄博");
+        when(userMapper.selectById(1L)).thenReturn(me);
+        UserCardConfig cfg = new UserCardConfig();
+        cfg.setShowNickname(0); // 隐藏昵称
+        when(cardConfigMapper.selectOne(any())).thenReturn(cfg);
+
+        HomeFeedVO vo = service.previewMyCard(1L);
+
+        assertNull(vo.getNickname());
+        assertEquals("a.jpg", vo.getAvatar());
     }
 
     private ChatApply pending(Long id, Long from, Long to) {

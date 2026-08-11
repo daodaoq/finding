@@ -14,13 +14,16 @@ import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.RecommendEvent;
 import com.finding.chat.entity.RecommendExclude;
 import com.finding.chat.entity.Room;
+import com.finding.chat.entity.UserCardConfig;
 import com.finding.chat.entity.UserMatchPreference;
+import com.finding.chat.dto.UserCardConfigDTO;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserFollow;
 import com.finding.user.entity.UserSettings;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
+import com.finding.chat.mapper.UserCardConfigMapper;
 import com.finding.chat.mapper.RecommendEventMapper;
 import com.finding.chat.mapper.RecommendExcludeMapper;
 import com.finding.chat.mapper.RoomMapper;
@@ -51,6 +54,7 @@ import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -79,6 +83,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final UserMatchPreferenceMapper preferenceMapper;
     private final RecommendExcludeMapper excludeMapper;
     private final RecommendEventMapper eventMapper;
+    private final UserCardConfigMapper cardConfigMapper;
     private final MatchScoreWeights weights;
     private final UserWriteGuard userWriteGuard;
     private final InMemoryRateLimiter rateLimiter;
@@ -218,8 +223,15 @@ public class BridgeServiceImpl implements BridgeService {
                                 .in(ChatApply::getToUserId, pageIds))
                         .stream().map(ChatApply::getToUserId).collect(Collectors.toSet());
 
+        // 批量加载本页候选人的卡片展示配置(按本人意愿裁剪字段)
+        Map<Long, UserCardConfig> cardConfigs = pageIds.isEmpty() ? Map.of()
+                : cardConfigMapper.selectList(new LambdaQueryWrapper<UserCardConfig>()
+                                .in(UserCardConfig::getUserId, pageIds))
+                        .stream().collect(Collectors.toMap(UserCardConfig::getUserId, c -> c));
+
         List<HomeFeedVO> records = paged.stream()
-                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds, s.score.reasons))
+                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds,
+                        cardConfigs.get(s.user.getId()), s.score.reasons))
                 .collect(Collectors.toList());
 
         // 记录曝光事件(按 user+target+type 每日去重)
@@ -623,6 +635,86 @@ public class BridgeServiceImpl implements BridgeService {
         }
     }
 
+    // ── 相识卡片展示配置 ──
+
+    @Override
+    public UserCardConfig getCardConfig(Long userId) {
+        UserCardConfig cfg = cardConfigMapper.selectOne(
+                new LambdaQueryWrapper<UserCardConfig>().eq(UserCardConfig::getUserId, userId));
+        return cfg != null ? cfg : defaultsCardConfig(userId);
+    }
+
+    @Override
+    @Transactional
+    public void updateCardConfig(Long userId, UserCardConfigDTO dto) {
+        UserCardConfig cfg = dto.toEntity();
+        cfg.setUserId(userId);
+        UserCardConfig existing = cardConfigMapper.selectOne(
+                new LambdaQueryWrapper<UserCardConfig>().eq(UserCardConfig::getUserId, userId));
+        if (existing == null) {
+            cardConfigMapper.insert(cfg);
+        } else {
+            cfg.setId(existing.getId());
+            cardConfigMapper.updateById(cfg);
+        }
+    }
+
+    @Override
+    public HomeFeedVO previewMyCard(Long userId) {
+        User me = userMapper.selectById(userId);
+        if (me == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        HomeFeedVO vo = new HomeFeedVO();
+        vo.setUserId(me.getId());
+        vo.setNickname(me.getNickname());
+        vo.setAvatar(me.getAvatar());
+        vo.setGender(me.getGender());
+        vo.setSchool(me.getSchool());
+        vo.setSignature(me.getSignature());
+        vo.setCity(me.getCity());
+        vo.setLastLoginAt(me.getLastLoginAt());
+        vo.setIsLiked(false);
+        vo.setMatchReasons(List.of());
+        // 预览即"别人看到的我的卡片":按我的配置裁剪字段
+        applyCardConfig(vo, getCardConfig(userId));
+        return vo;
+    }
+
+    /** 无配置时返回全开默认 */
+    private UserCardConfig defaultsCardConfig(Long userId) {
+        UserCardConfig c = new UserCardConfig();
+        c.setUserId(userId);
+        c.setShowPhoto(1);
+        c.setShowNickname(1);
+        c.setShowGender(1);
+        c.setShowSchool(1);
+        c.setShowCity(1);
+        c.setShowDistance(1);
+        c.setShowSignature(1);
+        c.setShowMatchReasons(1);
+        c.setShowLastOnline(1);
+        return c;
+    }
+
+    /** 按候选人卡片配置隐藏未开启的字段(null 视为开启) */
+    private void applyCardConfig(HomeFeedVO vo, UserCardConfig cfg) {
+        if (cfg == null) return;
+        if (!on(cfg.getShowPhoto())) vo.setAvatar(null);
+        if (!on(cfg.getShowNickname())) vo.setNickname(null);
+        if (!on(cfg.getShowGender())) vo.setGender(null);
+        if (!on(cfg.getShowSchool())) vo.setSchool(null);
+        if (!on(cfg.getShowCity())) vo.setCity(null);
+        if (!on(cfg.getShowDistance())) vo.setDistanceKm(null);
+        if (!on(cfg.getShowSignature())) vo.setSignature(null);
+        if (!on(cfg.getShowMatchReasons())) vo.setMatchReasons(null);
+        if (!on(cfg.getShowLastOnline())) vo.setLastLoginAt(null);
+    }
+
+    private boolean on(Integer v) {
+        return v == null || v == 1;
+    }
+
     // ── 不感兴趣 + 行为事件 ──
 
     @Override
@@ -751,7 +843,7 @@ public class BridgeServiceImpl implements BridgeService {
 
 
     private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId, Set<Long> appliedIds,
-                                List<String> matchReasons) {
+                                UserCardConfig cardConfig, List<String> matchReasons) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
@@ -773,6 +865,9 @@ public class BridgeServiceImpl implements BridgeService {
 
         // 是否已申请(由批量加载的 appliedIds 判断)
         vo.setIsLiked(appliedIds.contains(user.getId()));
+
+        // 按候选人卡片配置隐藏未开启的字段(在可见性投影之后叠加,只会更保守)
+        applyCardConfig(vo, cardConfig);
 
         return vo;
     }

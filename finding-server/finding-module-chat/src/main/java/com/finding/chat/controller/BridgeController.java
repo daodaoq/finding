@@ -6,7 +6,9 @@ import com.finding.user.common.VerificationGuard;
 import com.finding.chat.dto.ChatApplyDTO;
 import com.finding.chat.dto.ChatApplyHandleDTO;
 import com.finding.user.security.JwtInterceptor;
+import com.finding.chat.dto.UserCardConfigDTO;
 import com.finding.chat.dto.UserMatchPreferenceDTO;
+import com.finding.chat.entity.UserCardConfig;
 import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.vo.ChatApplyVO;
@@ -118,5 +120,30 @@ public class BridgeController {
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         bridgeService.skipUser(userId, targetId);
         return Result.ok();
+    }
+
+    /** 我的相识卡片展示配置 */
+    @GetMapping("/card-config")
+    public Result<UserCardConfig> getCardConfig() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(bridgeService.getCardConfig(userId));
+    }
+
+    /** 更新我的相识卡片展示配置 */
+    @PutMapping("/card-config")
+    public Result<Void> updateCardConfig(@Valid @RequestBody UserCardConfigDTO dto) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        bridgeService.updateCardConfig(userId, dto);
+        return Result.ok();
+    }
+
+    /** 预览我的卡片(别人视角,按我的配置裁剪) */
+    @GetMapping("/card-config/preview")
+    public Result<HomeFeedVO> previewMyCard() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(bridgeService.previewMyCard(userId));
     }
 }
