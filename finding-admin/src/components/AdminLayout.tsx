@@ -1,33 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, theme, Breadcrumb } from 'antd';
+import { Layout, Menu, Button, theme, Breadcrumb, type MenuProps } from 'antd';
+import { logoutAdmin } from '../utils/adminAuth';
 import {
-  DashboardOutlined, UserOutlined, SafetyOutlined,
-  FileTextOutlined, PictureOutlined, NotificationOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
-  WarningOutlined, TeamOutlined, UsergroupAddOutlined, CommentOutlined, StopOutlined, MessageOutlined,
+  DashboardOutlined, UserOutlined, FileTextOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, TeamOutlined,
 } from '@ant-design/icons';
 
 const { Header, Sider, Content, Footer } = Layout;
 
-const menuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '数据面板' },
-  { key: '/users', icon: <UserOutlined />, label: '用户管理' },
-  { key: '/verification', icon: <SafetyOutlined />, label: '实名审核' },
-  { key: '/reports', icon: <WarningOutlined />, label: '投诉管理' },
-  { key: '/posts', icon: <FileTextOutlined />, label: '动态管理' },
-  { key: '/post-review', icon: <SafetyOutlined />, label: '动态审核' },
-  { key: '/mate-review', icon: <TeamOutlined />, label: '搭子审核' },
-  { key: '/appeals', icon: <CommentOutlined />, label: '申诉管理' },
-  { key: '/comments', icon: <CommentOutlined />, label: '评论管理' },
-  { key: '/mates', icon: <TeamOutlined />, label: '搭子管理' },
-  { key: '/groups', icon: <UsergroupAddOutlined />, label: '群聊管理' },
-  { key: '/banners', icon: <PictureOutlined />, label: '轮播管理' },
-  { key: '/announcements', icon: <NotificationOutlined />, label: '系统公告' },
-  { key: '/banned-words', icon: <StopOutlined />, label: '违禁词管理' },
-  { key: '/chat-audit', icon: <MessageOutlined />, label: '聊天审查' },
-  { key: '/feedback', icon: <CommentOutlined />, label: '用户反馈' },
+const menuItems: MenuProps['items'] = [
+  { key: '/dashboard', icon: <DashboardOutlined />, label: '数据概览' },
+  {
+    key: 'users-and-risk',
+    icon: <UserOutlined />,
+    label: '用户与风控',
+    children: [
+      { key: '/users', label: '用户管理' },
+      { key: '/verification', label: '实名审核' },
+      { key: '/reports', label: '投诉管理' },
+      { key: '/appeals', label: '申诉管理' },
+      { key: '/feedback', label: '用户反馈' },
+    ],
+  },
+  {
+    key: 'content-operations',
+    icon: <FileTextOutlined />,
+    label: '内容运营',
+    children: [
+      { key: '/posts', label: '动态管理' },
+      { key: '/post-review', label: '动态审核' },
+      { key: '/comments', label: '评论管理' },
+      { key: '/banners', label: '轮播管理' },
+      { key: '/announcements', label: '系统公告' },
+      { key: '/banned-words', label: '违禁词管理' },
+    ],
+  },
+  {
+    key: 'social-and-activities',
+    icon: <TeamOutlined />,
+    label: '社交与活动',
+    children: [
+      { key: '/mates', label: '搭子管理' },
+      { key: '/mate-review', label: '搭子审核' },
+      { key: '/groups', label: '群聊管理' },
+      { key: '/chat-audit', label: '聊天审查' },
+    ],
+  },
 ];
+
+const groupByPath: Record<string, string> = {
+  '/users': 'users-and-risk',
+  '/verification': 'users-and-risk',
+  '/reports': 'users-and-risk',
+  '/appeals': 'users-and-risk',
+  '/feedback': 'users-and-risk',
+  '/posts': 'content-operations',
+  '/post-review': 'content-operations',
+  '/comments': 'content-operations',
+  '/banners': 'content-operations',
+  '/announcements': 'content-operations',
+  '/banned-words': 'content-operations',
+  '/mates': 'social-and-activities',
+  '/mate-review': 'social-and-activities',
+  '/groups': 'social-and-activities',
+  '/chat-audit': 'social-and-activities',
+};
 
 const breadcrumbMap: Record<string, string> = {
   '/dashboard': '数据面板',
@@ -53,11 +91,16 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = theme.useToken();
+  const activeGroup = groupByPath[location.pathname];
+  const [openKeys, setOpenKeys] = useState<string[]>(activeGroup ? [activeGroup] : []);
 
-  // 登出:清除 token 后回登录页(路由级守卫 RequireAdminAuth 负责拦截未登录访问)
+  useEffect(() => {
+    if (activeGroup) setOpenKeys([activeGroup]);
+  }, [activeGroup]);
+
+  // 登出:集中清理 token 并回登录页(路由级守卫 RequireAdminAuth 负责拦截未登录访问)
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    navigate('/login', { replace: true });
+    logoutAdmin('已退出登录');
   };
 
   const pathSnippets = location.pathname.split('/').filter((i) => i);
@@ -101,8 +144,10 @@ export default function AdminLayout() {
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
+          openKeys={openKeys}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
+          onOpenChange={(keys) => setOpenKeys(keys as string[])}
           style={{ borderRight: 0, marginTop: 4 }}
         />
       </Sider>

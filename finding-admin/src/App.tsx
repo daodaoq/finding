@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { registerNavigator, unregisterNavigator } from './utils/adminAuth';
 import AdminLayout from './components/AdminLayout';
 import RequireAdminAuth from './components/RequireAdminAuth';
 import Dashboard from './pages/Dashboard';
@@ -21,10 +23,24 @@ import ChatAudit from './pages/ChatAudit';
 import Feedback from './pages/Feedback';
 import Login from './pages/Login';
 
+/**
+ * 将 navigate 注册到模块级导航器,供 axios 拦截器等 Router 上下文外的代码 SPA 内跳转。
+ * 始终挂载(无论登录态),避免 401 时整页刷新。
+ */
+function RouterNavigator() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    registerNavigator(navigate);
+    return () => unregisterNavigator();
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#ff6b81' } }}>
       <BrowserRouter basename="/admin">
+        <RouterNavigator />
         <Routes>
           <Route path="/login" element={<Login />} />
           {/* 受保护路由:未登录一律跳登录页 */}

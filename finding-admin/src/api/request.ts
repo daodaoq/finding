@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { message } from 'antd';
+import { adminTokenStorage } from '../utils/adminTokenStorage';
+import { logoutAdmin } from '../utils/adminAuth';
 
 const request = axios.create({
   baseURL: '/api/v1',
@@ -9,7 +11,7 @@ const request = axios.create({
 
 // Request interceptor
 request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken');
+  const token = adminTokenStorage.get();
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -20,11 +22,10 @@ request.interceptors.request.use((config) => {
 request.interceptors.response.use(
   (response) => {
     const res = response.data;
-    // res 可能是 Spring Security 返回的非标准格式（如 403 页面）
+    // res 可能是 Spring Security 返回的非标准格式(如 403 页面)
     if (res && typeof res.code !== 'undefined' && res.code !== 200) {
       if (res.code === 1001 || res.code === 1003) {
-        localStorage.removeItem('adminToken');
-        window.location.href = '/admin/login';
+        logoutAdmin();
         return Promise.reject(new Error(res.message));
       }
       message.error(res.message || '请求失败');
@@ -35,9 +36,8 @@ request.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     if (status === 401 || status === 403) {
-      localStorage.removeItem('adminToken');
-      message.error('登录已过期，请重新登录');
-      window.location.href = '/admin/login';
+      // 集中登出:清 token + 提示 + SPA 内跳转
+      logoutAdmin();
       return Promise.reject(error);
     }
     message.error('网络错误，请稍后重试');

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, Form, Input, Button, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { adminTokenStorage } from '../utils/adminTokenStorage';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -11,10 +12,9 @@ export default function Login() {
   // 被守卫拦下时携带的原目标地址,登录后回跳
   const from = (location.state as { from?: string } | null)?.from || '/dashboard';
 
-  // 已登录则直接跳转(优先回原目标)
+  // 已登录则直接跳转(优先回原目标);token 过期会被 getValid 自动清除
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (token) {
+    if (adminTokenStorage.getValid()) {
       navigate(from, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -30,7 +30,7 @@ export default function Login() {
       });
       const token = res.data?.data?.accessToken;
       if (token) {
-        localStorage.setItem('adminToken', token);
+        adminTokenStorage.set(token);
         message.success('登录成功');
         navigate(from, { replace: true });
       } else {
