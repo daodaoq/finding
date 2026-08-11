@@ -25,13 +25,14 @@ public class BridgeController {
     private final BridgeService bridgeService;
     private final VerificationGuard verificationGuard;
 
-    /** 分页获取推荐用户列表 */
+    /** 分页获取推荐用户列表(仅登录用户可见真实推荐数据) */
     @GetMapping("/recommend")
     public Result<PageVO<HomeFeedVO>> recommend(@RequestParam(defaultValue = "1") int page,
                                                  @RequestParam(defaultValue = "10") int size,
                                                  @RequestParam(required = false) Double lat,
                                                  @RequestParam(required = false) Double lng) {
         Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         return Result.ok(bridgeService.getRecommendFeed(userId, lat, lng, page, size));
     }
 

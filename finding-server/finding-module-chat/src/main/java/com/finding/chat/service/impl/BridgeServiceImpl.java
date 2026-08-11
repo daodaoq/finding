@@ -85,32 +85,41 @@ public class BridgeServiceImpl implements BridgeService {
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
-        Set<Long> excludeIds = new HashSet<>();
-        User currentUser = null;
-        UserMatchPreference pref = null;
-        if (userId != null) {
-            excludeIds.add(userId);
-            currentUser = userMapper.selectById(userId);
-            pref = getMatchPreference(userId);
-
-            // 排除已申请过的
-            List<ChatApply> sentApplies = chatApplyMapper.selectList(
-                    new LambdaQueryWrapper<ChatApply>().eq(ChatApply::getFromUserId, userId));
-            sentApplies.forEach(a -> excludeIds.add(a.getToUserId()));
-
-            // 排除已关注的
-            List<UserFollow> follows = followMapper.selectList(
-                    new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId));
-            follows.forEach(f -> excludeIds.add(f.getFolloweeId()));
-
-            // 排除与当前用户双向拉黑的用户
-            excludeIds.addAll(relationshipService.blockedUserIds(userId));
-
-            // 排除"不感兴趣"的用户
-            List<RecommendExclude> excludes = excludeMapper.selectList(
-                    new LambdaQueryWrapper<RecommendExclude>().eq(RecommendExclude::getUserId, userId));
-            excludes.forEach(e -> excludeIds.add(e.getTargetUserId()));
+        if (userId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED);
         }
+        // 反爬限流:同用户 1 分钟最多 60 次推荐请求
+        if (!rateLimiter.tryAcquire("recommend:" + userId, 60, 60_000)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT);
+        }
+        // 分页与坐标参数校验
+        if (page < 1 || size < 1 || size > 50) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "分页参数不合法: page>=1, size 1-50");
+        }
+        validateLatLng(lat, lng);
+
+        Set<Long> excludeIds = new HashSet<>();
+        excludeIds.add(userId);
+        User currentUser = userMapper.selectById(userId);
+        UserMatchPreference pref = getMatchPreference(userId);
+
+        // 排除已申请过的
+        List<ChatApply> sentApplies = chatApplyMapper.selectList(
+                new LambdaQueryWrapper<ChatApply>().eq(ChatApply::getFromUserId, userId));
+        sentApplies.forEach(a -> excludeIds.add(a.getToUserId()));
+
+        // 排除已关注的
+        List<UserFollow> follows = followMapper.selectList(
+                new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId));
+        follows.forEach(f -> excludeIds.add(f.getFolloweeId()));
+
+        // 排除与当前用户双向拉黑的用户
+        excludeIds.addAll(relationshipService.blockedUserIds(userId));
+
+        // 排除"不感兴趣"的用户
+        List<RecommendExclude> excludes = excludeMapper.selectList(
+                new LambdaQueryWrapper<RecommendExclude>().eq(RecommendExclude::getUserId, userId));
+        excludes.forEach(e -> excludeIds.add(e.getTargetUserId()));
 
         // 排除关闭"允许被搜索"的用户(关闭搜索同时不出现在相亲推荐)
         List<Long> hiddenIds = userSettingsMapper.selectList(
@@ -146,35 +155,29 @@ public class BridgeServiceImpl implements BridgeService {
 
         // ── 候选全量过滤(内存:年龄/距离) → 可解释打分 → 稳定排序 → 分页 ──
         List<User> candidates = userMapper.selectList(wrapper);
-        final User me = currentUser;
-        final UserMatchPreference myPref = pref;
         List<Scored> scored = new ArrayList<>();
         for (User c : candidates) {
-            if (me == null) {
-                scored.add(new Scored(c, new ScoreResult(0, List.of())));
-                continue;
-            }
             // 年龄范围过滤
-            if (myPref != null && ((myPref.getMinAge() != null && myPref.getMinAge() > 0)
-                    || (myPref.getMaxAge() != null && myPref.getMaxAge() > 0))) {
+            if (pref != null && ((pref.getMinAge() != null && pref.getMinAge() > 0)
+                    || (pref.getMaxAge() != null && pref.getMaxAge() > 0))) {
                 int age = ageOf(c);
                 if (age == 0) continue;
-                int min = myPref.getMinAge() != null ? myPref.getMinAge() : 0;
-                int max = myPref.getMaxAge() != null && myPref.getMaxAge() > 0 ? myPref.getMaxAge() : Integer.MAX_VALUE;
+                int min = pref.getMinAge() != null ? pref.getMinAge() : 0;
+                int max = pref.getMaxAge() != null && pref.getMaxAge() > 0 ? pref.getMaxAge() : Integer.MAX_VALUE;
                 if (age < min || age > max) continue;
             }
             Double dist = distanceKm(lat, lng, c);
             // 距离范围过滤
-            if (myPref != null && myPref.getMaxDistanceKm() != null && myPref.getMaxDistanceKm() > 0
-                    && dist != null && dist > myPref.getMaxDistanceKm()) {
+            if (pref != null && pref.getMaxDistanceKm() != null && pref.getMaxDistanceKm() > 0
+                    && dist != null && dist > pref.getMaxDistanceKm()) {
                 continue;
             }
             // 资料完整度门槛过滤
-            if (myPref != null && myPref.getMinCompleteness() != null && myPref.getMinCompleteness() > 0
-                    && completeness(c) < myPref.getMinCompleteness()) {
+            if (pref != null && pref.getMinCompleteness() != null && pref.getMinCompleteness() > 0
+                    && completeness(c) < pref.getMinCompleteness()) {
                 continue;
             }
-            scored.add(new Scored(c, scoreCandidate(me, c, myPref, dist)));
+            scored.add(new Scored(c, scoreCandidate(currentUser, c, pref, dist)));
         }
         scored.sort((a, b) -> {
             int cmp = Integer.compare(b.score.score, a.score.score); // 得分降序
@@ -182,21 +185,32 @@ public class BridgeServiceImpl implements BridgeService {
         });
 
         int total = scored.size();
-        int from = Math.min((page - 1) * size, total);
-        int to = Math.min(from + size, total);
-        List<Scored> paged = scored.subList(from, to);
+        // 用 long 计算偏移,避免超大 page 造成整型溢出
+        long fromL = Math.min((long) (page - 1) * size, total);
+        long toL = Math.min(fromL + size, total);
+        List<Scored> paged = scored.subList((int) fromL, (int) toL);
 
         List<HomeFeedVO> records = paged.stream()
                 .map(s -> toFeedVO(s.user, lat, lng, userId, s.score.reasons))
                 .collect(Collectors.toList());
 
-        // 记录曝光事件(匿名行为统计)
-        if (userId != null) {
-            for (Scored s : paged) {
-                recordEvent(userId, "expose", s.user.getId());
-            }
+        // 记录曝光事件(按 user+target+type 每日去重)
+        for (Scored s : paged) {
+            recordEvent(userId, "expose", s.user.getId());
         }
         return PageVO.of(records, (long) total, page, size);
+    }
+
+    /** 校验经纬度范围(纬度[-90,90],经度[-180,180]),拒绝 NaN/无穷/单边缺失 */
+    private void validateLatLng(Double lat, Double lng) {
+        if (lat == null && lng == null) return;
+        if (lat == null || lng == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "经纬度需同时提供");
+        }
+        if (!Double.isFinite(lat) || lat < -90 || lat > 90
+                || !Double.isFinite(lng) || lng < -180 || lng > 180) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "经纬度超出合法范围");
+        }
     }
 
     private record ScoreResult(int score, List<String> reasons) {}

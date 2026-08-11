@@ -2,6 +2,7 @@ package com.finding.app.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.finding.common.Result;
+import com.finding.common.ResultCode;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.app.entity.SystemAnnouncement;
 import com.finding.app.mapper.SystemAnnouncementMapper;
@@ -27,7 +28,12 @@ public class HomeController {
                                             @RequestParam(defaultValue = "10") int size,
                                             @RequestParam(required = false) Double lat,
                                             @RequestParam(required = false) Double lng) {
-        return Result.ok(homeService.getRecommendFeed(JwtInterceptor.getCurrentUserId(), lat, lng, page, size));
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        if (page < 1 || size < 1 || size > 50) {
+            return Result.error(ResultCode.PARAM_ERROR, "分页参数不合法: page>=1, size 1-50");
+        }
+        return Result.ok(homeService.getRecommendFeed(userId, lat, lng, page, size));
     }
 
     @GetMapping("/banners")
