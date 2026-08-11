@@ -21,6 +21,9 @@ public class UserCardConfigDTO {
     private Integer showNickname;
     @Min(value = 0, message = "开关仅允许 0/1")
     @Max(value = 1, message = "开关仅允许 0/1")
+    private Integer showAge;
+    @Min(value = 0, message = "开关仅允许 0/1")
+    @Max(value = 1, message = "开关仅允许 0/1")
     private Integer showGender;
     @Min(value = 0, message = "开关仅允许 0/1")
     @Max(value = 1, message = "开关仅允许 0/1")
@@ -31,6 +34,12 @@ public class UserCardConfigDTO {
     @Min(value = 0, message = "开关仅允许 0/1")
     @Max(value = 1, message = "开关仅允许 0/1")
     private Integer showDistance;
+    @Min(value = 0, message = "开关仅允许 0/1")
+    @Max(value = 1, message = "开关仅允许 0/1")
+    private Integer showVerified;
+    @Min(value = 0, message = "开关仅允许 0/1")
+    @Max(value = 1, message = "开关仅允许 0/1")
+    private Integer showTargetType;
     @Min(value = 0, message = "开关仅允许 0/1")
     @Max(value = 1, message = "开关仅允许 0/1")
     private Integer showSignature;

@@ -673,6 +673,9 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setSchool(me.getSchool());
         vo.setSignature(me.getSignature());
         vo.setCity(me.getCity());
+        vo.setAge(ageOf(me) > 0 ? ageOf(me) : null);
+        vo.setVerified(me.getRealNameVerified() != null && me.getRealNameVerified() == 2 ? 1 : 0);
+        vo.setTargetType(me.getTargetType());
         vo.setLastLoginAt(me.getLastLoginAt());
         vo.setIsLiked(false);
         vo.setMatchReasons(List.of());
@@ -687,10 +690,13 @@ public class BridgeServiceImpl implements BridgeService {
         c.setUserId(userId);
         c.setShowPhoto(1);
         c.setShowNickname(1);
+        c.setShowAge(1);
         c.setShowGender(1);
         c.setShowSchool(1);
         c.setShowCity(1);
         c.setShowDistance(1);
+        c.setShowVerified(1);
+        c.setShowTargetType(1);
         c.setShowSignature(1);
         c.setShowMatchReasons(1);
         c.setShowLastOnline(1);
@@ -702,10 +708,13 @@ public class BridgeServiceImpl implements BridgeService {
         if (cfg == null) return;
         if (!on(cfg.getShowPhoto())) vo.setAvatar(null);
         if (!on(cfg.getShowNickname())) vo.setNickname(null);
+        if (!on(cfg.getShowAge())) vo.setAge(null);
         if (!on(cfg.getShowGender())) vo.setGender(null);
         if (!on(cfg.getShowSchool())) vo.setSchool(null);
         if (!on(cfg.getShowCity())) vo.setCity(null);
         if (!on(cfg.getShowDistance())) vo.setDistanceKm(null);
+        if (!on(cfg.getShowVerified())) vo.setVerified(null);
+        if (!on(cfg.getShowTargetType())) vo.setTargetType(null);
         if (!on(cfg.getShowSignature())) vo.setSignature(null);
         if (!on(cfg.getShowMatchReasons())) vo.setMatchReasons(null);
         if (!on(cfg.getShowLastOnline())) vo.setLastLoginAt(null);
@@ -854,6 +863,10 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setSchool(user.getSchool());
         vo.setSignature(detailed ? user.getSignature() : null);
         vo.setCity(detailed ? user.getCity() : null);
+        // 公开字段:年龄/认证/交友目标(受卡片配置控制)
+        vo.setAge(ageOf(user) > 0 ? ageOf(user) : null);
+        vo.setVerified(user.getRealNameVerified() != null && user.getRealNameVerified() == 2 ? 1 : 0);
+        vo.setTargetType(user.getTargetType());
         vo.setLastLoginAt(user.getLastLoginAt());
         vo.setMatchReasons(matchReasons);
 

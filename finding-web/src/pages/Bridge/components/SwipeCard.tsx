@@ -11,34 +11,42 @@ interface Props {
 
 /**
  * 单卡推荐:一次展示一个用户,底部悬浮 爱心=喜欢 / 叉号=不感兴趣。
+ * 采用多卡片结构:资料卡(主) + 介绍卡/标签卡/活跃卡(可选,按启用的字段渲染)。
  * 各字段按存在性渲染:候选人的卡片配置会隐藏未开启的字段(后端返回 null)。
  */
 export default function SwipeCard({ user, onLike, onSkip, disabled }: Props) {
+  const hasName = !!user.nickname;
   const hasMeta = !!(user.school || user.city || user.distanceKm != null);
-  const hasOverlay = !!(user.nickname || hasMeta);
+  const hasIntro = !!user.signature;
+  const hasTags = !!(user.matchReasons && user.matchReasons.length > 0);
+  const hasOnline = !!user.lastLoginAt;
+  const targetLabel = user.targetType === 1 ? '找对象'
+    : user.targetType === 2 ? '交朋友' : '';
 
   return (
     <div className="swipe-wrap">
+      {/* 资料卡(主) */}
       <div className="swipe-card">
-        {/* 照片区(头像为主图) */}
         <div className="swipe-photo">
           {user.avatar ? (
             <img src={user.avatar} alt="" />
           ) : (
             <div className="swipe-photo-fallback" />
           )}
-          {hasOverlay && (
+          {(hasName || hasMeta || !!targetLabel) && (
             <>
               <div className="swipe-photo-shade" />
               <div className="swipe-info-overlay">
-                {user.nickname && (
+                {hasName && (
                   <div className="swipe-name-row">
                     <span className="swipe-name">{user.nickname}</span>
+                    {!!user.age && <span className="swipe-age">{user.age}</span>}
                     {!!user.gender && (
                       <span className={`swipe-gender ${user.gender === 1 ? 'male' : 'female'}`}>
                         {user.gender === 1 ? '♂' : '♀'}
                       </span>
                     )}
+                    {user.verified === 1 && <span className="swipe-verified">已认证</span>}
                   </div>
                 )}
                 {hasMeta && (
@@ -50,24 +58,38 @@ export default function SwipeCard({ user, onLike, onSkip, disabled }: Props) {
                     </span>
                   </div>
                 )}
+                {!!targetLabel && <div className="swipe-target">{targetLabel}</div>}
               </div>
             </>
           )}
         </div>
-
-        {/* 公开自我介绍区(仅在有内容时渲染) */}
-        {(user.signature || (user.matchReasons && user.matchReasons.length > 0) || user.lastLoginAt) && (
-          <div className="swipe-body">
-            {user.signature && <p className="swipe-bio">{user.signature}</p>}
-            {user.matchReasons && user.matchReasons.length > 0 && (
-              <div className="swipe-reasons">
-                {user.matchReasons.map((r) => <span key={r} className="swipe-reason-chip">{r}</span>)}
-              </div>
-            )}
-            {user.lastLoginAt && <p className="swipe-online">{fmtOnline(user.lastLoginAt)}</p>}
-          </div>
-        )}
       </div>
+
+      {/* 介绍卡 */}
+      {hasIntro && (
+        <div className="swipe-subcard">
+          <div className="swipe-subcard-title">自我介绍</div>
+          <p className="swipe-bio">{user.signature}</p>
+        </div>
+      )}
+
+      {/* 标签卡 */}
+      {hasTags && (
+        <div className="swipe-subcard">
+          <div className="swipe-subcard-title">匹配理由</div>
+          <div className="swipe-reasons">
+            {user.matchReasons!.map((r) => <span key={r} className="swipe-reason-chip">{r}</span>)}
+          </div>
+        </div>
+      )}
+
+      {/* 活跃卡 */}
+      {hasOnline && (
+        <div className="swipe-subcard">
+          <div className="swipe-subcard-title">在线状态</div>
+          <p className="swipe-online">{fmtOnline(user.lastLoginAt)}</p>
+        </div>
+      )}
 
       {/* 悬浮操作按钮 */}
       <div className="swipe-actions">

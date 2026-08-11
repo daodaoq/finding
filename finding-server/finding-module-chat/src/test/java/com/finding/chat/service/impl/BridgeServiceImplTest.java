@@ -41,6 +41,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -394,6 +395,9 @@ class BridgeServiceImplTest {
         me.setGender(1);
         me.setSchool("山东理工大学");
         me.setCity("淄博");
+        me.setBirthday(LocalDate.of(2000, 1, 1));
+        me.setRealNameVerified(2);
+        me.setTargetType(1);
         when(userMapper.selectById(1L)).thenReturn(me);
         UserCardConfig cfg = new UserCardConfig();
         cfg.setShowNickname(0); // 隐藏昵称
@@ -403,6 +407,33 @@ class BridgeServiceImplTest {
 
         assertNull(vo.getNickname());
         assertEquals("a.jpg", vo.getAvatar());
+        // 新字段默认展示
+        assertEquals(Integer.valueOf(26), vo.getAge());
+        assertEquals(Integer.valueOf(1), vo.getVerified());
+        assertEquals(Integer.valueOf(1), vo.getTargetType());
+    }
+
+    @Test
+    void previewMyCard_hidesNewFieldsWhenDisabled() {
+        User me = new User();
+        me.setId(1L);
+        me.setNickname("测试");
+        me.setAvatar("a.jpg");
+        me.setBirthday(LocalDate.of(2000, 1, 1));
+        me.setRealNameVerified(2);
+        me.setTargetType(2);
+        when(userMapper.selectById(1L)).thenReturn(me);
+        UserCardConfig cfg = new UserCardConfig();
+        cfg.setShowAge(0);
+        cfg.setShowVerified(0);
+        cfg.setShowTargetType(0);
+        when(cardConfigMapper.selectOne(any())).thenReturn(cfg);
+
+        HomeFeedVO vo = service.previewMyCard(1L);
+
+        assertNull(vo.getAge());
+        assertNull(vo.getVerified());
+        assertNull(vo.getTargetType());
     }
 
     private ChatApply pending(Long id, Long from, Long to) {

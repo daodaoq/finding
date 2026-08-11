@@ -1,5 +1,5 @@
 .mycard-page {
-  background: #f8f8f8;
+  background: #fff;
   min-height: 100vh;
   padding-bottom: 32px;
 }
@@ -45,6 +45,21 @@
   color: #ccc;
   font-size: 11px;
   margin: 4px 16px 0;
+}
+
+/* 按卡片分组 */
+.mycard-section {
+  margin: 0 16px 16px;
+}
+.mycard-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+  margin: 0 0 8px;
+  padding: 0 4px;
+}
+.mycard-section .mycard-list {
+  margin: 0;
 }
 
 .mycard-list {
@@ -102,7 +117,7 @@
   transition: left 0.2s;
 }
 .mycard-switch.on {
-  background: linear-gradient(135deg, #e8a8b7, #f2c4cb);
+  background: linear-gradient(135deg, #29241f, #ededed);
 }
 .mycard-switch.on .mycard-switch-dot { left: 23px; }
 
@@ -113,7 +128,7 @@
   height: 46px;
   border: none;
   border-radius: 22px;
-  background: linear-gradient(135deg, #e8a8b7, #f2c4cb);
+  background: linear-gradient(135deg, #29241f, #ededed);
   color: #fff;
   font-size: 15px;
   font-weight: 600;

@@ -10,6 +10,8 @@ export interface User {
   city: string;
   realNameVerified: number;
   targetType?: number;
+  /** 生日(仅本人可见,用于卡片预览年龄) */
+  birthday?: string;
   followerCount: number;
   followingCount: number;
   postCount: number;

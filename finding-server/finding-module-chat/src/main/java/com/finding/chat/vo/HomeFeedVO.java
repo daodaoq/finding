@@ -12,10 +12,13 @@ public class HomeFeedVO {
     private String nickname;
     private String avatar;
     private Integer gender;
+    private Integer age;         // 有生日时计算
     private String school;
     private String signature;
     private String city;
     private Double distanceKm;
+    private Integer verified;    // 是否已实名认证 0/1
+    private Integer targetType;  // 交友目标 0=未设置 1=找对象 2=交朋友
     private LocalDateTime lastLoginAt;
 
     // Computed

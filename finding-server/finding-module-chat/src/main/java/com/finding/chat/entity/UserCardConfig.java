@@ -22,10 +22,13 @@ public class UserCardConfig {
     private Long userId;
     private Integer showPhoto;       // 照片
     private Integer showNickname;    // 昵称
+    private Integer showAge;         // 年龄
     private Integer showGender;      // 性别
     private Integer showSchool;      // 学校
     private Integer showCity;        // 城市
     private Integer showDistance;    // 距离
+    private Integer showVerified;    // 实名认证标识
+    private Integer showTargetType;  // 交友目标
     private Integer showSignature;   // 自我介绍
     private Integer showMatchReasons;// 匹配理由
     private Integer showLastOnline;  // 最近在线

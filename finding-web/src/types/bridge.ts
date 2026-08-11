@@ -2,10 +2,13 @@
 export interface UserCardConfig {
   showPhoto: number;
   showNickname: number;
+  showAge: number;
   showGender: number;
   showSchool: number;
   showCity: number;
   showDistance: number;
+  showVerified: number;
+  showTargetType: number;
   showSignature: number;
   showMatchReasons: number;
   showLastOnline: number;
@@ -16,11 +19,17 @@ export interface BridgeRecommendUser {
   nickname: string;
   avatar: string;
   gender: number;
+  /** 年龄(有生日时计算,隐藏时为 null) */
+  age?: number;
   school: string;
   signature: string;
   city: string;
   /** 距离km(无定位或隐藏时为 null) */
   distanceKm?: number;
+  /** 是否已实名认证 0/1 */
+  verified?: number;
+  /** 交友目标 0=未设置 1=找对象 2=交朋友 */
+  targetType?: number;
   lastLoginAt: string;
   isLiked: boolean;
   mutualFriends: number;

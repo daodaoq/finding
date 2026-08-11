@@ -221,6 +221,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
         UserVO vo = toVO(user);
+        // 生日仅本人可见(用于卡片预览计算年龄)
+        vo.setBirthday(user.getBirthday());
 
         // 统计关注/粉丝/动态数
         vo.setFollowerCount(followMapper.selectCount(

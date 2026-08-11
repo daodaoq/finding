@@ -2,6 +2,7 @@ package com.finding.user.vo;
 
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -18,6 +19,8 @@ public class UserVO {
     private String city;
     private Integer realNameVerified;
     private Integer targetType;
+    /** 生日(仅本人 getMe 返回;他人资料不返回) */
+    private LocalDate birthday;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
 
