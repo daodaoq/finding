@@ -27,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.context.event.EventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -459,7 +461,7 @@ public class MateServiceImpl implements MateService {
             if (pRows == 0) {
                 throw new BusinessException(ResultCode.MATE_APPLY_HANDLED);
             }
-            messageService.notify(userId, participant.getUserId(), "mate_accepted", "你的搭子申请已通过", id);
+            notifyAfterCommit(userId, participant.getUserId(), "mate_accepted", "你的搭子申请已通过", id);
         } else {
             int pRows = participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
                     .eq(MateParticipant::getId, participantId)
@@ -783,6 +785,17 @@ public class MateServiceImpl implements MateService {
                         MateParticipantStatus.WAITLISTED.getCode()));
         for (MateParticipant p : participants) {
             messageService.notify(invitation.getUserId(), p.getUserId(), "mate_cancelled", text, invitation.getId());
+        }
+    }
+
+    private void notifyAfterCommit(Long fromUserId, Long toUserId, String type, String content, Long referenceId) {
+        Runnable notification = () -> messageService.notify(fromUserId, toUserId, type, content, referenceId);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { notification.run(); }
+            });
+        } else {
+            notification.run();
         }
     }
 }
