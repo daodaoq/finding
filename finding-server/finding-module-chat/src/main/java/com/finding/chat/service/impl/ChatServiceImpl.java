@@ -181,11 +181,21 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public List<ConversationVO> listConversations(Long userId) {
-        // 从 contact 表查询会话列表(隐藏会话不出现在列表;置顶优先,再按活跃时间倒序)
+        return listConversationsByHidden(userId, false);
+    }
+
+    @Override
+    public List<ConversationVO> listHiddenConversations(Long userId) {
+        return listConversationsByHidden(userId, true);
+    }
+
+    /** 会话列表(hidden=false 未隐藏列表 / hidden=true 已隐藏会话,供用户手动恢复) */
+    private List<ConversationVO> listConversationsByHidden(Long userId, boolean hidden) {
+        // 从 contact 表查询会话列表(隐藏会话不出现在主列表;置顶优先,再按活跃时间倒序)
         List<Contact> contacts = contactMapper.selectList(
                 new LambdaQueryWrapper<Contact>()
                         .eq(Contact::getUid, userId)
-                        .eq(Contact::getHidden, 0)
+                        .eq(Contact::getHidden, hidden ? 1 : 0)
                         .orderByDesc(Contact::getPinned)
                         .orderByDesc(Contact::getActiveTime));
 

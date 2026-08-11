@@ -23,6 +23,9 @@ public interface ChatService {
     /** 获取当前用户的所有会话列表 */
     List<ConversationVO> listConversations(Long userId);
 
+    /** 已隐藏会话列表(供用户手动恢复) */
+    List<ConversationVO> listHiddenConversations(Long userId);
+
     /** 发送私聊消息（REST 方式，客户端只能以 roomId 指定会话；返回落库后的真实消息回执） */
     ChatMessageVO sendMessage(Long userId, MessageSendDTO dto);
 

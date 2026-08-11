@@ -17,12 +17,27 @@ import type { GroupChat } from '../../types/groupChat';
 import './index.css';
 
 export default function MessagesPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([]); const [groups, setGroups] = useState<GroupChat[]>([]); const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [showLogin, setShowLogin] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [groups, setGroups] = useState<GroupChat[]>([]);
+  const [hiddenConversations, setHiddenConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [showLogin, setShowLogin] = useState(false);
   const navigate = useNavigate(); const unreadCount = useMessageStore((state) => state.unreadCount); const setUnreadCount = useMessageStore((state) => state.setUnreadCount); const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const loadConversations = async (silent = false) => { silent ? setRefreshing(true) : setLoading(true); try { const response = await chatApi.listConversations(); setConversations(response.data.data || []); } catch { showToast('加载会话列表失败'); } finally { setLoading(false); setRefreshing(false); } };
   const loadGroups = async () => { try { const response = await groupChatApi.listMyGroups(); setGroups(response.data.data || []); } catch { showToast('加载群聊列表失败'); } };
+  const loadHiddenConversations = async () => { try { const response = await chatApi.listHiddenConversations(); setHiddenConversations(response.data.data || []); } catch {} };
   const loadUnreadCount = async () => { try { const response = await messageApi.unreadCount(); setUnreadCount(response.data.data.count); } catch {} };
   const myId = useAuthStore((s) => s.user?.id);
+
+  /** 恢复隐藏的会话 */
+  const restoreHidden = async (conv: Conversation) => {
+    try {
+      await chatApi.hideConversation(conv.roomId || conv.id, false);
+      showToast('已恢复会话');
+      await Promise.all([loadConversations(true), loadHiddenConversations()]);
+    } catch (e: any) {
+      showToast(e?.message || '恢复失败');
+    }
+  };
   useWebSocket(useCallback((message) => {
     if (message.type === 'chat') {
       loadConversations(true);
@@ -30,7 +45,7 @@ export default function MessagesPage() {
       if (message.fromUserId !== myId) setUnreadCount(unreadCount + 1);
     }
   }, [unreadCount, myId]));
-  useEffect(() => { if (isLoggedIn) { loadConversations(); loadGroups(); loadUnreadCount(); } else setLoading(false); }, [isLoggedIn]);
+  useEffect(() => { if (isLoggedIn) { loadConversations(); loadGroups(); loadHiddenConversations(); loadUnreadCount(); } else setLoading(false); }, [isLoggedIn]);
   const refresh = async () => { await loadConversations(true); await loadUnreadCount(); };
   // 断线补偿:WS 重连成功后刷新会话列表与未读
   const refreshRef = useRef(refresh); refreshRef.current = refresh;
@@ -43,7 +58,8 @@ export default function MessagesPage() {
   }, [isLoggedIn]);
   return <div className="messages-page"><header className="msg-header"><h2 className="msg-header-title">互动消息</h2><div className="msg-header-actions"><button className="header-create-group-btn" onClick={() => navigate('/messages/create-group')}>建群</button><button className="header-action-btn" onClick={refresh} aria-label="刷新"><AppIcon name="refresh" size={19} className={refreshing ? 'is-spinning' : ''} /></button></div></header>
     {!isLoggedIn && <button className="msg-login-prompt" onClick={() => setShowLogin(true)}><AppIcon name="user" size={22} /><span><b>登录后查看消息</b><small>登录后可查看互动通知和私聊消息</small></span><em>登录</em></button>}
-    {isLoggedIn && <><button className="notify-condensed" onClick={() => navigate('/messages/notifications')}><span className="notify-icon-wrap"><AppIcon name="bell" size={20} />{unreadCount > 0 && <span className="notify-badge">{unreadCount}</span>}</span><span className="notify-info"><b>互动通知</b><small>{unreadCount > 0 ? `${unreadCount} 条未读` : '暂无新通知'}</small></span><em>查看</em></button><div className="section-divider">私聊</div><section className="chat-conv-list">{loading && <><LoadingSkeleton /><LoadingSkeleton /></>}{!loading && conversations.map((conv) => <button key={conv.id} className="chat-conv-item" onClick={() => { const name = encodeURIComponent(conv.targetNickname || `用户${conv.targetUserId}`); const avatar = encodeURIComponent(conv.targetAvatar || ''); navigate(`/messages/chat?userId=${conv.targetUserId}&name=${name}&avatar=${avatar}&roomId=${conv.roomId || conv.id}`); }}><span className="conv-avatar">{conv.targetAvatar ? <img src={conv.targetAvatar} alt="" /> : <AppIcon name="user" size={21} />}</span><span className="conv-info"><span className="conv-top"><b>{conv.pinned ? '置顶 · ' : ''}{conv.muted ? '免打扰 · ' : ''}{conv.targetNickname || `用户${conv.targetUserId}`}</b><small>{conv.lastMessageAt ? formatSessionTime(conv.lastMessageAt) : ''}</small></span><span className="conv-bottom"><small>{previewText(conv.lastMessage)}</small>{conv.unreadCount > 0 && <i className="conv-badge">{conv.unreadCount}</i>}</span></span></button>)}{!loading && conversations.length === 0 && <EmptyState message="暂无会话" />}</section>{groups.length > 0 && <><div className="section-divider">群聊</div><section className="chat-conv-list">{groups.map((group) => <button key={group.id} className="chat-conv-item" onClick={() => navigate(`/messages/group-chat/${group.id}?name=${encodeURIComponent(group.name)}`)}><span className="conv-avatar">{group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={21} />}</span><span className="conv-info"><span className="conv-top"><b>{group.name}</b><small>{group.lastMessageAt ? formatSessionTime(group.lastMessageAt) : ''}</small></span><span className="conv-bottom"><small>{previewText(group.lastMessage)}</small></span></span></button>)}</section></>}</>}
+    {isLoggedIn && <><button className="notify-condensed" onClick={() => navigate('/messages/notifications')}><span className="notify-icon-wrap"><AppIcon name="bell" size={20} />{unreadCount > 0 && <span className="notify-badge">{unreadCount}</span>}</span><span className="notify-info"><b>互动通知</b><small>{unreadCount > 0 ? `${unreadCount} 条未读` : '暂无新通知'}</small></span><em>查看</em></button><div className="section-divider">私聊</div><section className="chat-conv-list">{loading && <><LoadingSkeleton /><LoadingSkeleton /></>}{!loading && conversations.map((conv) => <button key={conv.id} className="chat-conv-item" onClick={() => { const name = encodeURIComponent(conv.targetNickname || `用户${conv.targetUserId}`); const avatar = encodeURIComponent(conv.targetAvatar || ''); navigate(`/messages/chat?userId=${conv.targetUserId}&name=${name}&avatar=${avatar}&roomId=${conv.roomId || conv.id}`); }}><span className="conv-avatar">{conv.targetAvatar ? <img src={conv.targetAvatar} alt="" /> : <AppIcon name="user" size={21} />}</span><span className="conv-info"><span className="conv-top"><b>{conv.pinned ? '置顶 · ' : ''}{conv.muted ? '免打扰 · ' : ''}{conv.targetNickname || `用户${conv.targetUserId}`}</b><small>{conv.lastMessageAt ? formatSessionTime(conv.lastMessageAt) : ''}</small></span><span className="conv-bottom"><small>{previewText(conv.lastMessage)}</small>{conv.unreadCount > 0 && <i className="conv-badge">{conv.unreadCount}</i>}</span></span></button>)}{!loading && conversations.length === 0 && <EmptyState message="暂无会话" />}</section>{groups.length > 0 && <><div className="section-divider">群聊</div><section className="chat-conv-list">{groups.map((group) => <button key={group.id} className="chat-conv-item" onClick={() => navigate(`/messages/group-chat/${group.id}?name=${encodeURIComponent(group.name)}`)}><span className="conv-avatar">{group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={21} />}</span><span className="conv-info"><span className="conv-top"><b>{group.name}</b><small>{group.lastMessageAt ? formatSessionTime(group.lastMessageAt) : ''}</small></span><span className="conv-bottom"><small>{previewText(group.lastMessage)}</small></span></span></button>)}</section></>}
+      {hiddenConversations.length > 0 && <><div className="section-divider">已隐藏的会话</div><section className="chat-conv-list">{hiddenConversations.map((conv) => <div key={conv.id} className="chat-conv-item chat-conv-item--hidden"><button className="conv-restore" onClick={() => restoreHidden(conv)}>恢复</button><span className="conv-avatar">{conv.targetAvatar ? <img src={conv.targetAvatar} alt="" /> : <AppIcon name="user" size={21} />}</span><span className="conv-info"><span className="conv-top"><b>{conv.targetNickname || `用户${conv.targetUserId}`}</b></span><span className="conv-bottom"><small>已隐藏 · 对方发新消息会自动恢复</small></span></span></div>)}</section></>}</>}
     <LoginModal visible={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setShowLogin(false); window.location.reload(); }} /></div>;
 }
 function previewText(message: string | null | undefined) { if (!message) return '暂无消息'; return message.startsWith('/uploads/') || message.startsWith('http') ? '[图片]' : message; }

@@ -7,6 +7,10 @@ export const chatApi = {
   listConversations: () =>
     request.get<ApiResponse<Conversation[]>>('/chat/conversations'),
 
+  /** 已隐藏会话列表(用于手动恢复) */
+  listHiddenConversations: () =>
+    request.get<ApiResponse<Conversation[]>>('/chat/conversations/hidden'),
+
   /** 创建或获取会话 */
   getOrCreateConversation: (targetUserId: number) =>
     request.post<ApiResponse<Conversation>>('/chat/conversations', null, {

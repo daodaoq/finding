@@ -38,6 +38,14 @@ public class ChatController {
         return Result.ok(chatService.listConversations(userId));
     }
 
+    /** 获取当前用户已隐藏的会话(用于手动恢复) */
+    @GetMapping("/conversations/hidden")
+    public Result<List<ConversationVO>> listHiddenConversations() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.listHiddenConversations(userId));
+    }
+
     /** 获取与指定用户的已有会话(不存在则拒绝——须先经聊天申请批准建立) */
     @PostMapping("/conversations")
     public Result<ConversationVO> getConversation(@RequestParam Long targetUserId) {
