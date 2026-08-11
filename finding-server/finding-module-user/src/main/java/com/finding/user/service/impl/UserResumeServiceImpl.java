@@ -13,9 +13,12 @@ import com.finding.user.service.UserResumeService;
 import com.finding.user.vo.ResumeViewVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,15 +41,50 @@ public class UserResumeServiceImpl implements UserResumeService {
     public void saveResume(Long userId, UserResumeDTO dto) {
         // 简历任一文本字段含违禁词直接拒绝保存
         sensitiveWordFilter.assertClean(resumeTexts(dto));
+        // 生日为年龄唯一来源:有生日则覆盖 age,避免与生日不一致
+        if (dto.getBirthday() != null) {
+            dto.setAge(Period.between(dto.getBirthday(), LocalDate.now()).getYears());
+        }
+        // 生活相册数量与 URL 校验
+        validatePhotoAlbum(dto.getPhotoAlbum());
+
         UserResume resume = selectByUserId(userId);
         if (resume == null) {
             resume = new UserResume();
             resume.setUserId(userId);
             BeanUtils.copyProperties(dto, resume);
-            resumeMapper.insert(resume);
+            try {
+                resumeMapper.insert(resume);
+            } catch (DuplicateKeyException e) {
+                // 并发首存冲突(user_resume.user_id 唯一约束):另一请求已创建,回查后更新
+                resume = selectByUserId(userId);
+                if (resume != null) {
+                    BeanUtils.copyProperties(dto, resume, "id", "userId", "createdAt", "updatedAt");
+                    resumeMapper.updateById(resume);
+                }
+            }
         } else {
             BeanUtils.copyProperties(dto, resume, "id", "userId", "createdAt", "updatedAt");
             resumeMapper.updateById(resume);
+        }
+    }
+
+    /** 生活相册校验:数量上限 + 每张 URL 仅允许 http(s) 且长度受限 */
+    private void validatePhotoAlbum(List<String> album) {
+        if (album == null) return;
+        if (album.size() > 9) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册最多 9 张");
+        }
+        for (String url : album) {
+            if (url == null || url.isBlank()) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册图片 URL 不能为空");
+            }
+            if (url.length() > 1000) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册图片 URL 过长");
+            }
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册图片 URL 仅支持 http(s)");
+            }
         }
     }
 

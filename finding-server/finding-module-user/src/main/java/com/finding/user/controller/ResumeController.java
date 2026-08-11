@@ -6,6 +6,7 @@ import com.finding.user.dto.UserResumeDTO;
 import com.finding.user.entity.UserResume;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.UserResumeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,7 @@ public class ResumeController {
 
     /** 保存/更新我的情感简历 */
     @PutMapping("/me")
-    public Result<Void> saveMyResume(@RequestBody UserResumeDTO dto) {
+    public Result<Void> saveMyResume(@Valid @RequestBody UserResumeDTO dto) {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         userResumeService.saveResume(userId, dto);
