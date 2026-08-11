@@ -47,7 +47,7 @@
 3. 提交 `application-*.example.yml`，将真实 `application-local.yml` 写入 `.gitignore`。
 4. CI 加入 gitleaks / trufflehog 扫描，并阻止后续密钥提交。
 
-### P0-2：后端缺少统一的质量门禁
+### P0-2：后端缺少统一的质量门禁  ✅ 已完成
 
 **证据**
 
@@ -117,7 +117,7 @@
 
 ## 四、用户端 `finding-web` 审查
 
-### P0-3：核心接口使用 `any`，类型契约未闭合
+### P0-3：核心接口使用 `any`，类型契约未闭合  ✅ 已完成
 
 **证据**
 
@@ -135,7 +135,7 @@
 2. API 层完成 DTO 到展示模型转换；页面禁止消费 `any`。
 3. 将 `catch (e: any)` 改为 `catch (e: unknown)`，集中用 `getErrorMessage()` 解析错误。
 
-### P0-4：静默失败过多，页面数据可能悄然失真
+### P0-4：静默失败过多，页面数据可能悄然失真  ✅ 已完成
 
 **证据**
 
@@ -151,7 +151,7 @@
 - 复用 `AsyncState` / `PageState` 组件统一 loading、empty、error、retry。
 - Axios 拦截器返回统一 `AppError`，携带 status、业务 code、可展示文案和是否可重试。
 
-### P0-5：认证令牌存取分散且刷新链路不统一
+### P0-5：认证令牌存取分散且刷新链路不统一  ✅ 已完成
 
 **证据**
 
