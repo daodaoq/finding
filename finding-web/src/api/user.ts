@@ -3,8 +3,8 @@ import type { ApiResponse, PageResult } from '../types/common';
 import type { User } from '../types/user';
 
 export const userApi = {
-  getProfile: (id: number) =>
-    request.get<ApiResponse<User>>(`/users/${id}`),
+  getProfile: (id: number, signal?: AbortSignal) =>
+    request.get<ApiResponse<User>>(`/users/${id}`, { signal }),
 
   follow: (id: number) =>
     request.post<ApiResponse<null>>(`/users/${id}/follow`),
@@ -29,6 +29,6 @@ export const userApi = {
     request.delete<ApiResponse<null>>(`/users/${id}/block`),
 
   /** blocked=我拉黑了对方, blockedBy=对方拉黑了我 */
-  blockStatus: (id: number) =>
-    request.get<ApiResponse<{ blocked: boolean; blockedBy: boolean }>>(`/users/${id}/block-status`),
+  blockStatus: (id: number, signal?: AbortSignal) =>
+    request.get<ApiResponse<{ blocked: boolean; blockedBy: boolean }>>(`/users/${id}/block-status`, { signal }),
 };

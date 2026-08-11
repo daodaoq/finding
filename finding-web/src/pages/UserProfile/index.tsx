@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useStaleGuard, isStaleError } from '../../hooks/useStaleGuard';
 import { userApi } from '../../api/user';
 import { historyApi } from '../../api/history';
 import { chatApi } from '../../api/chat';
@@ -35,36 +36,51 @@ export default function UserProfilePage() {
   const navigate = useNavigate();
   const myId = useAuthStore((s) => s.user?.id);
   const shareVersion = useInfoShareStore((s) => s.version);
+  // 各内容块独立守卫:快速切换用户时,旧请求自动取消并丢弃结果
+  const profileGuard = useStaleGuard();
+  const blockGuard = useStaleGuard();
+  const strangerGuard = useStaleGuard();
+  const postsGuard = useStaleGuard();
+  const resumeGuard = useStaleGuard();
 
   useEffect(() => {
-    userApi.getProfile(userId).then((res) => {
+    setLoading(true);
+    const { promise, isCurrent } = profileGuard.run((signal) => userApi.getProfile(userId, signal));
+    promise.then((res) => {
       setProfile(res.data.data);
       historyApi.record('user', userId).catch(() => {}); // 记录浏览
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [userId]);
+    }).catch((e) => { if (!isStaleError(e)) { /* 静默:非过期错误由拦截器提示 */ } })
+      .finally(() => { if (isCurrent()) setLoading(false); });
+  }, [userId, profileGuard.run]);
 
   // 拉黑状态
   useEffect(() => {
     if (!myId || userId === myId) return;
-    userApi.blockStatus(userId).then((res) => {
+    const { promise } = blockGuard.run((signal) => userApi.blockStatus(userId, signal));
+    promise.then((res) => {
       setBlocked(res.data.data.blocked);
       setBlockedBy(res.data.data.blockedBy);
-    }).catch(() => {});
-  }, [userId, myId]);
+    }).catch((e) => { if (!isStaleError(e)) { /* 静默 */ } });
+  }, [userId, myId, blockGuard.run]);
 
   // 陌生人消息状态(决定按钮是 发消息/打招呼/已打招呼)
   useEffect(() => {
     if (!myId || userId === myId) return;
-    chatApi.strangerStatus(userId).then((res) => setStranger(res.data.data)).catch(() => {});
-  }, [userId, myId]);
+    const { promise } = strangerGuard.run((signal) => chatApi.strangerStatus(userId, signal));
+    promise.then((res) => setStranger(res.data.data))
+      .catch((e) => { if (!isStaleError(e)) { /* 静默 */ } });
+  }, [userId, myId, strangerGuard.run]);
 
   // 对方公开动态
   useEffect(() => {
     setLoadingPosts(true);
-    postApi.userPosts(userId).then((res) => {
+    const { promise, isCurrent } = postsGuard.run((signal) => postApi.userPosts(userId, undefined, undefined, signal));
+    promise.then((res) => {
       setUserPosts(res.data.data.records || []);
-    }).catch(() => setUserPosts([])).finally(() => setLoadingPosts(false));
-  }, [userId]);
+    }).catch((e) => {
+      if (!isStaleError(e)) setUserPosts([]);
+    }).finally(() => { if (isCurrent()) setLoadingPosts(false); });
+  }, [userId, postsGuard.run]);
 
   const handleFollowToggle = async () => {
     if (!profile) return;
@@ -103,11 +119,12 @@ export default function UserProfilePage() {
   // 拉取情感简历(已互换则展示内容,否则锁定占位);互换成功后 version 变化自动刷新
   useEffect(() => {
     setResumeLoading(true);
-    resumeApi.getOther(userId)
+    const { promise, isCurrent } = resumeGuard.run((signal) => resumeApi.getOther(userId, signal));
+    promise
       .then((res) => setResumeView(res.data.data))
-      .catch(() => setResumeView(null))
-      .finally(() => setResumeLoading(false));
-  }, [userId, shareVersion]);
+      .catch((e) => { if (!isStaleError(e)) setResumeView(null); })
+      .finally(() => { if (isCurrent()) setResumeLoading(false); });
+  }, [userId, shareVersion, resumeGuard.run]);
 
   if (loading) return <div className="up-page"><div className="up-loading">加载中...</div></div>;
   if (!profile) return <div className="up-page"><div className="up-loading">用户不存在</div></div>;

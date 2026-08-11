@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { chatApi } from '../../api/chat';
 import { bridgeApi } from '../../api/bridge';
 import { useWebSocket, useWsReconnect } from '../../hooks/useWebSocket';
+import { useStaleGuard, isStaleError } from '../../hooks/useStaleGuard';
 import { chatSocket } from '../../ws/chatSocket';
 import { useAuthStore } from '../../store/authStore';
 import { useMessageStore } from '../../store/messageStore';
@@ -28,6 +29,21 @@ interface ChatMessage extends MessageLike {
   clientMessageId?: string;
   /** 发送状态(仅自己刚发送/失败的消息) */
   sendState?: 'sending' | 'sent' | 'failed';
+}
+
+/** 后端消息记录 → 本地消息结构(纯函数,模块级以便复用与依赖稳定) */
+function toMsg(r: ChatMessageDTO): ChatMessage {
+  return {
+    id: r.id,
+    fromUserId: r.fromUserId,
+    toUserId: r.toUserId,
+    content: r.content,
+    messageType: r.messageType || 'text',
+    isRecalled: r.isRecalled,
+    isRead: r.isRead,
+    parentMessageId: r.parentMessageId,
+    createdAt: r.createdAt,
+  };
 }
 
 export default function ChatDetailPage() {
@@ -64,6 +80,42 @@ export default function ChatDetailPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const msgListRef = useRef<HTMLDivElement>(null);
 
+  // 独立资源各自持有守卫:初始化 / 互换状态 / 会话设置互不打断
+  const initGuard = useStaleGuard();
+  const shareGuard = useStaleGuard();
+  const settingsGuard = useStaleGuard();
+
+  const initConversation = useCallback(async (signal?: AbortSignal) => {
+    try {
+      setLoading(true);
+      // 获取已有会话(不存在则服务端拒绝——新会话只能由『相亲桥』聊天申请批准建立)
+      const convRes = await chatApi.getOrCreateConversation(targetUserId, signal);
+      if (signal?.aborted) return;
+      const conv = convRes.data.data;
+      setConversation(conv);
+      // 对方资料以服务端会话返回为准,覆盖 URL 携带的昵称/头像
+      if (conv.targetNickname) setTargetNickname(conv.targetNickname);
+      if (conv.targetAvatar) setTargetAvatar(conv.targetAvatar);
+      // 使用 roomId 加载消息历史
+      const roomId = conv.roomId || conv.id;
+      const msgRes = await chatApi.getMessageHistory(roomId, undefined, undefined, signal);
+      if (signal?.aborted) return;
+      const records = (msgRes.data.data.records || []).map(toMsg);
+      setMessages(records);
+      // 进入会话已标记已读 → 刷新汇总角标
+      useMessageStore.getState().refreshTotal();
+    } catch (e) {
+      // 被新请求/卸载取消:静默忽略,不跳转不提示
+      if (isStaleError(e)) return;
+      console.error('初始化会话失败', e);
+      showToast(getErrorMessage(e, '还没有会话，请先通过『相亲桥』发起聊天申请'));
+      // 会话不存在或无权限:回到上一页并提示原因
+      navigate(-1);
+    } finally {
+      setLoading(false);
+    }
+  }, [targetUserId, navigate]);
+
   // WebSocket 实时消息处理(连接由全局单例管理)
   useWebSocket((wsMsg) => {
     if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
@@ -98,51 +150,12 @@ export default function ChatDetailPage() {
     }
   });
 
-  // 初始化：获取或创建会话 + 加载消息历史
+  // 初始化：获取或创建会话 + 加载消息历史(切换 userId 时自动取消旧请求)
   useEffect(() => {
-    initConversation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetUserId]);
-
-  /** 后端消息记录 → 本地消息结构 */
-  const toMsg = (r: ChatMessageDTO): ChatMessage => ({
-    id: r.id,
-    fromUserId: r.fromUserId,
-    toUserId: r.toUserId,
-    content: r.content,
-    messageType: r.messageType || 'text',
-    isRecalled: r.isRecalled,
-    isRead: r.isRead,
-    parentMessageId: r.parentMessageId,
-    createdAt: r.createdAt,
-  });
-
-  const initConversation = async () => {
-    try {
-      setLoading(true);
-      // 获取已有会话(不存在则服务端拒绝——新会话只能由『相亲桥』聊天申请批准建立)
-      const convRes = await chatApi.getOrCreateConversation(targetUserId);
-      const conv = convRes.data.data;
-      setConversation(conv);
-      // 对方资料以服务端会话返回为准,覆盖 URL 携带的昵称/头像
-      if (conv.targetNickname) setTargetNickname(conv.targetNickname);
-      if (conv.targetAvatar) setTargetAvatar(conv.targetAvatar);
-      // 使用 roomId 加载消息历史
-      const roomId = conv.roomId || conv.id;
-      const msgRes = await chatApi.getMessageHistory(roomId);
-      const records = (msgRes.data.data.records || []).map(toMsg);
-      setMessages(records);
-      // 进入会话已标记已读 → 刷新汇总角标
-      useMessageStore.getState().refreshTotal();
-    } catch (e) {
-      console.error('初始化会话失败', e);
-      showToast(getErrorMessage(e, '还没有会话，请先通过『相亲桥』发起聊天申请'));
-      // 会话不存在或无权限:回到上一页并提示原因
-      navigate(-1);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { promise } = initGuard.run((signal) => initConversation(signal));
+    // initConversation 内部已处理错误与过期,此处仅避免未处理的 reject
+    promise.catch(() => {});
+  }, [targetUserId, initGuard.run, initConversation]);
 
   /** 断线补偿/回前台:拉取最新 50 条,按 id 合并去重(补回断线期间缺失的消息) */
   const refreshFromServer = async () => {
@@ -188,20 +201,23 @@ export default function ChatDetailPage() {
   // 拉取与对方的「信息互换」状态(header 按钮)；互换事件后通过全局 version 自动刷新
   useEffect(() => {
     if (!targetUserId || !user) return;
-    bridgeApi.infoShareStatus(targetUserId)
+    const { promise } = shareGuard.run((signal) => bridgeApi.infoShareStatus(targetUserId, signal));
+    promise
       .then((res) => {
         setShareStatus(res.data.data.status);
         setShareId(res.data.data.shareId);
       })
-      .catch(() => {});
-  }, [targetUserId, user, shareVersion]);
+      .catch((e) => { if (!isStaleError(e)) { /* 静默:非过期错误由拦截器统一提示 */ } });
+  }, [targetUserId, user, shareVersion, shareGuard.run]);
 
   // 拉取会话设置(聊天背景)
   useEffect(() => {
     const roomId = conversation?.roomId || conversation?.id;
     if (!roomId) return;
-    chatApi.getSettings(roomId).then((res) => setChatSettings(res.data.data)).catch(() => {});
-  }, [conversation]);
+    const { promise } = settingsGuard.run((signal) => chatApi.getSettings(roomId, signal));
+    promise.then((res) => setChatSettings(res.data.data))
+      .catch((e) => { if (!isStaleError(e)) { /* 静默 */ } });
+  }, [conversation, settingsGuard.run]);
 
   // 发起互换申请
   const handleRequestShare = async () => {

@@ -12,6 +12,6 @@ export const resumeApi = {
     request.put<ApiResponse<null>>('/resume/me', data),
 
   /** 查看他人情感简历(需已互换信息,否则返回锁定状态) */
-  getOther: (userId: number) =>
-    request.get<ApiResponse<ResumeView>>(`/users/${userId}/resume`),
+  getOther: (userId: number, signal?: AbortSignal) =>
+    request.get<ApiResponse<ResumeView>>(`/users/${userId}/resume`, { signal }),
 };

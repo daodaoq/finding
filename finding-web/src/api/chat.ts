@@ -24,15 +24,15 @@ export const chatApi = {
     request.post<ApiResponse<null>>(`/chat/stranger/${id}/accept`),
 
   /** 与某用户的陌生人消息状态 */
-  strangerStatus: (toUserId: number) =>
+  strangerStatus: (toUserId: number, signal?: AbortSignal) =>
     request.get<ApiResponse<{ hasConversation: boolean; sent: boolean; received: boolean }>>('/chat/stranger/status', {
-      params: { toUserId }
+      params: { toUserId }, signal
     }),
 
   /** 创建或获取会话 */
-  getOrCreateConversation: (targetUserId: number) =>
+  getOrCreateConversation: (targetUserId: number, signal?: AbortSignal) =>
     request.post<ApiResponse<Conversation>>('/chat/conversations', null, {
-      params: { targetUserId }
+      params: { targetUserId }, signal
     }),
 
   /** 发送消息(以 roomId 指定会话,返回真实消息回执;clientMessageId 用于弱网重试幂等;replyToMessageId 回复引用) */
@@ -40,9 +40,9 @@ export const chatApi = {
     request.post<ApiResponse<ChatMessageDTO>>('/chat/send', data),
 
   /** 消息历史（id=room_id） */
-  getMessageHistory: (roomId: number, lastId?: number, size = 50) =>
+  getMessageHistory: (roomId: number, lastId?: number, size = 50, signal?: AbortSignal) =>
     request.get<ApiResponse<PageResult<ChatMessageDTO>>>(`/chat/conversations/${roomId}/messages`, {
-      params: { lastId, size }
+      params: { lastId, size }, signal
     }),
 
   /** 标记已读 */
@@ -50,8 +50,8 @@ export const chatApi = {
     request.put<ApiResponse<null>>(`/chat/conversations/${conversationId}/read`),
 
   /** 获取会话设置(置顶/免打扰/聊天背景) */
-  getSettings: (roomId: number) =>
-    request.get<ApiResponse<ChatSettings>>(`/chat/conversations/${roomId}/settings`),
+  getSettings: (roomId: number, signal?: AbortSignal) =>
+    request.get<ApiResponse<ChatSettings>>(`/chat/conversations/${roomId}/settings`, { signal }),
 
   /** 更新会话设置 */
   updateSettings: (roomId: number, data: { pinned?: boolean; muted?: boolean; background?: string }) =>

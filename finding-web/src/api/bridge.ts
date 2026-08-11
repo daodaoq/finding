@@ -52,9 +52,9 @@ export const bridgeApi = {
     request.put<ApiResponse<null>>(`/bridge/info-share/${id}/handle`, { status }),
 
   /** 查询我与对方的信息互换状态 */
-  infoShareStatus: (userId: number) =>
+  infoShareStatus: (userId: number, signal?: AbortSignal) =>
     request.get<ApiResponse<InfoShareStatus>>('/bridge/info-share/status', {
-      params: { userId },
+      params: { userId }, signal,
     }),
 
   /** 我的相亲交友偏好 */

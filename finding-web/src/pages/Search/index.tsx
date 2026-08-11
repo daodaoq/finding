@@ -8,6 +8,7 @@ import { showToast } from '../../components/Toast';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppIcon from '../../components/AppIcon';
+import { useStaleGuard, isStaleError } from '../../hooks/useStaleGuard';
 import './index.css';
 
 /** 搜索结果中的动态项(后端扁平结构,含作者昵称/头像) */
@@ -38,16 +39,23 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { run } = useStaleGuard();
 
+  // 快速连按回车只保留最新一次结果;组件卸载时自动取消在途请求
   const doSearch = async (kw?: string) => {
     const q = kw || keyword;
     if (!q.trim()) return;
     setLoading(true);
+    const { promise, isCurrent } = run((signal) =>
+      request.get<ApiResponse<SearchResult>>('/search', { params: { keyword: q.trim() }, signal }));
     try {
-      const res = await request.get<ApiResponse<SearchResult>>('/search', { params: { keyword: q.trim() } });
+      const res = await promise;
       setResults(res.data.data);
-    } catch { showToast('搜索失败'); }
-    finally { setLoading(false); }
+    } catch (e) {
+      if (!isStaleError(e)) showToast('搜索失败');
+    } finally {
+      if (isCurrent()) setLoading(false);
+    }
   };
 
   // 进入页面自动聚焦
