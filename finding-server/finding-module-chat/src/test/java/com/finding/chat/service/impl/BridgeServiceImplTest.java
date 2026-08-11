@@ -503,6 +503,70 @@ class BridgeServiceImplTest {
         assertTrue(profile.hasFeedback());
     }
 
+    // ── getRecommendFeed(推荐主流程) ──
+
+    /** 搭建 getRecommendFeed 的公共 mock(无申请/无跳过/无关注/无拉黑/无卡片配置) */
+    private void stubFeedBase(User me, List<User> candidates) {
+        allowRateLimit();
+        when(userMapper.selectById(1L)).thenReturn(me);
+        when(preferenceMapper.selectOne(any())).thenReturn(null);
+        when(chatApplyMapper.selectList(any())).thenReturn(List.of());
+        when(followMapper.selectList(any())).thenReturn(List.of());
+        when(relationshipService.blockedUserIds(1L)).thenReturn(Set.of());
+        when(excludeMapper.selectList(any())).thenReturn(List.of());
+        when(userSettingsMapper.selectList(any())).thenReturn(List.of());
+        when(userMapper.selectList(any())).thenReturn(candidates);
+        when(cardConfigMapper.selectList(any())).thenReturn(List.of());
+        when(relationshipService.canViewDetailedProfile(any(), any())).thenReturn(true);
+    }
+
+    @Test
+    void getRecommendFeed_returnsScoredCandidates() {
+        User me = new User(); me.setId(1L); me.setSchool("山东理工大学"); me.setCity("淄博");
+        User a = new User(); a.setId(2L); a.setSchool("山东理工大学"); a.setCity("淄博"); a.setGender(2); a.setAvatar("a.jpg");
+        stubFeedBase(me, List.of(a));
+        when(weights.getSameSchool()).thenReturn(15);
+
+        var page = service.getRecommendFeed(1L, null, null, 1, 10);
+
+        assertEquals(1, page.getRecords().size());
+        assertEquals(2L, page.getRecords().get(0).getUserId());
+        assertTrue(page.getRecords().get(0).getMatchReasons().contains("同校"));
+    }
+
+    @Test
+    void getRecommendFeed_appliesCardConfig() {
+        User me = new User(); me.setId(1L); me.setSchool("A校");
+        User cand = new User(); cand.setId(2L); cand.setNickname("小王"); cand.setSchool("B校"); cand.setCity("淄博"); cand.setAvatar("x.jpg");
+        stubFeedBase(me, List.of(cand));
+        UserCardConfig cfg = new UserCardConfig();
+        cfg.setUserId(2L);
+        cfg.setShowNickname(0); // 隐藏昵称
+        when(cardConfigMapper.selectList(any())).thenReturn(List.of(cfg));
+
+        var page = service.getRecommendFeed(1L, null, null, 1, 10);
+
+        assertNull(page.getRecords().get(0).getNickname());
+    }
+
+    @Test
+    void getRecommendFeed_feedbackBoostsLikedSchool() {
+        User me = new User(); me.setId(1L); me.setSchool("A校");
+        User liked = new User(); liked.setId(99L); liked.setSchool("B校"); // 我申请过的人(不在候选)
+        User fromB = new User(); fromB.setId(2L); fromB.setSchool("B校"); // 与喜欢的人同校
+        User fromX = new User(); fromX.setId(3L); fromX.setSchool("X校");
+        ChatApply apply = new ChatApply(); apply.setFromUserId(1L); apply.setToUserId(99L);
+        stubFeedBase(me, List.of(fromB, fromX));
+        when(chatApplyMapper.selectList(any())).thenReturn(List.of(apply));
+        when(userMapper.selectBatchIds(List.of(99L))).thenReturn(List.of(liked));
+        when(weights.getLikedSchool()).thenReturn(8);
+
+        var page = service.getRecommendFeed(1L, null, null, 1, 10);
+
+        assertEquals(2L, page.getRecords().get(0).getUserId()); // 偏好同校排前面
+        assertTrue(page.getRecords().get(0).getMatchReasons().contains("偏好同校"));
+    }
+
     private ChatApply pending(Long id, Long from, Long to) {
         ChatApply a = new ChatApply();
         a.setId(id);
