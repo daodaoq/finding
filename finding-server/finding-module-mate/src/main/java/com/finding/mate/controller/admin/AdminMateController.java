@@ -12,8 +12,10 @@ import com.finding.mate.entity.MateInvitation;
 import com.finding.mate.entity.MateParticipant;
 import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.mate.mapper.MateParticipantMapper;
+import com.finding.message.service.MessageService;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.security.JwtInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,6 +36,7 @@ public class AdminMateController {
     private final MateParticipantMapper participantMapper;
     private final UserMapper userMapper;
     private final OperationAuditService operationAuditService;
+    private final MessageService messageService;
 
     @GetMapping("/mates")
     public Result<PageVO<Map<String, Object>>> listMates(
@@ -109,8 +112,59 @@ public class AdminMateController {
         if (status == null) throw new BusinessException(ResultCode.PARAM_ERROR, "status 必填");
         invitation.setStatus(status);
         invitationMapper.updateById(invitation);
-        operationAuditService.record(com.finding.user.security.JwtInterceptor.getCurrentUserId(), "mate_status", "mate", invitation.getId(),
+        operationAuditService.record(JwtInterceptor.getCurrentUserId(), "mate_status", "mate", invitation.getId(),
                 "管理员变更搭子状态", "status=" + status);
+        return Result.ok();
+    }
+
+    /** 搭子待审核队列(review_status=1) */
+    @GetMapping("/mates/review")
+    public Result<PageVO<Map<String, Object>>> reviewQueue(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<MateInvitation> result = invitationMapper.selectPage(new Page<>(page, size),
+                new LambdaQueryWrapper<MateInvitation>()
+                        .eq(MateInvitation::getReviewStatus, 1)
+                        .orderByAsc(MateInvitation::getCreatedAt));
+        Set<Long> userIds = result.getRecords().stream().map(MateInvitation::getUserId)
+                .filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> nicknameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            userMapper.selectBatchIds(userIds).forEach(u -> nicknameMap.put(u.getId(), u.getNickname()));
+        }
+        List<Map<String, Object>> records = result.getRecords().stream().map(m -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", m.getId());
+            map.put("title", m.getTitle());
+            map.put("description", m.getDescription());
+            map.put("userNickname", nicknameMap.getOrDefault(m.getUserId(), "用户" + m.getUserId()));
+            map.put("createdAt", m.getCreatedAt());
+            return map;
+        }).toList();
+        return Result.ok(PageVO.of(records, result.getTotal(), page, size));
+    }
+
+    /** 搭子审核处理:pass=true 通过发布,false 拒绝(需 reason,通知作者) */
+    @PutMapping("/mates/{id}/review")
+    public Result<Void> reviewMate(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        MateInvitation invitation = invitationMapper.selectById(id);
+        if (invitation == null) throw new BusinessException(ResultCode.MATE_NOT_FOUND);
+        Boolean pass = body.get("pass") != null && Boolean.parseBoolean(body.get("pass").toString());
+        String reason = body.get("reason") != null ? body.get("reason").toString() : null;
+        Long adminId = JwtInterceptor.getCurrentUserId();
+
+        invitation.setReviewStatus(pass ? 0 : 2);
+        invitation.setReviewReason(pass ? null : reason);
+        invitation.setReviewBy(adminId);
+        invitation.setReviewTime(LocalDateTime.now());
+        invitationMapper.updateById(invitation);
+
+        if (!pass && invitation.getUserId() != null) {
+            String content = reason != null && !reason.isBlank() ? "你的搭子邀约审核未通过：" + reason : "你的搭子邀约审核未通过";
+            messageService.notify(adminId, invitation.getUserId(), "mate_rejected_review", content, invitation.getId());
+        }
+        operationAuditService.record(adminId, "mate_review", "mate", invitation.getId(),
+                pass ? "搭子审核通过" : "搭子审核拒绝", reason);
         return Result.ok();
     }
 

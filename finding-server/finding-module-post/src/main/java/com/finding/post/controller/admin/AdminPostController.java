@@ -160,4 +160,37 @@ public class AdminPostController {
                 pass ? "审核通过" : "审核拒绝", reason);
         return Result.ok();
     }
+
+    /** 批量审核处理:ids + pass + reason,逐条应用并记录审计 */
+    @PostMapping("/posts/review/batch")
+    public Result<Void> reviewBatch(@RequestBody Map<String, Object> body) {
+        List<?> rawIds = body.get("ids") != null && body.get("ids") instanceof List<?> l ? l : List.of();
+        if (rawIds.isEmpty()) throw new BusinessException(ResultCode.PARAM_ERROR, "请选择要处理的动态");
+        Boolean pass = body.get("pass") != null && Boolean.parseBoolean(body.get("pass").toString());
+        String reason = body.get("reason") != null ? body.get("reason").toString() : null;
+        Long adminId = JwtInterceptor.getCurrentUserId();
+        int count = 0;
+        for (Object o : rawIds) {
+            Long id = Long.valueOf(o.toString());
+            Post post = postMapper.selectById(id);
+            if (post == null) continue;
+            applyReview(post, pass, reason, adminId);
+            count++;
+        }
+        operationAuditService.record(adminId, "post_review_batch", "post", null,
+                pass ? "批量审核通过" : "批量审核拒绝", "共 " + count + " 条");
+        return Result.ok();
+    }
+
+    private void applyReview(Post post, boolean pass, String reason, Long adminId) {
+        post.setReviewStatus(pass ? 0 : 2);
+        post.setReviewReason(pass ? null : reason);
+        post.setReviewBy(adminId);
+        post.setReviewTime(LocalDateTime.now());
+        postMapper.updateById(post);
+        if (!pass && post.getUserId() != null) {
+            String content = reason != null && !reason.isBlank() ? "你的动态审核未通过：" + reason : "你的动态审核未通过";
+            messageService.notify(adminId, post.getUserId(), "post_rejected", content, post.getId());
+        }
+    }
 }

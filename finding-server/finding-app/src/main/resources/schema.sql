@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `banned_until` DATETIME DEFAULT NULL COMMENT '封禁到期时间(NULL=永久封禁)',
     `banned_reason` VARCHAR(500) DEFAULT NULL COMMENT '封禁原因',
     `real_name_verified` TINYINT DEFAULT 0 COMMENT '0=no, 1=pending, 2=approved, 3=rejected',
+    `target_type` TINYINT DEFAULT 0 COMMENT '交友目标 0=未设置 1=找对象 2=交朋友',
     `last_login_at` DATETIME DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -168,6 +169,10 @@ CREATE TABLE IF NOT EXISTS `mate_invitation` (
     `current_participants` INT DEFAULT 1,
     `is_anonymous` TINYINT DEFAULT 0,
     `status` TINYINT DEFAULT 1 COMMENT '0=cancelled, 1=active, 2=closed',
+    `review_status` TINYINT DEFAULT 0 COMMENT '0=已发布 1=待审 2=拒绝',
+    `review_reason` VARCHAR(500) DEFAULT NULL COMMENT '审核拒绝原因',
+    `review_by` BIGINT DEFAULT NULL COMMENT '审核人',
+    `review_time` DATETIME DEFAULT NULL COMMENT '审核时间',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -661,6 +666,8 @@ CREATE TABLE IF NOT EXISTS `user_match_preference` (
     `max_distance_km` INT DEFAULT 0 COMMENT '最大距离km 0=不限',
     `only_verified` TINYINT DEFAULT 0 COMMENT '只看已认证 0=否 1=是',
     `prefer_city` VARCHAR(50) DEFAULT NULL COMMENT '偏好城市 空=不限',
+    `prefer_target_type` TINYINT DEFAULT 0 COMMENT '偏好目标 0=不限 1=找对象 2=交朋友',
+    `min_completeness` TINYINT DEFAULT 0 COMMENT '资料完整度最低门槛 0-10,0=不限',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -707,4 +714,37 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
     PRIMARY KEY (`id`),
     KEY `idx_operator` (`operator_id`),
     KEY `idx_action` (`action`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 30. user_warning - 警告记录
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `user_warning` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL COMMENT '警告原因',
+    `operator_id` BIGINT DEFAULT NULL COMMENT '操作者',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 31. appeal - 内容审核申诉
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `appeal` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '申诉人',
+    `target_type` VARCHAR(20) NOT NULL COMMENT 'post',
+    `target_id` BIGINT NOT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL COMMENT '申诉理由',
+    `status` TINYINT DEFAULT 0 COMMENT '0待处理 1通过 2驳回',
+    `original_result` VARCHAR(500) DEFAULT NULL COMMENT '原处理结果',
+    `handle_by` BIGINT DEFAULT NULL,
+    `handle_note` VARCHAR(500) DEFAULT NULL,
+    `handle_time` DATETIME DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_target` (`target_type`, `target_id`),
+    KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

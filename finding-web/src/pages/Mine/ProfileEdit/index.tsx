@@ -15,6 +15,12 @@ const GENDER_OPTIONS = [
   { value: 2, label: '女' },
 ];
 
+const TARGET_OPTIONS = [
+  { value: 0, label: '未设置' },
+  { value: 1, label: '找对象' },
+  { value: 2, label: '交朋友' },
+];
+
 export default function ProfileEditPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -24,6 +30,7 @@ export default function ProfileEditPage() {
   const [avatar, setAvatar] = useState(user?.avatar || '');
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [gender, setGender] = useState(user?.gender ?? 0);
+  const [targetType, setTargetType] = useState(user?.targetType ?? 0);
   const [school, setSchool] = useState(user?.school || '');
   const [signature, setSignature] = useState(user?.signature || '');
   const [city, setCity] = useState(user?.city || '');
@@ -80,6 +87,7 @@ export default function ProfileEditPage() {
         nickname: nickname.trim(),
         avatar,
         gender,
+        targetType,
         school: school.trim() || undefined,
         signature: signature.trim() || undefined,
         city: city.trim() || undefined,
@@ -91,6 +99,7 @@ export default function ProfileEditPage() {
           avatar,
           nickname: nickname.trim(),
           gender,
+          targetType,
           school: school.trim() || user.school,
           signature: signature.trim() || user.signature,
           city: city.trim() || user.city,
@@ -160,6 +169,22 @@ export default function ProfileEditPage() {
                 key={opt.value}
                 className={`pe-gender-chip ${gender === opt.value ? 'active' : ''}`}
                 onClick={() => setGender(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 交友目标 */}
+        <div className="pe-field">
+          <span className="pe-field-label">交友目标</span>
+          <div className="pe-gender-group">
+            {TARGET_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`pe-gender-chip ${targetType === opt.value ? 'active' : ''}`}
+                onClick={() => setTargetType(opt.value)}
               >
                 {opt.label}
               </button>

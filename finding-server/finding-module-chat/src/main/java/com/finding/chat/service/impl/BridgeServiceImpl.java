@@ -29,6 +29,7 @@ import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserWriteGuard;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.service.ChatService;
 import com.finding.message.service.MessageService;
@@ -78,6 +79,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final RecommendExcludeMapper excludeMapper;
     private final RecommendEventMapper eventMapper;
     private final MatchScoreWeights weights;
+    private final UserWriteGuard userWriteGuard;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -132,6 +134,12 @@ public class BridgeServiceImpl implements BridgeService {
             if (pref.getPreferCity() != null && !pref.getPreferCity().isBlank()) {
                 wrapper.eq(User::getCity, pref.getPreferCity());
             }
+            // 目标类型偏好:候选需设置相同交友目标
+            if (pref.getPreferTargetType() != null && pref.getPreferTargetType() == 1) {
+                wrapper.eq(User::getTargetType, 1);
+            } else if (pref.getPreferTargetType() != null && pref.getPreferTargetType() == 2) {
+                wrapper.eq(User::getTargetType, 2);
+            }
         }
 
         // ── 候选全量过滤(内存:年龄/距离) → 可解释打分 → 稳定排序 → 分页 ──
@@ -157,6 +165,11 @@ public class BridgeServiceImpl implements BridgeService {
             // 距离范围过滤
             if (myPref != null && myPref.getMaxDistanceKm() != null && myPref.getMaxDistanceKm() > 0
                     && dist != null && dist > myPref.getMaxDistanceKm()) {
+                continue;
+            }
+            // 资料完整度门槛过滤
+            if (myPref != null && myPref.getMinCompleteness() != null && myPref.getMinCompleteness() > 0
+                    && completeness(c) < myPref.getMinCompleteness()) {
                 continue;
             }
             scored.add(new Scored(c, scoreCandidate(me, c, myPref, dist)));
@@ -267,6 +280,7 @@ public class BridgeServiceImpl implements BridgeService {
     @Override
     @Transactional
     public void applyChat(Long fromUserId, Long toUserId, String remark) {
+        userWriteGuard.checkWritable(fromUserId);
         if (fromUserId.equals(toUserId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能给自己发送申请");
         }
@@ -485,6 +499,8 @@ public class BridgeServiceImpl implements BridgeService {
             p.setMaxAge(0);
             p.setMaxDistanceKm(0);
             p.setOnlyVerified(0);
+            p.setPreferTargetType(0);
+            p.setMinCompleteness(0);
         }
         return p;
     }
@@ -498,8 +514,16 @@ public class BridgeServiceImpl implements BridgeService {
         if (pref.getMaxAge() == null) pref.setMaxAge(0);
         if (pref.getMaxDistanceKm() == null) pref.setMaxDistanceKm(0);
         if (pref.getOnlyVerified() == null) pref.setOnlyVerified(0);
+        if (pref.getPreferTargetType() == null) pref.setPreferTargetType(0);
+        if (pref.getMinCompleteness() == null) pref.setMinCompleteness(0);
         if (pref.getPreferGender() < 0 || pref.getPreferGender() > 2) {
             throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "preferGender 仅允许 0/1/2");
+        }
+        if (pref.getPreferTargetType() < 0 || pref.getPreferTargetType() > 2) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "preferTargetType 仅允许 0/1/2");
+        }
+        if (pref.getMinCompleteness() < 0 || pref.getMinCompleteness() > 10) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "minCompleteness 仅允许 0-10");
         }
         if (pref.getMinAge() < 0 || pref.getMaxAge() < 0
                 || (pref.getMaxAge() > 0 && pref.getMinAge() > pref.getMaxAge())) {

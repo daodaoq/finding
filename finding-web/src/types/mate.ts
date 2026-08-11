@@ -21,6 +21,8 @@ export interface Mate {
   remainingSlots?: number;
   /** 当前用户报名状态:0=待审核 1=已通过 2=已拒绝 3=已退出 4=候补;未报名为 null */
   myApplicationStatus?: number | null;
+  reviewStatus?: number;
+  reviewReason?: string;
   createdAt: string;
   updatedAt: string;
 }

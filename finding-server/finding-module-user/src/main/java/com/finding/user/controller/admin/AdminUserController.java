@@ -9,8 +9,11 @@ import com.finding.common.audit.OperationAuditService;
 import com.finding.user.dto.UserResumeDTO;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserResume;
+import com.finding.user.entity.UserWarning;
 import com.finding.user.event.UserBannedEvent;
+import com.finding.user.event.UserWarningEvent;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.mapper.UserWarningMapper;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.UserResumeService;
 import com.finding.common.PageVO;
@@ -38,6 +41,7 @@ public class AdminUserController {
     private final UserResumeService userResumeService;
     private final ApplicationEventPublisher eventPublisher;
     private final OperationAuditService operationAuditService;
+    private final UserWarningMapper userWarningMapper;
 
     @GetMapping("/users")
     public Result<PageVO<Map<String, Object>>> listUsers(
@@ -201,6 +205,24 @@ public class AdminUserController {
         eventPublisher.publishEvent(new UserBannedEvent(user.getId(), reason, user.getBannedUntil()));
         operationAuditService.record(JwtInterceptor.getCurrentUserId(), "ban", "user", user.getId(),
                 "封禁用户 " + (days > 0 ? days + "天" : "永久"), reason);
+        return Result.ok();
+    }
+
+    /** 警告用户一次:记录 + 站内通知 */
+    @PutMapping("/users/{id}/warn")
+    public Result<Void> warnUser(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        User user = userMapper.selectById(id);
+        if (user == null) throw new BusinessException(ResultCode.PARAM_ERROR, "用户不存在");
+        String reason = body.get("reason") != null && !body.get("reason").toString().isBlank()
+                ? body.get("reason").toString() : "违反平台规范";
+        Long operator = JwtInterceptor.getCurrentUserId();
+        UserWarning w = new UserWarning();
+        w.setUserId(id);
+        w.setReason(reason);
+        w.setOperatorId(operator);
+        userWarningMapper.insert(w);
+        eventPublisher.publishEvent(new UserWarningEvent(id, reason, operator));
+        operationAuditService.record(operator, "warn", "user", id, "警告用户", reason);
         return Result.ok();
     }
 

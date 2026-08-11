@@ -45,4 +45,12 @@ export const postApi = {
 
   likeComment: (postId: number, commentId: number) =>
     request.post<ApiResponse<null>>(`/posts/${postId}/comments/${commentId}/like`),
+
+  /** 对审核未通过的动态发起申诉 */
+  appeal: (postId: number, reason: string) =>
+    request.post<ApiResponse<null>>(`/posts/${postId}/appeal`, { reason }),
+
+  /** 我的申诉记录 */
+  myAppeals: () =>
+    request.get<ApiResponse<any[]>>('/appeals/mine'),
 };

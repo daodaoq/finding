@@ -10,6 +10,8 @@ export interface UserMatchPreference {
   maxDistanceKm: number;
   onlyVerified: number;   // 0=否 1=是
   preferCity?: string;
+  preferTargetType: number; // 0=不限 1=找对象 2=交朋友
+  minCompleteness: number;  // 0-10,0=不限
 }
 
 export const bridgeApi = {

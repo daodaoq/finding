@@ -7,6 +7,7 @@ export interface User {
   signature: string;
   city: string;
   realNameVerified: number;
+  targetType?: number;
   followerCount: number;
   followingCount: number;
   postCount: number;

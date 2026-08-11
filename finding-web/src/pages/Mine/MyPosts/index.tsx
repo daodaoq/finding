@@ -42,6 +42,16 @@ export default function MyPostsPage() {
     finally { setDeleteTarget(null); }
   };
 
+  /** 对审核未通过的动态提起申诉 */
+  const handleAppeal = async (id: number) => {
+    const reason = window.prompt('申诉理由（请说明你的动态为何应通过审核）');
+    if (!reason || !reason.trim()) return;
+    try {
+      await postApi.appeal(id, reason.trim());
+      showToast('申诉已提交，请等待管理员处理');
+    } catch (e: any) { showToast(e?.message || '申诉失败'); }
+  };
+
   return (
     <div className="subpage">
       <div className="subpage-header">
@@ -54,13 +64,22 @@ export default function MyPostsPage() {
           <div key={p.id}>
             {(p.reviewStatus === 1 || p.reviewStatus === 2) && (
               <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 background: p.reviewStatus === 2 ? '#fff1f0' : '#fff7e6',
                 color: p.reviewStatus === 2 ? '#f5222d' : '#d46b08',
                 fontSize: 12, padding: '6px 16px',
               }}>
-                {p.reviewStatus === 1
-                  ? '审核中，暂不对他人可见'
-                  : `审核未通过：${p.reviewReason || '未通过'}`}
+                <span>
+                  {p.reviewStatus === 1
+                    ? '审核中，暂不对他人可见'
+                    : `审核未通过：${p.reviewReason || '未通过'}`}
+                </span>
+                {p.reviewStatus === 2 && (
+                  <button
+                    onClick={() => handleAppeal(p.id)}
+                    style={{ border: '1px solid currentColor', background: 'none', color: 'inherit', fontSize: 11, borderRadius: 10, padding: '1px 8px', flexShrink: 0 }}
+                  >申诉</button>
+                )}
               </div>
             )}
             <PostCard

@@ -18,6 +18,7 @@ import com.finding.user.entity.User;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.service.UserService;
+import com.finding.user.service.UserWriteGuard;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,7 @@ class PostServiceImplTest {
     @Mock private MessageService messageService;
     @Mock private RedisTemplate<String, Object> redisTemplate;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
+    @Mock private UserWriteGuard userWriteGuard;
 
     @InjectMocks
     private PostServiceImpl service;

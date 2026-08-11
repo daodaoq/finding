@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Tag, Modal, Input, message } from 'antd';
+import { Table, Space, Tag, Modal, Input, Button, Popconfirm, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -21,6 +21,10 @@ export default function PostReview() {
   const [rejectTarget, setRejectTarget] = useState<ReviewItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
+  const [batchMode, setBatchMode] = useState<'pass' | 'reject' | null>(null);
+  const [batchReason, setBatchReason] = useState('');
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const fetchData = (p = 1) => {
     setLoading(true);
@@ -60,6 +64,25 @@ export default function PostReview() {
     finally { setSubmitting(false); }
   };
 
+  /** 批量处理:勾选条目 通过/拒绝 */
+  const confirmBatch = async () => {
+    if (!batchMode || selectedKeys.length === 0) return;
+    setBatchLoading(true);
+    try {
+      await request.post('/admin/posts/review/batch', {
+        ids: selectedKeys,
+        pass: batchMode === 'pass',
+        reason: batchMode === 'reject' ? (batchReason.trim() || undefined) : undefined,
+      });
+      message.success(batchMode === 'pass' ? `已通过 ${selectedKeys.length} 条` : `已拒绝 ${selectedKeys.length} 条`);
+      setSelectedKeys([]);
+      setBatchMode(null);
+      setBatchReason('');
+      fetchData(page);
+    } catch { message.error('操作失败'); }
+    finally { setBatchLoading(false); }
+  };
+
   const columns: ColumnsType<ReviewItem> = [
     { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '动态内容', dataIndex: 'content', ellipsis: true },
@@ -80,17 +103,53 @@ export default function PostReview() {
   return (
     <div>
       <h2 style={{ marginBottom: 16 }}>动态审核队列</h2>
+      <Space style={{ marginBottom: 12 }}>
+        <Button type="primary" size="small" disabled={selectedKeys.length === 0} onClick={() => setBatchMode('pass')}>
+          批量通过{selectedKeys.length ? `(${selectedKeys.length})` : ''}
+        </Button>
+        <Button danger size="small" disabled={selectedKeys.length === 0} onClick={() => setBatchMode('reject')}>
+          批量拒绝{selectedKeys.length ? `(${selectedKeys.length})` : ''}
+        </Button>
+        {selectedKeys.length > 0 && (
+          <Button size="small" onClick={() => setSelectedKeys([])}>清除选择</Button>
+        )}
+      </Space>
       <Table
         columns={columns}
         dataSource={data}
         rowKey="id"
         loading={loading}
+        rowSelection={{
+          selectedRowKeys: selectedKeys,
+          onChange: (keys) => setSelectedKeys(keys as number[]),
+        }}
         pagination={{
           current: page, total, pageSize: 10,
           onChange: (p) => fetchData(p),
           showTotal: (t) => `共 ${t} 条`,
         }}
       />
+
+      {/* 批量处理弹窗 */}
+      <Modal
+        title={batchMode === 'pass' ? '批量通过' : '批量拒绝'}
+        open={batchMode != null}
+        onOk={confirmBatch}
+        onCancel={() => setBatchMode(null)}
+        okText={batchMode === 'pass' ? '确认通过' : '确认拒绝'}
+        okButtonProps={batchMode === 'reject' ? { danger: true } : undefined}
+        confirmLoading={batchLoading}
+        width={460}
+      >
+        {batchMode === 'reject' && (
+          <Input.TextArea
+            rows={3}
+            placeholder="拒绝原因（会通知给各作者）"
+            value={batchReason}
+            onChange={(e) => setBatchReason(e.target.value)}
+          />
+        )}
+      </Modal>
 
       {/* 拒绝原因弹窗 */}
       <Modal

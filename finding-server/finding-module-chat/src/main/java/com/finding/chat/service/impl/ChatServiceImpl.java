@@ -40,6 +40,7 @@ import com.finding.chat.entity.RoomFriend;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserWriteGuard;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
@@ -68,6 +69,7 @@ public class ChatServiceImpl implements ChatService {
     private final RabbitTemplate rabbitTemplate;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
+    private final UserWriteGuard userWriteGuard;
     private final WebSocketServer webSocketServer;
 
     @Override
@@ -209,6 +211,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ConversationVO sendMessage(Long userId, MessageSendDTO dto) {
+        userWriteGuard.checkWritable(userId);
         // 拉黑拦截:任一方拉黑对方都禁止私聊
         if (relationshipService.isBlockedEitherWay(userId, dto.getToUserId())) {
             throw new BusinessException(ResultCode.RELATION_BLOCKED);

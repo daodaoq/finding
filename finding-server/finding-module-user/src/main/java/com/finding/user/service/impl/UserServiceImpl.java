@@ -251,6 +251,7 @@ public class UserServiceImpl implements UserService {
         vo.setSignature(user.getSignature());
         vo.setCity(user.getCity());
         vo.setRealNameVerified(user.getRealNameVerified());
+        vo.setTargetType(user.getTargetType());
         vo.setLastLoginAt(user.getLastLoginAt());
         vo.setCreatedAt(user.getCreatedAt());
         return vo;

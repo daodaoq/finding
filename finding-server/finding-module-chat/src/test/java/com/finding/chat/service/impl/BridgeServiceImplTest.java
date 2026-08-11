@@ -26,6 +26,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserWriteGuard;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,7 @@ class BridgeServiceImplTest {
     @Mock private RecommendExcludeMapper excludeMapper;
     @Mock private RecommendEventMapper eventMapper;
     @Mock private MatchScoreWeights weights;
+    @Mock private UserWriteGuard userWriteGuard;
 
     @InjectMocks
     private BridgeServiceImpl service;

@@ -10,6 +10,7 @@ import com.finding.post.dto.PostQueryDTO;
 
 import com.finding.post.service.PostService;
 import com.finding.user.service.UserService;
+import com.finding.user.service.UserWriteGuard;
 import com.finding.post.vo.CommentVO;
 import com.finding.common.PageVO;
 import com.finding.common.util.XssUtil;
@@ -54,6 +55,7 @@ public class PostServiceImpl implements PostService {
     private final MessageService messageService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SensitiveWordFilter sensitiveWordFilter;
+    private final UserWriteGuard userWriteGuard;
 
     @Override
     public PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId) {
@@ -140,6 +142,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostVO createPost(Long userId, PostCreateDTO dto) {
+        userWriteGuard.checkWritable(userId);
         String content = XssUtil.clean(dto.getContent());
         // 拦截词 → 拒绝发布;送审词 → 进入审核队列;干净 → 直接发布
         ReviewResult review = sensitiveWordFilter.classifyReview(content);
@@ -244,6 +247,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public CommentVO addComment(Long userId, Long postId, Long parentId, String content) {
+        userWriteGuard.checkWritable(userId);
         Post post = postMapper.selectById(postId);
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ResultCode.POST_NOT_FOUND);

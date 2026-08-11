@@ -19,6 +19,7 @@ public enum ResultCode {
     SMS_CODE_EXPIRED(1006, "验证码已过期"),
     SMS_SEND_TOO_FREQUENT(1007, "验证码发送过于频繁，请稍后再试"),
     ACCOUNT_DISABLED(1008, "账号已被禁用"),
+    ACCOUNT_FROZEN(1009, "账号已被禁言，暂时无法发布内容"),
 
     // User errors (2xxx)
     USER_NOT_FOUND(2001, "用户不存在"),

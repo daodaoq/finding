@@ -23,6 +23,8 @@ public class MateVO {
     private Integer currentParticipants;
     private Integer isAnonymous;
     private Integer status;
+    private Integer reviewStatus;
+    private String reviewReason;
 
     // Author info (masked if isAnonymous=1)
     private UserVO author;

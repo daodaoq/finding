@@ -246,6 +246,12 @@ public class AuthServiceImpl implements AuthService {
             }
             user.setGender(vo.getGender());
         }
+        if (vo.getTargetType() != null) {
+            if (vo.getTargetType() < 0 || vo.getTargetType() > 2) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "targetType 仅允许 0/1/2");
+            }
+            user.setTargetType(vo.getTargetType());
+        }
         if (vo.getCity() != null) user.setCity(vo.getCity());
         // XSS 清洗 + 违禁词拦截
         vo.setNickname(XssUtil.clean(vo.getNickname()));

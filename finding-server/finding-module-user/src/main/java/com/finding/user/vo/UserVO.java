@@ -15,6 +15,7 @@ public class UserVO {
     private String signature;
     private String city;
     private Integer realNameVerified;
+    private Integer targetType;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
 

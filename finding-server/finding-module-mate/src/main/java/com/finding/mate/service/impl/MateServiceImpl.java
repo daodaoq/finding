@@ -11,9 +11,11 @@ import com.finding.mate.dto.MateCreateDTO;
 import com.finding.mate.dto.MateQueryDTO;
 
 
+import com.finding.common.word.ReviewResult;
 import com.finding.mate.service.MateService;
 import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserService;
+import com.finding.user.service.UserWriteGuard;
 import com.finding.common.GeoUtils;
 import com.finding.mate.vo.MateVO;
 import com.finding.common.PageVO;
@@ -53,11 +55,13 @@ public class MateServiceImpl implements MateService {
     private final UserService userService;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
+    private final UserWriteGuard userWriteGuard;
 
     @Override
     public PageVO<MateVO> listInvitations(MateQueryDTO query, Long currentUserId) {
         LambdaQueryWrapper<MateInvitation> wrapper = new LambdaQueryWrapper<MateInvitation>()
                 .eq(MateInvitation::getStatus, 1)
+                .eq(MateInvitation::getReviewStatus, 0) // 只显示已发布(审核通过)
                 .ge(MateInvitation::getActivityTime, java.time.LocalDateTime.now()); // 只显示未过期的
 
         if (StringUtils.hasText(query.getCategory())) {
@@ -86,12 +90,26 @@ public class MateServiceImpl implements MateService {
         if (invitation == null) {
             throw new BusinessException(ResultCode.MATE_NOT_FOUND);
         }
+        // 审核可见性:待审/拒绝仅作者可看
+        Integer rs = invitation.getReviewStatus() != null ? invitation.getReviewStatus() : 0;
+        if (rs != 0 && (currentUserId == null || !invitation.getUserId().equals(currentUserId))) {
+            throw new BusinessException(ResultCode.MATE_NOT_FOUND);
+        }
         return toVO(invitation, currentUserId, null, null);
     }
 
     @Override
     @Transactional
     public MateVO createInvitation(Long userId, MateCreateDTO dto) {
+        userWriteGuard.checkWritable(userId);
+        // XSS 清洗 + 拦截/送审分类
+        dto.setTitle(XssUtil.clean(dto.getTitle()));
+        dto.setDescription(XssUtil.clean(dto.getDescription()));
+        ReviewResult review = sensitiveWordFilter.classifyReview(dto.getTitle(), dto.getDescription());
+        if (review.hasBlocking()) {
+            String joined = review.blocking().stream().map(w -> "「" + w + "」").collect(Collectors.joining());
+            throw new BusinessException(ResultCode.CONTENT_BLOCKED, "内容包含违禁词:" + joined);
+        }
         MateInvitation invitation = new MateInvitation();
         invitation.setUserId(userId);
         invitation.setCategory(dto.getCategory());
@@ -105,10 +123,7 @@ public class MateServiceImpl implements MateService {
         invitation.setCurrentParticipants(1);
         invitation.setIsAnonymous(dto.getIsAnonymous());
         invitation.setStatus(1);
-        // XSS 清洗 + 违禁词拦截
-        dto.setTitle(XssUtil.clean(dto.getTitle()));
-        dto.setDescription(XssUtil.clean(dto.getDescription()));
-        sensitiveWordFilter.assertClean(dto.getTitle(), dto.getDescription());
+        invitation.setReviewStatus(review.hasReview() ? 1 : 0);
         invitationMapper.insert(invitation);
         return toVO(invitation, userId, null, null);
     }
@@ -156,6 +171,7 @@ public class MateServiceImpl implements MateService {
     @Override
     @Transactional
     public void joinInvitation(Long userId, Long id, String message) {
+        userWriteGuard.checkWritable(userId);
         MateInvitation invitation = invitationMapper.selectById(id);
         if (invitation == null) {
             throw new BusinessException(ResultCode.MATE_NOT_FOUND);
@@ -449,6 +465,8 @@ public class MateServiceImpl implements MateService {
         vo.setCurrentParticipants(m.getCurrentParticipants());
         vo.setIsAnonymous(m.getIsAnonymous());
         vo.setStatus(m.getStatus());
+        vo.setReviewStatus(m.getReviewStatus() != null ? m.getReviewStatus() : 0);
+        vo.setReviewReason(m.getReviewReason());
         vo.setCreatedAt(m.getCreatedAt());
         vo.setUpdatedAt(m.getUpdatedAt());
         vo.setIsFull(m.getCurrentParticipants() >= m.getMaxParticipants());

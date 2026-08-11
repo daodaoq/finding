@@ -32,7 +32,20 @@ export default function MyInvitationsPage() {
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
         {!loading && mates.map(m => (
-          <MateCard key={m.id} mate={m} onJoin={() => {}} onClick={id => navigate(`/mate/${id}`)} />
+          <div key={m.id}>
+            {(m.reviewStatus === 1 || m.reviewStatus === 2) && (
+              <div style={{
+                background: m.reviewStatus === 2 ? '#fff1f0' : '#fff7e6',
+                color: m.reviewStatus === 2 ? '#f5222d' : '#d46b08',
+                fontSize: 12, padding: '6px 16px',
+              }}>
+                {m.reviewStatus === 1
+                  ? '审核中，暂不对他人可见'
+                  : `审核未通过：${m.reviewReason || '未通过'}`}
+              </div>
+            )}
+            <MateCard mate={m} onJoin={() => {}} onClick={id => navigate(`/mate/${id}`)} />
+          </div>
         ))}
         {!loading && mates.length === 0 && <EmptyState message="还没有发布过邀约" />}
       </div>

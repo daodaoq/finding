@@ -14,6 +14,7 @@ import com.finding.message.service.MessageService;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserService;
+import com.finding.user.service.UserWriteGuard;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,7 @@ class MateServiceImplTest {
     @Mock private UserService userService;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserRelationshipService relationshipService;
+    @Mock private UserWriteGuard userWriteGuard;
 
     @InjectMocks
     private MateServiceImpl service;

@@ -31,6 +31,10 @@ public class UserMatchPreference {
     private Integer onlyVerified;
     /** 偏好城市,空=不限 */
     private String preferCity;
+    /** 偏好目标 0=不限 1=找对象 2=交朋友 */
+    private Integer preferTargetType;
+    /** 资料完整度最低门槛 0-10,0=不限 */
+    private Integer minCompleteness;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

@@ -91,6 +91,16 @@ export default function Users() {
     } catch { message.error('操作失败'); }
   };
 
+  /** 发送警告(记录 + 通知) */
+  const warnUser = async (id: number) => {
+    const reason = window.prompt('警告原因（会通知给用户）');
+    if (!reason || !reason.trim()) return;
+    try {
+      await request.put(`/admin/users/${id}/warn`, { reason: reason.trim() });
+      message.success('已发送警告');
+    } catch { message.error('操作失败'); }
+  };
+
   const openCreate = () => {
     setEditingUser(null);
     setForm({ ...emptyForm });
@@ -196,6 +206,7 @@ export default function Users() {
           <a onClick={() => { setResumeUserId(record.id); setResumeOpen(true); }}>简历</a>
           <a onClick={() => { setResumeEditId(record.id); setResumeEditOpen(true); }}>编辑简历</a>
           <a onClick={() => { setMsgMode('user'); setMsgUserId(record.id); setMsgContent(''); setMsgOpen(true); }}>发消息</a>
+          <a style={{ color: 'orange' }} onClick={() => warnUser(record.id)}>警告</a>
           <Popconfirm
             title={`确定${record.status === 1 ? '禁用' : '解禁'}该用户？`}
             onConfirm={() => toggleStatus(record)}

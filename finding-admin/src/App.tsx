@@ -8,6 +8,8 @@ import Verification from './pages/Verification';
 import Reports from './pages/Reports';
 import Posts from './pages/Posts';
 import PostReview from './pages/PostReview';
+import MateReview from './pages/MateReview';
+import Appeals from './pages/Appeals';
 import Comments from './pages/Comments';
 import Mates from './pages/Mates';
 import Groups from './pages/Groups';
@@ -32,6 +34,8 @@ export default function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="posts" element={<Posts />} />
             <Route path="post-review" element={<PostReview />} />
+            <Route path="mate-review" element={<MateReview />} />
+            <Route path="appeals" element={<Appeals />} />
             <Route path="comments" element={<Comments />} />
             <Route path="mates" element={<Mates />} />
             <Route path="groups" element={<Groups />} />

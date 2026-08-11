@@ -32,6 +32,7 @@ public class User {
     private LocalDateTime bannedUntil; // 封禁到期时间(NULL=永久封禁)
     private String bannedReason;        // 封禁原因
     private Integer realNameVerified; // 0=no, 1=pending, 2=approved, 3=rejected
+    private Integer targetType;      // 交友目标 0=未设置 1=找对象 2=交朋友
     private LocalDateTime lastLoginAt;
 
     @TableField(fill = FieldFill.INSERT)

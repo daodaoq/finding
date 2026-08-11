@@ -11,10 +11,17 @@ const GENDER_OPTIONS = [
   { value: 2, label: '女' },
 ];
 
+const TARGET_OPTIONS = [
+  { value: 0, label: '不限' },
+  { value: 1, label: '找对象' },
+  { value: 2, label: '交朋友' },
+];
+
 export default function PreferenceSetting() {
   const navigate = useNavigate();
   const [pref, setPref] = useState<UserMatchPreference>({
     preferGender: 0, minAge: 0, maxAge: 0, maxDistanceKm: 0, onlyVerified: 0,
+    preferTargetType: 0, minCompleteness: 0,
   });
   const [saving, setSaving] = useState(false);
 
@@ -28,6 +35,8 @@ export default function PreferenceSetting() {
           maxAge: d.maxAge ?? 0,
           maxDistanceKm: d.maxDistanceKm ?? 0,
           onlyVerified: d.onlyVerified ?? 0,
+          preferTargetType: d.preferTargetType ?? 0,
+          minCompleteness: d.minCompleteness ?? 0,
         });
       })
       .catch(() => {});
@@ -67,6 +76,36 @@ export default function PreferenceSetting() {
               onClick={() => save({ preferGender: g.value })}
             >{g.label}</button>
           ))}
+        </div>
+      </div>
+
+      <div className="set-card">
+        <div className="set-row">
+          <div className="set-label">偏好目标</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px' }}>
+          {TARGET_OPTIONS.map((t) => (
+            <button
+              key={t.value}
+              style={{ flex: 1, border: 'none', padding: '8px 0', borderRadius: 14, fontSize: 13, background: pref.preferTargetType === t.value ? '#ff6b81' : '#f0f0f0', color: pref.preferTargetType === t.value ? '#fff' : '#666' }}
+              onClick={() => save({ preferTargetType: t.value })}
+            >{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="set-card">
+        <div className="set-row">
+          <div className="set-label">资料完整度最低门槛</div>
+          <span className="set-desc">0-10,0 表示不限</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px 14px' }}>
+          <input
+            type="number" min={0} max={10} value={pref.minCompleteness}
+            onChange={(e) => set({ minCompleteness: Number(e.target.value) || 0 })}
+            onBlur={() => save({ minCompleteness: pref.minCompleteness })}
+            style={{ flex: 1, border: '1px solid #eee', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+          />
         </div>
       </div>
 
