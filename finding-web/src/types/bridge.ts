@@ -10,6 +10,8 @@ export interface BridgeRecommendUser {
   lastLoginAt: string;
   isLiked: boolean;
   mutualFriends: number;
+  /** 匹配理由,如「同校」「已认证」「兴趣相投」 */
+  matchReasons?: string[];
 }
 
 export interface ChatApply {

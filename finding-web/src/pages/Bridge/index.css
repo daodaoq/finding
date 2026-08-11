@@ -140,21 +140,16 @@
   color: #666;
 }
 
-/* ── 推荐用户信息流 ── */
-.bridge-feed-header {
-  padding: 0 16px 8px;
+/* ── 单卡推荐区 ── */
+.bridge-swipe-section {
+  padding: 4px 0 0;
+}
+
+.bridge-swipe-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 480px;
+  color: #bbb;
   font-size: 14px;
-  font-weight: 600;
-  color: #999;
-}
-
-.bridge-user-list {
-  background: #fff;
-}
-
-.no-more {
-  text-align: center;
-  padding: 20px;
-  color: #ccc;
-  font-size: 13px;
 }

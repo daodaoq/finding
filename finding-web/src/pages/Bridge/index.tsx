@@ -3,13 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { bridgeApi } from '../../api/bridge';
 import { homeApi } from '../../api/home';
 import BannerCarousel from '../../components/BannerCarousel';
-import UserCard from '../../components/UserCard';
 import LoginModal from '../../components/LoginModal';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
-import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useAuthStore } from '../../store/authStore';
 import { useBridgeStore } from '../../store/bridgeStore';
@@ -17,40 +14,28 @@ import { QUICK_ACTIONS } from '../../utils/constants';
 import type { BridgeRecommendUser } from '../../types/bridge';
 import type { Banner } from '../../types/message';
 import AppIcon from '../../components/AppIcon';
+import SwipeCard from './components/SwipeCard';
 import './index.css';
 
 export default function BridgePage() {
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [applyTarget, setApplyTarget] = useState<number | null>(null);
-  const [applyRemark, setApplyRemark] = useState('');
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const bridgePending = useBridgeStore((s) => s.pendingCount);
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, openLogin, isLoggedIn } = useRequireLogin();
-
   const { lat, lng } = useGeolocation(true);
 
-  const { items: users, loading, hasMore, setItems: setUsers, reset, onScroll } =
-    useInfiniteList<BridgeRecommendUser, [number?, number?]>({
-      fetcher: async (p, la, ln) => {
-        // 未登录不请求推荐(避免报"加载失败"),由界面提示登录
-        if (!isLoggedIn) return { records: [], hasMore: false };
-        const params: { page: number; size: number; lat?: number; lng?: number } = { page: p, size: 10 };
-        if (la != null && ln != null) { params.lat = la; params.lng = ln; }
-        const res = await bridgeApi.recommend(params);
-        return res.data.data;
-      },
-      args: [lat, lng],
-      deps: [isLoggedIn], // 登录态变化 → 重置并重新加载
-      onError: () => showToast('加载推荐用户失败'),
-    });
+  const [candidate, setCandidate] = useState<BridgeRecommendUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [noMore, setNoMore] = useState(false);
+  const [acting, setActing] = useState(false);
 
   useEffect(() => {
     loadBanners();
   }, []);
 
-  // 拉取收到的待处理申请数，用于「情书」「底部鹊桥」角标
+  // 拉取收到的待处理申请数，用于「来信」角标
   useEffect(() => {
     if (isLoggedIn) {
       bridgeApi.receivedPendingCount()
@@ -59,39 +44,73 @@ export default function BridgePage() {
     }
   }, [isLoggedIn, setBridgePending]);
 
+  // 登录态变化 / 定位就绪 → 重新加载推荐(定位就绪后带上坐标计算距离)
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadNext();
+    } else {
+      setCandidate(null);
+      setNoMore(false);
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, lat, lng]);
+
   const loadBanners = async () => {
     try {
       const res = await homeApi.banners();
       setBanners(res.data.data);
-    } catch { showToast('加载Banner失败'); }
+    } catch { /* 忽略 */ }
   };
 
-  const handleLike = (userId: number) => {
+  /** 拉取下一个推荐用户(每次一个;已跳过/已申请的用户会被后端排除) */
+  const loadNext = async () => {
+    setLoading(true);
+    try {
+      const params: { page: number; size: number; lat?: number; lng?: number } = { page: 1, size: 1 };
+      if (lat != null && lng != null) { params.lat = lat; params.lng = lng; }
+      const res = await bridgeApi.recommend(params);
+      const records = res.data.data.records || [];
+      setNoMore(records.length === 0);
+      setCandidate(records[0] || null);
+    } catch (e: any) {
+      showToast((e as Error)?.message || '加载推荐用户失败');
+      setNoMore(true);
+    } finally {
+      setLoading(false);
+      setActing(false);
+    }
+  };
+
+  /** 喜欢:发送聊天申请后换下一个 */
+  const handleLike = () => {
+    if (!candidate || acting) return;
     requireLogin(() => {
-      setApplyTarget(userId);
-      setApplyRemark('');
+      setActing(true);
+      bridgeApi.apply(candidate.userId)
+        .then(() => {
+          showToast('申请已发送，等待对方回应');
+          loadNext();
+        })
+        .catch((e: any) => {
+          showToast((e as Error)?.message || '发送申请失败');
+          setActing(false);
+        });
     });
   };
 
-  /** 不感兴趣:排除出推荐流 */
-  const handleSkip = async (userId: number) => {
-    try {
-      await bridgeApi.skipUser(userId);
-      setUsers((prev) => prev.filter((u) => u.userId !== userId));
-      showToast('已标记不感兴趣');
-    } catch { /* 拦截器已提示 */ }
-  };
-
-  const confirmApply = async () => {
-    if (applyTarget == null) return;
-    try {
-      await bridgeApi.apply(applyTarget, applyRemark.trim() || undefined);
-      setUsers((prev) =>
-        prev.map((u) => (u.userId === applyTarget ? { ...u, isLiked: true } : u))
-      );
-      showToast('申请已发送');
-    } catch (e: any) { showToast(e?.message || '发送申请失败'); }
-    finally { setApplyTarget(null); }
+  /** 不感兴趣:排除后换下一个 */
+  const handleSkip = () => {
+    if (!candidate || acting) return;
+    requireLogin(() => {
+      setActing(true);
+      bridgeApi.skipUser(candidate.userId)
+        .then(() => loadNext())
+        .catch((e: any) => {
+          showToast((e as Error)?.message || '操作失败');
+          setActing(false);
+        });
+    });
   };
 
   const handleQuickAction = (key: string) => {
@@ -102,23 +121,19 @@ export default function BridgePage() {
       case 'letter':
         requireLogin(() => navigate('/bridge/receive-apply'));
         break;
-      case 'watch':
-      case 'game':
-        // 功能开发中
-        break;
     }
+  };
+
+  const handleRefresh = () => {
+    if (isLoggedIn) loadNext();
   };
 
   const handleNotificationClick = () => {
     requireLogin(() => navigate('/messages/notifications'));
   };
 
-  const handleRefresh = () => {
-    reset();
-  };
-
   return (
-    <div className="bridge-page" onScroll={onScroll}>
+    <div className="bridge-page">
       {/* 顶部导航栏 */}
       <div className="bridge-top-nav">
         <div className="bridge-nav-left">
@@ -137,7 +152,6 @@ export default function BridgePage() {
           <button className="bridge-nav-icon-btn" onClick={handleRefresh}>
             <AppIcon name="refresh" size={19} />
           </button>
-          <button className="bridge-nav-icon-btn" aria-label="搜索"><AppIcon name="search" size={19} /></button>
           <button className="bridge-nav-icon-btn" onClick={handleNotificationClick}>
             <AppIcon name="bell" size={19} />
           </button>
@@ -175,58 +189,31 @@ export default function BridgePage() {
         </div>
       </div>
 
-      {/* 推荐用户信息流 */}
-      <div className="bridge-feed-header">推荐用户</div>
-      <div className="bridge-user-list">
+      {/* 单卡推荐:一次一个用户,爱心喜欢/叉号换下一个 */}
+      <div className="bridge-swipe-section">
         {!isLoggedIn ? (
           <EmptyState
             icon="heart"
             message="登录后即可查看推荐用户"
             action={<button onClick={openLogin}>去登录</button>}
           />
+        ) : loading ? (
+          <div className="bridge-swipe-loading">加载中...</div>
+        ) : noMore || !candidate ? (
+          <EmptyState
+            icon="heart"
+            message="没有更多推荐了"
+            action={<button onClick={handleRefresh}>刷新看看</button>}
+          />
         ) : (
-          <>
-            {users.map((user) => (
-              <UserCard key={user.userId} user={user} onLike={handleLike} onSkip={handleSkip} />
-            ))}
-            {loading && <LoadingSkeleton />}
-            {!loading && users.length === 0 && (
-              <EmptyState icon="heart" message="暂无推荐用户，换个时间再来看看吧" />
-            )}
-            {!hasMore && users.length > 0 && (
-              <p className="no-more">— 没有更多了 —</p>
-            )}
-          </>
+          <SwipeCard
+            user={candidate}
+            onLike={handleLike}
+            onSkip={handleSkip}
+            disabled={acting}
+          />
         )}
       </div>
-
-      {/* 发送申请备注弹层 */}
-      {applyTarget != null && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={() => setApplyTarget(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 480, background: '#fff', borderRadius: '16px 16px 0 0', padding: 16 }}
-          >
-            <h4 style={{ margin: '0 0 12px' }}>发送心动申请</h4>
-            <input
-              placeholder="写一句介绍/想说的话（选填）"
-              value={applyRemark}
-              onChange={(e) => setApplyRemark(e.target.value)}
-              maxLength={100}
-              style={{ width: '100%', border: '1px solid #eee', borderRadius: 8, padding: 10, fontSize: 14, boxSizing: 'border-box' }}
-            />
-            <button
-              onClick={confirmApply}
-              style={{ width: '100%', marginTop: 16, padding: 12, border: 'none', borderRadius: 22, background: '#ff6b81', color: '#fff', fontSize: 15 }}
-            >
-              发送申请
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 登录弹窗 */}
       <LoginModal
