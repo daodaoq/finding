@@ -19,6 +19,8 @@ public class User {
     private String email;
     private String nickname;
     private String avatar;
+    /** 个人中心资料卡背景图 URL */
+    private String profileBackground;
     private Integer gender;         // 0=unknown, 1=male, 2=female
     private LocalDate birthday;
     private String school;

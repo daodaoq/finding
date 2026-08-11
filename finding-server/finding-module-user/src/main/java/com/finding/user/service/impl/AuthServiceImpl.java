@@ -228,6 +228,13 @@ public class AuthServiceImpl implements AuthService {
         vo.setFollowingCount(followMapper.selectCount(
                 new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId)).intValue());
         vo.setPostCount(userPostStatsQuery.countPosts(userId));
+        // 互关(好友)数:关注我的人中,我也关注了他们
+        vo.setMutualCount(followMapper.selectCount(
+                        new LambdaQueryWrapper<UserFollow>()
+                                .eq(UserFollow::getFolloweeId, userId)
+                                .inSql(UserFollow::getFollowerId,
+                                        "SELECT followee_id FROM user_follow WHERE follower_id = " + userId))
+                .intValue());
 
         return vo;
     }
@@ -238,6 +245,12 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) throw new BusinessException(ResultCode.USER_NOT_FOUND);
         if (StringUtils.hasText(vo.getNickname())) user.setNickname(vo.getNickname());
         if (vo.getAvatar() != null) user.setAvatar(vo.getAvatar());
+        if (vo.getProfileBackground() != null) {
+            if (vo.getProfileBackground().length() > 500) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "profileBackground 长度不能超过 500");
+            }
+            user.setProfileBackground(vo.getProfileBackground());
+        }
         if (vo.getSignature() != null) user.setSignature(vo.getSignature());
         if (vo.getSchool() != null) user.setSchool(vo.getSchool());
         if (vo.getGender() != null) {
@@ -382,6 +395,7 @@ public class AuthServiceImpl implements AuthService {
         vo.setId(user.getId());
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
+        vo.setProfileBackground(user.getProfileBackground());
         vo.setGender(user.getGender());
         vo.setSchool(user.getSchool());
         vo.setSignature(user.getSignature());

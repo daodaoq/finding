@@ -10,6 +10,8 @@ public class UserVO {
     private Long id;
     private String nickname;
     private String avatar;
+    /** 个人中心资料卡背景图 URL */
+    private String profileBackground;
     private Integer gender;
     private String school;
     private String signature;
@@ -23,5 +25,7 @@ public class UserVO {
     private Integer followerCount;
     private Integer followingCount;
     private Integer postCount;
+    /** 互关(好友)数量:我关注且对方也关注我 */
+    private Integer mutualCount;
     private Boolean isFollowed;
 }

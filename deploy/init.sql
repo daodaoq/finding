@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `email` VARCHAR(100) DEFAULT NULL,
     `nickname` VARCHAR(50) NOT NULL,
     `avatar` VARCHAR(500) DEFAULT NULL,
+    `profile_background` VARCHAR(500) DEFAULT NULL COMMENT '个人中心资料卡背景图 URL',
     `gender` TINYINT DEFAULT 0 COMMENT '0=unknown, 1=male, 2=female',
     `birthday` DATE DEFAULT NULL,
     `school` VARCHAR(100) DEFAULT NULL,

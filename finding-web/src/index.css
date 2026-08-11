@@ -18,7 +18,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: #f6f1e8;
+  background: #fff;
   color: #29241f;
   font-size: 14px;
   line-height: 1.5;
@@ -45,8 +45,8 @@ button {
 }
 
 :root {
-  --paper: #f6f1e8;
-  --surface: #fffdf8;
+  --paper: #fff;
+  --surface: #fff;
   --ink: #29241f;
   --muted: #746d63;
   --line: #ded5c8;

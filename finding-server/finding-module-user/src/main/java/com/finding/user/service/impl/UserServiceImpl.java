@@ -49,6 +49,13 @@ public class UserServiceImpl implements UserService {
         vo.setFollowingCount(followMapper.selectCount(
                 new LambdaQueryWrapper<UserFollow>().eq(UserFollow::getFollowerId, userId)).intValue());
         vo.setPostCount(userPostStatsQuery.countPosts(userId));
+        // 互关(好友)数:关注我的人中,我也关注了他们
+        vo.setMutualCount(followMapper.selectCount(
+                        new LambdaQueryWrapper<UserFollow>()
+                                .eq(UserFollow::getFolloweeId, userId)
+                                .inSql(UserFollow::getFollowerId,
+                                        "SELECT followee_id FROM user_follow WHERE follower_id = " + userId))
+                .intValue());
 
         if (currentUserId != null) {
             vo.setIsFollowed(isFollowing(currentUserId, userId));

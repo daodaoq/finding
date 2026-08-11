@@ -26,15 +26,18 @@ export default function ProfileEditPage() {
   const setUser = useAuthStore((s) => s.setUser);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backgroundInputRef = useRef<HTMLInputElement>(null);
 
   const [avatar, setAvatar] = useState(user?.avatar || '');
+  const [profileBackground, setProfileBackground] = useState(user?.profileBackground || '');
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [gender, setGender] = useState(user?.gender ?? 0);
   const [targetType, setTargetType] = useState(user?.targetType ?? 0);
   const [school, setSchool] = useState(user?.school || '');
   const [signature, setSignature] = useState(user?.signature || '');
   const [city, setCity] = useState(user?.city || '');
-  const [uploading, setUploading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
 
@@ -60,7 +63,7 @@ export default function ProfileEditPage() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
+    setAvatarUploading(true);
     try {
       const res = await uploadApi.uploadImage(file);
       const url = res.data.data;
@@ -69,9 +72,25 @@ export default function ProfileEditPage() {
     } catch {
       showToast('头像上传失败');
     } finally {
-      setUploading(false);
+      setAvatarUploading(false);
       // 清空 input，允许重复选择同一文件
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleBackgroundChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBackgroundUploading(true);
+    try {
+      const res = await uploadApi.uploadImage(file);
+      setProfileBackground(res.data.data);
+      showToast('资料卡背景图上传成功');
+    } catch {
+      showToast('背景图上传失败');
+    } finally {
+      setBackgroundUploading(false);
+      if (backgroundInputRef.current) backgroundInputRef.current.value = '';
     }
   };
 
@@ -86,6 +105,7 @@ export default function ProfileEditPage() {
       await authApi.updateProfile({
         nickname: nickname.trim(),
         avatar,
+        profileBackground,
         gender,
         targetType,
         school: school.trim() || undefined,
@@ -97,6 +117,7 @@ export default function ProfileEditPage() {
         setUser({
           ...user,
           avatar,
+          profileBackground,
           nickname: nickname.trim(),
           gender,
           targetType,
@@ -134,7 +155,7 @@ export default function ProfileEditPage() {
             <AppIcon name="user" size={32} />
           )}
           <div className="pe-avatar-overlay">更换头像</div>
-          {uploading && <div className="pe-avatar-loading">上传中...</div>}
+          {avatarUploading && <div className="pe-avatar-loading">上传中...</div>}
         </div>
         <input
           ref={fileInputRef}
@@ -143,6 +164,15 @@ export default function ProfileEditPage() {
           style={{ display: 'none' }}
           onChange={handleAvatarChange}
         />
+      </div>
+
+      <div className="pe-cover-section">
+        <span className="pe-cover-label">资料卡背景</span>
+        <button className={`pe-cover-preview ${profileBackground ? 'has-image' : ''}`} style={profileBackground ? { backgroundImage: `url(\"${profileBackground}\")` } : undefined} onClick={() => backgroundInputRef.current?.click()}>
+          <span>{backgroundUploading ? '上传中...' : <><AppIcon name="camera" size={17} /> {profileBackground ? '更换背景图' : '上传背景图'}</>}</span>
+        </button>
+        {profileBackground ? <button className="pe-cover-clear" onClick={() => setProfileBackground('')}>恢复默认</button> : null}
+        <input ref={backgroundInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBackgroundChange} />
       </div>
 
       {/* 表单 */}
@@ -239,7 +269,7 @@ export default function ProfileEditPage() {
       <button
         className="pe-save-btn"
         onClick={handleSave}
-        disabled={saving || uploading}
+        disabled={saving || avatarUploading || backgroundUploading}
       >
         {saving ? '保存中...' : '保存'}
       </button>
