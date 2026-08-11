@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Input, InputNumber, Select, Button, message } from 'antd';
 import request from '../api/request';
+import type { ResumeFieldValue, ResumeForm } from '../types/admin';
 
 interface Field {
   key: string;
@@ -89,7 +90,7 @@ const BLOCKS: { title: string; fields: Field[] }[] = [
 export default function ResumeEditModal({
   userId, open, onClose,
 }: { userId: number | null; open: boolean; onClose: () => void }) {
-  const [form, setForm] = useState<Record<string, any>>({});
+  const [form, setForm] = useState<ResumeForm>({});
   const [photoText, setPhotoText] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -103,10 +104,11 @@ export default function ResumeEditModal({
       .then((res) => {
         const r = res.data.data;
         if (r) {
-          const f: Record<string, any> = {};
+          const f: ResumeForm = {};
           BLOCKS.forEach((b) => b.fields.forEach((fld) => {
-            if (r[fld.key] !== null && r[fld.key] !== undefined && r[fld.key] !== '') {
-              f[fld.key] = r[fld.key];
+            const v = r[fld.key] as ResumeFieldValue;
+            if (v !== null && v !== undefined && v !== '') {
+              f[fld.key] = v;
             }
           }));
           setForm(f);
@@ -117,7 +119,7 @@ export default function ResumeEditModal({
       .finally(() => setLoading(false));
   }, [open, userId]);
 
-  const setVal = (key: string, v: any) => setForm((prev) => ({ ...prev, [key]: v }));
+  const setVal = (key: string, v: ResumeFieldValue) => setForm((prev) => ({ ...prev, [key]: v }));
 
   const save = async () => {
     if (!userId) return;
@@ -150,8 +152,8 @@ export default function ResumeEditModal({
         <InputNumber
           style={{ width: '100%' }}
           placeholder={`${f.label}（可留空）`}
-          value={value}
-          onChange={(v) => setVal(f.key, v)}
+          value={value as number}
+          onChange={(v) => setVal(f.key, v ?? undefined)}
         />
       );
     }

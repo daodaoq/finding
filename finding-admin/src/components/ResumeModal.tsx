@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Descriptions, Empty, Image, Spin, Tag } from 'antd';
 import request from '../api/request';
+import type { ResumeFieldValue } from '../types/admin';
 
 interface ResumeData {
   gender?: number;
@@ -45,7 +46,7 @@ interface ResumeData {
   photoAlbum?: string[];
 }
 
-const BLOCKS: { title: string; fields: { key: keyof ResumeData; label: string; render?: (v: any) => string }[] }[] = [
+const BLOCKS: { title: string; fields: { key: keyof ResumeData; label: string; render?: (v: ResumeFieldValue) => string }[] }[] = [
   {
     title: '基础信息',
     fields: [
@@ -144,9 +145,9 @@ export default function ResumeModal({ userId, open, onClose }: { userId: number 
       .finally(() => setLoading(false));
   }, [open, userId]);
 
-  const hasValue = (v: any) => v !== null && v !== undefined && v !== '';
+  const hasValue = (v: ResumeFieldValue) => v !== null && v !== undefined && v !== '';
 
-  const valueOf = (field: { key: keyof ResumeData; label: string; render?: (v: any) => string }) => {
+  const valueOf = (field: { key: keyof ResumeData; label: string; render?: (v: ResumeFieldValue) => string }) => {
     if (!resume) return '';
     const v = resume[field.key];
     if (!hasValue(v)) return '';

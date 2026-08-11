@@ -2,30 +2,20 @@ import { useEffect, useState } from 'react';
 import { Table, Button, Input, Space, Tag, Popconfirm, Modal, Select, Upload, message } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import request from '../api/request';
 import ResumeModal from '../components/ResumeModal';
 import ResumeEditModal from '../components/ResumeEditModal';
+import type { AdminUserRecord, AdminUserDetail, AdminUserForm } from '../types/admin';
 
-interface UserRecord {
-  id: number; nickname: string; phone: string; school: string;
-  status: number; realNameVerified: number; createdAt: string;
-}
-
-interface UserDetail {
-  id: number; nickname: string; phone: string; avatar: string;
-  school: string; gender: number; birthday?: string; email?: string;
-  signature: string; city: string;
-  status: number; role: string; realNameVerified: number;
-}
-
-const emptyForm = {
+const emptyForm: AdminUserForm = {
   nickname: '', phone: '', password: '', avatar: '',
   school: '', gender: 0, birthday: '', email: '', role: 'user',
   signature: '', city: '', status: 1,
 };
 
 export default function Users() {
-  const [data, setData] = useState<UserRecord[]>([]);
+  const [data, setData] = useState<AdminUserRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -34,7 +24,7 @@ export default function Users() {
   // 弹窗
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserDetail | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUserDetail | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
 
@@ -82,7 +72,7 @@ export default function Users() {
 
   useEffect(() => { fetchData(1); }, []);
 
-  const toggleStatus = async (record: UserRecord) => {
+  const toggleStatus = async (record: AdminUserRecord) => {
     const newStatus = record.status === 1 ? 0 : 1;
     try {
       await request.put(`/admin/users/${record.id}/status`, { status: newStatus });
@@ -107,10 +97,10 @@ export default function Users() {
     setEditOpen(true);
   };
 
-  const openEdit = async (record: UserRecord) => {
+  const openEdit = async (record: AdminUserRecord) => {
     try {
       const res = await request.get(`/admin/users/${record.id}`);
-      const u = res.data.data as UserDetail;
+      const u = res.data.data as AdminUserDetail;
       setEditingUser(u);
       setForm({
         nickname: u.nickname || '',
@@ -131,8 +121,8 @@ export default function Users() {
   };
 
   /** 头像上传 */
-  const handleUpload = async (options: any) => {
-    const file = options.file as File;
+  const handleUpload = async (options: UploadRequestOption<File>) => {
+    const file = options.file;
     setUploading(true);
     try {
       const fd = new FormData();
@@ -146,9 +136,9 @@ export default function Users() {
         message.success('头像上传成功');
       }
       options.onSuccess?.(url);
-    } catch {
+    } catch (e) {
       message.error('上传失败');
-      options.onError?.({});
+      options.onError?.(e instanceof Error ? e : new Error('上传失败'));
     }
     finally { setUploading(false); }
   };
@@ -160,7 +150,8 @@ export default function Users() {
     }
     setEditLoading(true);
     try {
-      const payload: Record<string, any> = { ...form };
+      // 明确命令类型,不把整个表单对象裸提交
+      const payload: AdminUserForm = { ...form };
       if (!payload.password) delete payload.password;
       if (editingUser) {
         await request.put(`/admin/users/${editingUser.id}`, payload);
@@ -171,13 +162,14 @@ export default function Users() {
       }
       setEditOpen(false);
       fetchData(page);
-    } catch (e: any) {
-      message.error(e?.message || '操作失败');
+    } catch (e) {
+      // 拦截器已统一 message.error,这里兜底服务端透出的业务文案
+      message.error(e instanceof Error && e.message ? e.message : '操作失败');
     }
     finally { setEditLoading(false); }
   };
 
-  const columns: ColumnsType<UserRecord> = [
+  const columns: ColumnsType<AdminUserRecord> = [
     { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
     { title: '昵称', dataIndex: 'nickname' },
     { title: '手机号', dataIndex: 'phone' },

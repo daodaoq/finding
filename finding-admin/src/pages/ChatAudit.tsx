@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Table, Input, Space, Tag, Popconfirm, message, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
+import type { AdminUserRecord, AdminGroupRecord } from '../types/admin';
 
 interface ChatMsg {
   id: number; fromUserId: number; toUserId: number;
@@ -19,14 +20,14 @@ export default function ChatAudit() {
   const [tab, setTab] = useState('private');
 
   // ── 用户列表(私聊审查) ──
-  const [userList, setUserList] = useState<any[]>([]);
+  const [userList, setUserList] = useState<AdminUserRecord[]>([]);
   const [userListLoading, setUserListLoading] = useState(false);
   const [userListPage, setUserListPage] = useState(1);
   const [userListTotal, setUserListTotal] = useState(0);
   const [userKeyword, setUserKeyword] = useState('');
 
   // ── 群列表(群聊审查) ──
-  const [groupList, setGroupList] = useState<any[]>([]);
+  const [groupList, setGroupList] = useState<AdminGroupRecord[]>([]);
   const [groupListLoading, setGroupListLoading] = useState(false);
   const [groupListPage, setGroupListPage] = useState(1);
   const [groupListTotal, setGroupListTotal] = useState(0);
@@ -36,7 +37,7 @@ export default function ChatAudit() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState('');
   const [otherKeyword, setOtherKeyword] = useState('');
-  const [otherOptions, setOtherOptions] = useState<any[]>([]);
+  const [otherOptions, setOtherOptions] = useState<AdminUserRecord[]>([]);
   const [otherUserId, setOtherUserId] = useState<number | null>(null);
   const [data, setData] = useState<ChatMsg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export default function ChatAudit() {
       .finally(() => setUserListLoading(false));
   };
 
-  const selectUser = (u: any) => {
+  const selectUser = (u: AdminUserRecord) => {
     setSelectedUserId(u.id);
     setSelectedUser(u.nickname || `用户${u.id}`);
     setOtherUserId(null);
@@ -81,7 +82,7 @@ export default function ChatAudit() {
     setOtherOptions(res.data?.data?.records || []);
   };
 
-  const pickOther = (u: any) => {
+  const pickOther = (u: AdminUserRecord) => {
     setOtherUserId(u.id);
     setOtherOptions([]);
     setPage(1);
@@ -113,7 +114,7 @@ export default function ChatAudit() {
       .finally(() => setGroupListLoading(false));
   };
 
-  const selectGroup = (g: any) => {
+  const selectGroup = (g: AdminGroupRecord) => {
     setSelectedGroup({ id: g.id, name: g.name || `群${g.id}` });
     setGPage(1);
     fetchGroupMessages(g.id, 1);
@@ -136,14 +137,14 @@ export default function ChatAudit() {
   };
 
   // ── 表格列 ──
-  const userColumns: ColumnsType<any> = [
+  const userColumns: ColumnsType<AdminUserRecord> = [
     { title: '序号', width: 70, render: (_, __, i) => (userListPage - 1) * 10 + i + 1 },
     { title: '昵称', dataIndex: 'nickname' },
     { title: '手机号', dataIndex: 'phone', width: 130 },
     { title: '学校', dataIndex: 'school' },
   ];
 
-  const groupColumns: ColumnsType<any> = [
+  const groupColumns: ColumnsType<AdminGroupRecord> = [
     { title: '序号', width: 70, render: (_, __, i) => (groupListPage - 1) * 10 + i + 1 },
     { title: '群名', dataIndex: 'name' },
     { title: '成员', dataIndex: 'memberCount', width: 80 },
