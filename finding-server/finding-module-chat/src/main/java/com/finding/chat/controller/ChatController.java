@@ -10,6 +10,7 @@ import com.finding.user.security.JwtInterceptor;
 import com.finding.chat.service.ChatService;
 import com.finding.chat.vo.ChatMessageVO;
 import com.finding.chat.vo.ConversationSettingsVO;
+import com.finding.chat.vo.StrangerMessageVO;
 import com.finding.message.vo.ConversationVO;
 import com.finding.common.PageVO;
 import jakarta.validation.Valid;
@@ -44,6 +45,42 @@ public class ChatController {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
         return Result.ok(chatService.listHiddenConversations(userId));
+    }
+
+    // ── 陌生人打招呼消息 ──
+
+    /** 发送陌生人打招呼消息(未建立会话前,同一对用户仅一条) */
+    @PostMapping("/stranger/send")
+    public Result<Void> sendStranger(@RequestParam Long toUserId, @RequestParam String content) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.sendStrangerMessage(userId, toUserId, content);
+        return Result.ok();
+    }
+
+    /** 我的陌生人消息合集(我发出的待确认 + 我收到的待确认) */
+    @GetMapping("/stranger/messages")
+    public Result<List<StrangerMessageVO>> listStranger() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.listStrangerMessages(userId));
+    }
+
+    /** 确认聊天:转为正式会话并迁移消息 */
+    @PostMapping("/stranger/{id}/accept")
+    public Result<Void> acceptStranger(@PathVariable Long id) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        chatService.acceptStrangerMessage(userId, id);
+        return Result.ok();
+    }
+
+    /** 与某用户的陌生人消息状态(hasConversation/sent/received) */
+    @GetMapping("/stranger/status")
+    public Result<Map<String, Object>> strangerStatus(@RequestParam Long toUserId) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        return Result.ok(chatService.strangerStatus(userId, toUserId));
     }
 
     /** 获取与指定用户的已有会话(不存在则拒绝——须先经聊天申请批准建立) */

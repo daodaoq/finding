@@ -3,10 +3,12 @@ package com.finding.chat.service;
 import com.finding.chat.dto.MessageSendDTO;
 import com.finding.chat.vo.ChatMessageVO;
 import com.finding.chat.vo.ConversationSettingsVO;
+import com.finding.chat.vo.StrangerMessageVO;
 import com.finding.message.vo.ConversationVO;
 import com.finding.common.PageVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 聊天服务 —— 私聊消息收发、会话管理、消息历史。
@@ -25,6 +27,18 @@ public interface ChatService {
 
     /** 已隐藏会话列表(供用户手动恢复) */
     List<ConversationVO> listHiddenConversations(Long userId);
+
+    /** 发送陌生人打招呼消息(未建立会话前,同一对用户仅一条) */
+    void sendStrangerMessage(Long fromUserId, Long toUserId, String content);
+
+    /** 我的陌生人消息合集(我发出的待确认 + 我收到的待确认) */
+    List<StrangerMessageVO> listStrangerMessages(Long userId);
+
+    /** 确认聊天:将陌生人消息转为正式会话并迁移消息 */
+    void acceptStrangerMessage(Long userId, Long messageId);
+
+    /** 与某用户的陌生人消息状态(hasConversation/sent/received) */
+    Map<String, Object> strangerStatus(Long userId, Long toUserId);
 
     /** 发送私聊消息（REST 方式，客户端只能以 roomId 指定会话；返回落库后的真实消息回执） */
     ChatMessageVO sendMessage(Long userId, MessageSendDTO dto);

@@ -9,13 +9,16 @@ import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Report;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.RoomFriend;
+import com.finding.chat.entity.StrangerMessage;
 import com.finding.chat.mapper.ChatOutboxMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.mapper.RoomMapper;
+import com.finding.chat.mapper.StrangerMessageMapper;
 import com.finding.chat.vo.ChatMessageVO;
+import com.finding.message.service.MessageService;
 import com.finding.common.BusinessException;
 import com.finding.common.PageVO;
 import com.finding.common.ResultCode;
@@ -23,6 +26,7 @@ import com.finding.common.word.SensitiveWordFilter;
 import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.message.vo.ConversationVO;
+import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.mapper.UserMapper;
@@ -72,6 +76,9 @@ class ChatServiceImplTest {
     @Mock private ReportMapper reportMapper;
     @Mock private UserSettingsMapper userSettingsMapper;
     @Mock private ChatOutboxMapper chatOutboxMapper;
+    @Mock private StrangerMessageMapper strangerMessageMapper;
+    @Mock private MessageService messageService;
+    @Mock private VerificationGuard verificationGuard;
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserRelationshipService relationshipService;
     @Mock private UserWriteGuard userWriteGuard;
@@ -97,6 +104,7 @@ class ChatServiceImplTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), Report.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserSettings.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), ChatOutbox.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), StrangerMessage.class);
     }
 
     private RoomFriend rf(Long uid1, Long uid2, Long roomId) {
@@ -464,5 +472,47 @@ class ChatServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.sendMessage(1L, dto(100L, "hi")));
         assertEquals(ResultCode.TOO_FREQUENT.getCode(), ex.getCode());
+    }
+
+    // ── 陌生人打招呼消息 ──
+
+    @Test
+    void sendStrangerMessage_noConversation_insertsAndNotifies() {
+        User target = new User(); target.setId(2L); target.setStatus(1);
+        when(userMapper.selectById(2L)).thenReturn(target);
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(roomFriendMapper.selectCount(any())).thenReturn(0L); // 无正式会话
+        when(strangerMessageMapper.selectCount(any())).thenReturn(0L); // 未发过
+        when(strangerMessageMapper.insert(any())).thenReturn(1);
+        when(userMapper.selectById(1L)).thenReturn(new User());
+
+        service.sendStrangerMessage(1L, 2L, "你好");
+
+        verify(strangerMessageMapper).insert(any());
+        verify(messageService).notify(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void sendStrangerMessage_alreadySent_rejected() {
+        User target = new User(); target.setId(2L); target.setStatus(1);
+        when(userMapper.selectById(2L)).thenReturn(target);
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(roomFriendMapper.selectCount(any())).thenReturn(0L);
+        when(strangerMessageMapper.selectCount(any())).thenReturn(1L); // 已发过
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.sendStrangerMessage(1L, 2L, "你好"));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+        verify(strangerMessageMapper, never()).insert(any());
+    }
+
+    @Test
+    void acceptStrangerMessage_alreadyHandled_rejected() {
+        StrangerMessage msg = new StrangerMessage();
+        msg.setId(10L); msg.setFromUserId(2L); msg.setToUserId(1L); msg.setStatus(0);
+        when(strangerMessageMapper.selectById(10L)).thenReturn(msg);
+        when(strangerMessageMapper.update(any(), any())).thenReturn(0); // 已被并发处理
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.acceptStrangerMessage(1L, 10L));
+        assertEquals(ResultCode.CHAT_APPLY_ALREADY_HANDLED.getCode(), ex.getCode());
     }
 }

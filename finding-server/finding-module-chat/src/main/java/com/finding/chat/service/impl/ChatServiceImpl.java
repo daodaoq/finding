@@ -34,6 +34,10 @@ import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.Report;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.RoomFriend;
+import com.finding.chat.entity.StrangerMessage;
+import com.finding.chat.vo.StrangerMessageVO;
+import com.finding.message.service.MessageService;
+import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.service.UserRelationshipService;
@@ -44,6 +48,7 @@ import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.mapper.RoomMapper;
+import com.finding.chat.mapper.StrangerMessageMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
 
@@ -65,6 +70,9 @@ public class ChatServiceImpl implements ChatService {
     private final ReportMapper reportMapper;
     private final UserSettingsMapper userSettingsMapper;
     private final ChatOutboxMapper chatOutboxMapper;
+    private final StrangerMessageMapper strangerMessageMapper;
+    private final MessageService messageService;
+    private final VerificationGuard verificationGuard;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
     private final UserWriteGuard userWriteGuard;
@@ -647,5 +655,179 @@ public class ChatServiceImpl implements ChatService {
         }
 
         return vo;
+    }
+
+    // ── 陌生人打招呼消息 ──
+
+    @Override
+    @Transactional
+    public void sendStrangerMessage(Long fromUserId, Long toUserId, String content) {
+        if (fromUserId.equals(toUserId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不能给自己发送消息");
+        }
+        verificationGuard.checkVerified(fromUserId);
+        User target = userMapper.selectById(toUserId);
+        if (target == null || target.getStatus() == null || target.getStatus() != 1) {
+            throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE);
+        }
+        if (relationshipService.isBlockedEitherWay(fromUserId, toUserId)) {
+            throw new BusinessException(ResultCode.RELATION_BLOCKED);
+        }
+        // 已有正式会话 → 应走正常聊天
+        if (hasConversation(fromUserId, toUserId)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "你们已经可以正常聊天了");
+        }
+        // 同一对用户仅一条(唯一约束兜底并发)
+        Long exists = strangerMessageMapper.selectCount(new LambdaQueryWrapper<StrangerMessage>()
+                .eq(StrangerMessage::getFromUserId, fromUserId)
+                .eq(StrangerMessage::getToUserId, toUserId));
+        if (exists != null && exists > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "已发送过打招呼消息，等待对方确认");
+        }
+        String clean = XssUtil.clean(content);
+        sensitiveWordFilter.assertClean(clean);
+        StrangerMessage msg = new StrangerMessage();
+        msg.setFromUserId(fromUserId);
+        msg.setToUserId(toUserId);
+        msg.setContent(clean);
+        msg.setMessageType("text");
+        msg.setStatus(0);
+        try {
+            strangerMessageMapper.insert(msg);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "已发送过打招呼消息，等待对方确认");
+        }
+        // 通知接收方
+        User from = userMapper.selectById(fromUserId);
+        messageService.notify(fromUserId, toUserId, "stranger_message",
+                (from != null ? from.getNickname() : "有人") + " 向你打了招呼", msg.getId());
+    }
+
+    @Override
+    public List<StrangerMessageVO> listStrangerMessages(Long userId) {
+        List<StrangerMessage> msgs = strangerMessageMapper.selectList(
+                new LambdaQueryWrapper<StrangerMessage>()
+                        .eq(StrangerMessage::getStatus, 0)
+                        .and(w -> w.eq(StrangerMessage::getFromUserId, userId)
+                                .or().eq(StrangerMessage::getToUserId, userId))
+                        .orderByDesc(StrangerMessage::getCreatedAt));
+        if (msgs.isEmpty()) return List.of();
+
+        List<Long> otherIds = msgs.stream()
+                .map(m -> m.getFromUserId().equals(userId) ? m.getToUserId() : m.getFromUserId())
+                .collect(Collectors.toList());
+        Map<Long, User> userMap = new HashMap<>();
+        userMapper.selectBatchIds(otherIds).forEach(u -> userMap.put(u.getId(), u));
+
+        return msgs.stream().map(m -> {
+            boolean sent = m.getFromUserId().equals(userId);
+            Long otherId = sent ? m.getToUserId() : m.getFromUserId();
+            User other = userMap.get(otherId);
+            StrangerMessageVO vo = new StrangerMessageVO();
+            vo.setId(m.getId());
+            vo.setOtherUserId(otherId);
+            vo.setOtherNickname(other != null ? other.getNickname() : "用户" + otherId);
+            vo.setOtherAvatar(other != null ? other.getAvatar() : null);
+            vo.setContent(m.getContent());
+            vo.setDirection(sent ? "sent" : "received");
+            vo.setCreatedAt(m.getCreatedAt());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void acceptStrangerMessage(Long userId, Long messageId) {
+        StrangerMessage msg = strangerMessageMapper.selectById(messageId);
+        if (msg == null || !msg.getToUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_NOT_FOUND, "消息不存在");
+        }
+        // 条件更新防并发
+        int rows = strangerMessageMapper.update(null, new LambdaUpdateWrapper<StrangerMessage>()
+                .eq(StrangerMessage::getId, messageId)
+                .eq(StrangerMessage::getToUserId, userId)
+                .eq(StrangerMessage::getStatus, 0)
+                .set(StrangerMessage::getStatus, 1));
+        if (rows == 0) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_HANDLED, "该消息已处理");
+        }
+        // 创建正式会话(复用唯一会话入口)并将该条消息迁入会话
+        Long roomId = createConversation(userId, msg.getFromUserId()).getRoomId();
+        PrivateChat pc = new PrivateChat();
+        pc.setRoomId(roomId);
+        pc.setConversationId(roomId);
+        pc.setFromUserId(msg.getFromUserId());
+        pc.setToUserId(msg.getToUserId());
+        pc.setContent(msg.getContent());
+        pc.setMessageType(msg.getMessageType());
+        pc.setIsRead(0);
+        privateChatMapper.insert(pc);
+
+        Room room = roomMapper.selectById(roomId);
+        if (room != null) {
+            room.setActiveTime(LocalDateTime.now());
+            room.setLastMsgId(pc.getId());
+            roomMapper.updateById(room);
+        }
+        updateContactActive(userId, roomId, pc.getId());
+        updateContactActive(msg.getFromUserId(), roomId, pc.getId());
+        // 通知发送方:已被确认,可以聊天了
+        messageService.notify(userId, msg.getFromUserId(), "stranger_accepted",
+                "对方已通过你的打招呼消息，你们可以开始聊天了", messageId);
+    }
+
+    @Override
+    public Map<String, Object> strangerStatus(Long userId, Long toUserId) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("hasConversation", hasConversation(userId, toUserId));
+        StrangerMessage sent = strangerMessageMapper.selectOne(new LambdaQueryWrapper<StrangerMessage>()
+                .eq(StrangerMessage::getFromUserId, userId)
+                .eq(StrangerMessage::getToUserId, toUserId));
+        m.put("sent", sent != null);
+        StrangerMessage received = strangerMessageMapper.selectOne(new LambdaQueryWrapper<StrangerMessage>()
+                .eq(StrangerMessage::getFromUserId, toUserId)
+                .eq(StrangerMessage::getToUserId, userId));
+        m.put("received", received != null);
+        return m;
+    }
+
+    /** 是否存在双方之间的正式会话(room_friend 唯一) */
+    private boolean hasConversation(Long a, Long b) {
+        long uid1 = Math.min(a, b);
+        long uid2 = Math.max(a, b);
+        return roomFriendMapper.selectCount(new LambdaQueryWrapper<RoomFriend>()
+                .eq(RoomFriend::getRoomKey, uid1 + "_" + uid2)) > 0;
+    }
+
+    /** 更新 contact 活跃时间与最后消息(不存在则创建) */
+    private void updateContactActive(Long uid, Long roomId, Long msgId) {
+        Contact contact = contactMapper.selectOne(new LambdaQueryWrapper<Contact>()
+                .eq(Contact::getUid, uid)
+                .eq(Contact::getRoomId, roomId));
+        if (contact == null) {
+            contact = new Contact();
+            contact.setUid(uid);
+            contact.setRoomId(roomId);
+            contact.setActiveTime(LocalDateTime.now());
+            contact.setLastMsgId(msgId);
+            try {
+                contactMapper.insert(contact);
+            } catch (DuplicateKeyException e) {
+                contact = contactMapper.selectOne(new LambdaQueryWrapper<Contact>()
+                        .eq(Contact::getUid, uid)
+                        .eq(Contact::getRoomId, roomId));
+                if (contact != null) {
+                    contact.setActiveTime(LocalDateTime.now());
+                    contact.setLastMsgId(msgId);
+                    contact.setHidden(0);
+                    contactMapper.updateById(contact);
+                }
+            }
+        } else {
+            contact.setActiveTime(LocalDateTime.now());
+            contact.setLastMsgId(msgId);
+            contact.setHidden(0);
+            contactMapper.updateById(contact);
+        }
     }
 }
