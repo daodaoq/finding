@@ -307,15 +307,21 @@ public class BridgeServiceImpl implements BridgeService {
         // Check real-name verification
         verificationGuard.checkVerified(fromUserId);
 
-        // 拉黑拦截:任一方拉黑对方都无法发送申请
-        if (relationshipService.isBlockedEitherWay(fromUserId, toUserId)) {
-            throw new BusinessException(ResultCode.RELATION_BLOCKED);
-        }
-
-        // Check if target user exists
+        // 目标账号必须存在
         User targetUser = userMapper.selectById(toUserId);
         if (targetUser == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        // 统一发现权限:目标账号状态(status==1)/可搜索/双向拉黑(复用 canDiscover)
+        if (!relationshipService.canDiscover(fromUserId, toUserId)) {
+            if (relationshipService.isBlockedEitherWay(fromUserId, toUserId)) {
+                throw new BusinessException(ResultCode.RELATION_BLOCKED);
+            }
+            throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE);
+        }
+        // 统一申请权限:加好友方式(friendAddMode==2 不可申请,复用 canApplyChat)
+        if (!relationshipService.canApplyChat(fromUserId, toUserId)) {
+            throw new BusinessException(ResultCode.CONTACT_PERMISSION_DENIED);
         }
 
         // 加好友方式:2=不允许申请直接拒绝;0=所有人可申请(自动通过);1=需验证(默认)
@@ -323,9 +329,6 @@ public class BridgeServiceImpl implements BridgeService {
                 new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getUserId, toUserId));
         int friendMode = targetSettings != null && targetSettings.getFriendAddMode() != null
                 ? targetSettings.getFriendAddMode() : 1;
-        if (friendMode == 2) {
-            throw new BusinessException(ResultCode.CONTACT_PERMISSION_DENIED);
-        }
 
         // 冷却期:同一方向最近一次被拒绝/撤回后 7 天内不能重发
         LambdaQueryWrapper<ChatApply> cooldownW = new LambdaQueryWrapper<ChatApply>()
@@ -449,6 +452,20 @@ public class BridgeServiceImpl implements BridgeService {
                     .set(ChatApply::getHandleTime, LocalDateTime.now())
                     .set(ChatApply::getHandleBy, userId));
             throw new BusinessException(ResultCode.RELATION_BLOCKED);
+        }
+        // 审批时再次校验双方账号状态:任一被封禁/注销/冻结,待处理申请作废
+        User applicant = userMapper.selectById(apply.getFromUserId());
+        User receiver = userMapper.selectById(apply.getToUserId());
+        if (applicant == null || receiver == null
+                || applicant.getStatus() == null || applicant.getStatus() != 1
+                || receiver.getStatus() == null || receiver.getStatus() != 1) {
+            chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()
+                    .eq(ChatApply::getId, applyId)
+                    .eq(ChatApply::getStatus, ChatApplyStatus.PENDING.getCode())
+                    .set(ChatApply::getStatus, ChatApplyStatus.CANCELLED.getCode())
+                    .set(ChatApply::getHandleTime, LocalDateTime.now())
+                    .set(ChatApply::getHandleBy, userId));
+            throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE, "对方账号状态异常，无法处理");
         }
         // 条件更新:仅 status=PENDING 才能处理,保证并发下只有一次成功
         int rows = chatApplyMapper.update(null, new LambdaUpdateWrapper<ChatApply>()

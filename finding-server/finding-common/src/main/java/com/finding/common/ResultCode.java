@@ -62,6 +62,7 @@ public enum ResultCode {
     // Relationship errors (9xxx)
     RELATION_BLOCKED(9101, "你与对方存在拉黑关系，无法执行此操作"),
     CONTACT_PERMISSION_DENIED(9102, "对方暂不允许新的联系"),
+    USER_NOT_DISCOVERABLE(9103, "对方关闭了被搜索/发现权限，无法申请"),
 
     // Common errors (9xxx)
     FORBIDDEN(9004, "无权限访问"),

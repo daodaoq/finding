@@ -35,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDateTime;
 
@@ -99,12 +100,19 @@ class BridgeServiceImplTest {
         return s;
     }
 
+    private User activeUser() {
+        User u = new User();
+        u.setStatus(1);
+        return u;
+    }
+
     // ── applyChat: 冷却期 ──
 
     @Test
     void applyChat_recentRejection_blocksReapply() {
         allowRateLimit();
-        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(relationshipService.canApplyChat(1L, 2L)).thenReturn(true);
         when(userMapper.selectById(2L)).thenReturn(new User());
         when(userSettingsMapper.selectOne(any())).thenReturn(settings(1));
         ChatApply rejected = new ChatApply();
@@ -119,7 +127,8 @@ class BridgeServiceImplTest {
     @Test
     void applyChat_noRecentRejection_insertsAndNotifies() {
         allowRateLimit();
-        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(relationshipService.canApplyChat(1L, 2L)).thenReturn(true);
         when(userMapper.selectById(2L)).thenReturn(new User());
         when(userSettingsMapper.selectOne(any())).thenReturn(settings(1)); // 需验证
         when(chatApplyMapper.selectOne(any())).thenReturn(null); // 无冷却记录
@@ -134,7 +143,8 @@ class BridgeServiceImplTest {
     @Test
     void applyChat_pendingExists_blocksDuplicate() {
         allowRateLimit();
-        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(relationshipService.canApplyChat(1L, 2L)).thenReturn(true);
         when(userMapper.selectById(2L)).thenReturn(new User());
         when(userSettingsMapper.selectOne(any())).thenReturn(settings(1));
         when(chatApplyMapper.selectOne(any())).thenReturn(null);
@@ -144,6 +154,41 @@ class BridgeServiceImplTest {
         assertEquals(ResultCode.CHAT_APPLY_ALREADY_SENT.getCode(), ex.getCode());
     }
 
+    // ── applyChat: 统一发现/申请权限 ──
+
+    @Test
+    void applyChat_targetNotDiscoverable_throws() {
+        allowRateLimit();
+        when(userMapper.selectById(2L)).thenReturn(new User());
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(false);
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.applyChat(1L, 2L, "hi"));
+        assertEquals(ResultCode.USER_NOT_DISCOVERABLE.getCode(), ex.getCode());
+    }
+
+    @Test
+    void applyChat_targetBlocked_throws() {
+        allowRateLimit();
+        when(userMapper.selectById(2L)).thenReturn(new User());
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(false);
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(true);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.applyChat(1L, 2L, "hi"));
+        assertEquals(ResultCode.RELATION_BLOCKED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void applyChat_friendAddModeNotAllowed_throws() {
+        allowRateLimit();
+        when(userMapper.selectById(2L)).thenReturn(new User());
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(relationshipService.canApplyChat(1L, 2L)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.applyChat(1L, 2L, "hi"));
+        assertEquals(ResultCode.CONTACT_PERMISSION_DENIED.getCode(), ex.getCode());
+    }
+
     // ── handleApply: 条件更新防并发 ──
 
     @Test
@@ -151,6 +196,8 @@ class BridgeServiceImplTest {
         ChatApply apply = pending(10L, 2L, 1L);
         when(chatApplyMapper.selectById(10L)).thenReturn(apply);
         when(relationshipService.isBlockedEitherWay(2L, 1L)).thenReturn(false);
+        when(userMapper.selectById(1L)).thenReturn(activeUser());
+        when(userMapper.selectById(2L)).thenReturn(activeUser());
         // expireStalePending(update=0,无碍) + 条件更新(update=0 → 已被并发处理)
         when(chatApplyMapper.update(any(), any())).thenReturn(0);
 
@@ -175,11 +222,26 @@ class BridgeServiceImplTest {
         ChatApply apply = pending(10L, 2L, 1L);
         when(chatApplyMapper.selectById(10L)).thenReturn(apply);
         when(relationshipService.isBlockedEitherWay(2L, 1L)).thenReturn(false);
+        when(userMapper.selectById(1L)).thenReturn(activeUser());
+        when(userMapper.selectById(2L)).thenReturn(activeUser());
         when(chatApplyMapper.update(any(), any())).thenReturn(1);
-        when(userMapper.selectById(1L)).thenReturn(new User());
 
         assertDoesNotThrow(() -> service.handleApply(1L, 10L, 2)); // 2=拒绝
         verify(messageService).notify(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void handleApply_anyPartyInactive_cancelsAndThrows() {
+        ChatApply apply = pending(10L, 2L, 1L);
+        when(chatApplyMapper.selectById(10L)).thenReturn(apply);
+        when(relationshipService.isBlockedEitherWay(2L, 1L)).thenReturn(false);
+        when(userMapper.selectById(1L)).thenReturn(activeUser());
+        when(userMapper.selectById(2L)).thenReturn(new User()); // 申请人账号状态异常(status=null)
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.handleApply(1L, 10L, 1));
+        assertEquals(ResultCode.USER_NOT_DISCOVERABLE.getCode(), ex.getCode());
+        // 待处理申请被置为已撤回(CANCELLED)(另有 expireStalePending 的一次批量更新)
+        verify(chatApplyMapper, atLeastOnce()).update(any(), any());
     }
 
     // ── withdrawApply ──
