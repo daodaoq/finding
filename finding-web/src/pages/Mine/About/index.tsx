@@ -44,6 +44,15 @@ export default function AboutPage() {
         </div>
       ))}
 
+      <div className="set-card" style={{ padding: '2px 16px' }}>
+        <button className="legal-link" onClick={() => navigate('/legal/privacy')}>
+          <span>隐私政策</span><AppIcon name="right" size={16} />
+        </button>
+        <button className="legal-link" onClick={() => navigate('/legal/terms')}>
+          <span>用户协议</span><AppIcon name="right" size={16} />
+        </button>
+      </div>
+
       <p className="set-hint" style={{ textAlign: 'center' }}>
         Finding ©2026 · {APP_CONFIG.SCHOOL_NAME}
       </p>

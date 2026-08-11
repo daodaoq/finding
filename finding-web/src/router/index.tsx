@@ -38,6 +38,7 @@ const FriendSetting = lazy(() => import('../pages/Mine/Settings/Friend'));
 const PrivacySetting = lazy(() => import('../pages/Mine/Settings/Privacy'));
 const PreferenceSetting = lazy(() => import('../pages/Mine/Settings/Preference'));
 const AboutPage = lazy(() => import('../pages/Mine/About'));
+const LegalPage = lazy(() => import('../pages/Legal/LegalPage'));
 const PostDetailPage = lazy(() => import('../pages/PostDetail'));
 const MateDetailPage = lazy(() => import('../pages/MateDetail'));
 const ChatDetailPage = lazy(() => import('../pages/Chat'));
@@ -120,6 +121,8 @@ const router = createBrowserRouter([
       { path: 'mine/settings/privacy', element: withSuspense(<PrivacySetting />) },
       { path: 'mine/settings/preference', element: withSuspense(<PreferenceSetting />) },
       { path: 'mine/about', element: withSuspense(<AboutPage />) },
+      { path: 'legal/privacy', element: withSuspense(<LegalPage />) },
+      { path: 'legal/terms', element: withSuspense(<LegalPage />) },
       { path: 'create-post', element: withSuspense(<CreatePostPage />) },
       { path: 'create-mate', element: withSuspense(<CreateMatePage />) },
       { path: 'create-mate/:id', element: withSuspense(<CreateMatePage />) },
