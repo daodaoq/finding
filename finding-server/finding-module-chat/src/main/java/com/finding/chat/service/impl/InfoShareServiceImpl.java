@@ -1,8 +1,10 @@
 package com.finding.chat.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
+import com.finding.framework.util.InMemoryRateLimiter;
 import com.finding.user.common.VerificationGuard;
 import com.finding.chat.entity.InfoShare;
 import com.finding.chat.mapper.InfoShareMapper;
@@ -13,6 +15,7 @@ import com.finding.chat.service.InfoShareService;
 import com.finding.chat.vo.InfoShareStatusVO;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.framework.websocket.WsMessage;
+import com.finding.user.service.UserRelationshipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,8 @@ public class InfoShareServiceImpl implements InfoShareService {
     private final MessageService messageService;
     private final WebSocketServer webSocketServer;
     private final VerificationGuard verificationGuard;
+    private final UserRelationshipService relationshipService;
+    private final InMemoryRateLimiter rateLimiter;
 
     @Override
     @Transactional
@@ -38,10 +43,21 @@ public class InfoShareServiceImpl implements InfoShareService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能给自己发送互换申请");
         }
         verificationGuard.checkVerified(fromUserId);
+        // 反骚扰限流:同用户 1 小时最多 10 次互换申请
+        if (!rateLimiter.tryAcquire("infoShare:" + fromUserId, 10, 3_600_000)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT);
+        }
 
         User targetUser = userMapper.selectById(toUserId);
         if (targetUser == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        // 统一发现权限:目标账号状态/可搜索/双向拉黑(与聊天申请同一入口)
+        if (!relationshipService.canDiscover(fromUserId, toUserId)) {
+            if (relationshipService.isBlockedEitherWay(fromUserId, toUserId)) {
+                throw new BusinessException(ResultCode.RELATION_BLOCKED);
+            }
+            throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE);
         }
 
         InfoShare existing = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
