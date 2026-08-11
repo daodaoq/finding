@@ -27,19 +27,22 @@ export default function BridgePage() {
   const currentUser = useAuthStore((s) => s.user);
   const bridgePending = useBridgeStore((s) => s.pendingCount);
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
-  const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
+  const { showLogin, requireLogin, handleLoginSuccess, handleClose, openLogin, isLoggedIn } = useRequireLogin();
 
   const { lat, lng } = useGeolocation(true);
 
   const { items: users, loading, hasMore, setItems: setUsers, reset, onScroll } =
     useInfiniteList<BridgeRecommendUser, [number?, number?]>({
       fetcher: async (p, la, ln) => {
+        // 未登录不请求推荐(避免报"加载失败"),由界面提示登录
+        if (!isLoggedIn) return { records: [], hasMore: false };
         const params: { page: number; size: number; lat?: number; lng?: number } = { page: p, size: 10 };
         if (la != null && ln != null) { params.lat = la; params.lng = ln; }
         const res = await bridgeApi.recommend(params);
         return res.data.data;
       },
       args: [lat, lng],
+      deps: [isLoggedIn], // 登录态变化 → 重置并重新加载
       onError: () => showToast('加载推荐用户失败'),
     });
 
@@ -175,15 +178,25 @@ export default function BridgePage() {
       {/* 推荐用户信息流 */}
       <div className="bridge-feed-header">推荐用户</div>
       <div className="bridge-user-list">
-        {users.map((user) => (
-          <UserCard key={user.userId} user={user} onLike={handleLike} onSkip={handleSkip} />
-        ))}
-        {loading && <LoadingSkeleton />}
-        {!loading && users.length === 0 && (
-          <EmptyState icon="heart" message="暂无推荐用户，换个时间再来看看吧" />
-        )}
-        {!hasMore && users.length > 0 && (
-          <p className="no-more">— 没有更多了 —</p>
+        {!isLoggedIn ? (
+          <EmptyState
+            icon="heart"
+            message="登录后即可查看推荐用户"
+            action={<button onClick={openLogin}>去登录</button>}
+          />
+        ) : (
+          <>
+            {users.map((user) => (
+              <UserCard key={user.userId} user={user} onLike={handleLike} onSkip={handleSkip} />
+            ))}
+            {loading && <LoadingSkeleton />}
+            {!loading && users.length === 0 && (
+              <EmptyState icon="heart" message="暂无推荐用户，换个时间再来看看吧" />
+            )}
+            {!hasMore && users.length > 0 && (
+              <p className="no-more">— 没有更多了 —</p>
+            )}
+          </>
         )}
       </div>
 

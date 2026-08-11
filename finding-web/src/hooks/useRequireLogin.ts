@@ -34,11 +34,18 @@ export function useRequireLogin() {
     setPendingCallback(null);
   }, []);
 
+  /** 直接打开登录弹窗(不绑定后续回调,用于"未登录仅提示登录"的场景) */
+  const openLogin = useCallback(() => {
+    setPendingCallback(null);
+    setShowLogin(true);
+  }, []);
+
   return {
     showLogin,
     requireLogin,
     handleLoginSuccess,
     handleClose,
+    openLogin,
     isLoggedIn,
   };
 }
