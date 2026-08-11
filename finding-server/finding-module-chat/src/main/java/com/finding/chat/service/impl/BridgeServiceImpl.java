@@ -151,6 +151,25 @@ public class BridgeServiceImpl implements BridgeService {
             } else if (pref.getPreferTargetType() != null && pref.getPreferTargetType() == 2) {
                 wrapper.eq(User::getTargetType, 2);
             }
+            // 年龄范围下推(生日区间,与内存 ageOf 语义一致):
+            // 仅当有最小年龄时才下推——此时无生日的候选本就被排除,与内存一致;
+            // 仅有最大年龄时保留内存过滤,避免改变"无生日按 age=0 处理"的既有行为
+            if (pref.getMinAge() != null && pref.getMinAge() > 0) {
+                LocalDate today = LocalDate.now();
+                wrapper.le(User::getBirthday, today.minusYears(pref.getMinAge()));
+                if (pref.getMaxAge() != null && pref.getMaxAge() > 0) {
+                    wrapper.gt(User::getBirthday, today.minusYears((long) pref.getMaxAge() + 1));
+                }
+            }
+            // 距离范围下推(经纬度边界盒,走 idx_location 索引;精确距离仍由内存 haversine 校验,
+            // 边界盒是圆的外接矩形超集,不会误排除合法候选)
+            if (lat != null && lng != null && pref.getMaxDistanceKm() != null && pref.getMaxDistanceKm() > 0) {
+                double km = pref.getMaxDistanceKm();
+                double dLat = km / 110.574; // 1° 纬度 ≈ 110.574km
+                double dLng = km / (111.320 * Math.max(Math.cos(Math.toRadians(lat)), 0.01));
+                wrapper.between(User::getLatitude, lat - dLat, lat + dLat)
+                        .between(User::getLongitude, lng - dLng, lng + dLng);
+            }
         }
 
         // ── 候选全量过滤(内存:年龄/距离) → 可解释打分 → 稳定排序 → 分页 ──
