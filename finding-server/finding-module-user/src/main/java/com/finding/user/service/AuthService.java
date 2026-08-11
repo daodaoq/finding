@@ -45,4 +45,7 @@ public interface AuthService {
 
     /** 当前用户的账号信息(仅本人可见,含手机号)。 */
     Map<String, String> getAccount(Long userId);
+
+    /** 注销账号:校验密码后匿名化资料、停用账号、撤销登录态,并联动取消待处理申请。 */
+    void deleteAccount(Long userId, String password);
 }

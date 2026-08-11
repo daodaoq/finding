@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.common.constant.UserStatusEnum;
+import com.finding.common.event.AccountDeletedEvent;
 import com.finding.user.dto.LoginDTO;
 import com.finding.user.dto.RegisterDTO;
 import com.finding.user.entity.User;
@@ -22,6 +23,7 @@ import com.finding.user.util.CaptchaGenerator;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -54,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final SensitiveWordFilter sensitiveWordFilter;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
     private static final String SMS_LIMIT_PREFIX = "sms:limit:";
@@ -346,6 +349,44 @@ public class AuthServiceImpl implements AuthService {
         userMapper.updateById(user);
         // 作废旧 refresh token,强制其他端重新登录
         redisUtils.delete(REFRESH_PREFIX + userId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAccount(Long userId, String password) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        if (!StringUtils.hasText(password) || !passwordEncoder.matches(password, user.getPassword())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "密码不正确");
+        }
+        // 匿名化资料:手机号/用户名改为随机值(原手机号无法再登录),昵称改为占位,清空个人字段
+        String anon = "del_" + userId + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        user.setUsername(anon);
+        user.setPhone(anon);
+        user.setPassword(UUID.randomUUID().toString()); // 密码置随机,原密码失效
+        user.setNickname("已注销用户");
+        user.setAvatar(null);
+        user.setProfileBackground(null);
+        user.setGender(0);
+        user.setBirthday(null);
+        user.setSchool(null);
+        user.setStudentId(null);
+        user.setSignature(null);
+        user.setCity(null);
+        user.setLatitude(null);
+        user.setLongitude(null);
+        user.setEmail(null);
+        user.setRealNameVerified(0);
+        user.setTargetType(0);
+        user.setStatus(UserStatusEnum.DELETED.getCode());
+        userMapper.updateById(user);
+        // 撤销刷新令牌(访问令牌由 JWT 过滤器按 status!=1 即时失效)
+        redisUtils.delete(REFRESH_PREFIX + userId);
+        // 联动:取消涉及该用户的待处理聊天申请/信息互换(chat 模块监听)
+        eventPublisher.publishEvent(new AccountDeletedEvent(userId));
+        log.info("账号已注销: userId={}", userId);
     }
 
     // ── 私有方法 ──

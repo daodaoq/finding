@@ -1,6 +1,8 @@
 package com.finding.user.controller;
 
 import com.finding.common.Result;
+import com.finding.common.ResultCode;
+import com.finding.user.dto.DeleteAccountDTO;
 import com.finding.user.dto.LoginDTO;
 import com.finding.user.dto.RegisterDTO;
 import com.finding.user.dto.SendCodeDTO;
@@ -53,6 +55,15 @@ public class AuthController {
     public Result<Void> logout(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         authService.logout(token);
+        return Result.ok();
+    }
+
+    /** 注销账号:校验密码后匿名化并停用,撤销登录态 */
+    @PostMapping("/delete-account")
+    public Result<Void> deleteAccount(@Valid @RequestBody DeleteAccountDTO dto) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(ResultCode.UNAUTHORIZED);
+        authService.deleteAccount(userId, dto.getPassword());
         return Result.ok();
     }
 
