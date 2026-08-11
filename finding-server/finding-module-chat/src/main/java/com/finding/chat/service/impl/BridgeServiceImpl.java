@@ -128,6 +128,7 @@ public class BridgeServiceImpl implements BridgeService {
 
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
                 .eq(User::getStatus, 1)
+                .ne(User::getRole, "admin") // 普通用户不推荐管理员
                 .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds);
         if (!excludeIds.isEmpty()) {
             wrapper.notIn(User::getId, excludeIds);
