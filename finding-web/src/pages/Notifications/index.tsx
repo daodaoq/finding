@@ -102,7 +102,7 @@ export default function NotificationsPage() {
             onClick={() => setActiveTab(t.key)}
             style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: 14, border: 'none', fontSize: 13,
-              background: activeTab === t.key ? '#ff6b81' : '#f0f0f0',
+              background: activeTab === t.key ? '#29241f' : '#f0f0f0',
               color: activeTab === t.key ? '#fff' : '#666',
             }}
           >

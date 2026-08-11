@@ -72,7 +72,7 @@ export default function PreferenceSetting() {
             <button
               key={g.value}
               className={`pe-gender-chip ${pref.preferGender === g.value ? 'active' : ''}`}
-              style={{ flex: 1, border: 'none', padding: '8px 0', borderRadius: 14, fontSize: 13, background: pref.preferGender === g.value ? '#ff6b81' : '#f0f0f0', color: pref.preferGender === g.value ? '#fff' : '#666' }}
+              style={{ flex: 1, border: 'none', padding: '8px 0', borderRadius: 14, fontSize: 13, background: pref.preferGender === g.value ? '#29241f' : '#f0f0f0', color: pref.preferGender === g.value ? '#fff' : '#666' }}
               onClick={() => save({ preferGender: g.value })}
             >{g.label}</button>
           ))}
@@ -87,7 +87,7 @@ export default function PreferenceSetting() {
           {TARGET_OPTIONS.map((t) => (
             <button
               key={t.value}
-              style={{ flex: 1, border: 'none', padding: '8px 0', borderRadius: 14, fontSize: 13, background: pref.preferTargetType === t.value ? '#ff6b81' : '#f0f0f0', color: pref.preferTargetType === t.value ? '#fff' : '#666' }}
+              style={{ flex: 1, border: 'none', padding: '8px 0', borderRadius: 14, fontSize: 13, background: pref.preferTargetType === t.value ? '#29241f' : '#f0f0f0', color: pref.preferTargetType === t.value ? '#fff' : '#666' }}
               onClick={() => save({ preferTargetType: t.value })}
             >{t.label}</button>
           ))}

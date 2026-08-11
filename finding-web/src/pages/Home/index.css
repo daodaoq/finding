@@ -1,5 +1,5 @@
 .home-page {
-  background: #f8f8f8;
+  background: #fff;
   overflow-y: auto;
   height: 100vh;
   -webkit-overflow-scrolling: touch;
@@ -20,7 +20,7 @@
 .home-school {
   font-size: 15px;
   font-weight: 700;
-  color: #ff6b81;
+  color: #29241f;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -74,8 +74,8 @@
 }
 
 .home-tab.active {
-  color: #ff6b81;
-  border-bottom-color: #ff6b81;
+  color: #29241f;
+  border-bottom-color: #29241f;
   font-weight: 600;
 }
 
@@ -103,13 +103,14 @@
 }
 
 .sort-btn.active {
-  background: #fff0f3;
-  color: #ff6b81;
-  border-color: #ff6b81;
+  background: #f5f5f5;
+  color: #29241f;
+  border-color: #29241f;
 }
 
 /* 动态列表 */
 .home-post-list {
+  padding: 2px 0 18px;
   background: #fff;
 }
 
@@ -120,8 +121,8 @@
   gap: 12px;
   padding: 16px;
   margin: 12px 16px;
-  background: linear-gradient(135deg, #fff0f3, #fff5f5);
-  border: 1px dashed #ff6b81;
+  background: #f5f5f5;
+  border: 1px dashed #29241f;
   border-radius: 12px;
   cursor: pointer;
   transition: transform 0.15s;
@@ -129,6 +130,6 @@
 .guest-limit-banner:active { transform: scale(0.98); }
 .guest-limit-banner > span:first-child { font-size: 28px; flex-shrink: 0; }
 .guest-limit-banner > div { flex: 1; }
-.guest-limit-title { font-size: 14px; font-weight: 600; color: #ff6b81; margin: 0; }
+.guest-limit-title { font-size: 14px; font-weight: 600; color: #29241f; margin: 0; }
 .guest-limit-sub { font-size: 12px; color: #999; margin: 2px 0 0; }
-.guest-limit-arrow { font-size: 22px; color: #ff6b81; flex-shrink: 0; }
+.guest-limit-arrow { font-size: 22px; color: #29241f; flex-shrink: 0; }

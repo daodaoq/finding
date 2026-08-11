@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import CreateActionSheet from '../components/CreateActionSheet';
@@ -30,6 +30,34 @@ export default function MainLayout() {
   const setBridgePending = useBridgeStore((s) => s.setPendingCount);
   const setInfoSharePrompt = useInfoShareStore((s) => s.setPrompt);
   const bumpInfoShare = useInfoShareStore((s) => s.bump);
+
+  // Router navigation should always start at the top. Some primary pages own
+  // their scroll container, so resetting window.scrollY alone is insufficient.
+  useEffect(() => {
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => {
+      window.history.scrollRestoration = previousRestoration;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document
+        .querySelectorAll<HTMLElement>('.main-content, .home-page, .square-page, .mate-page, .bridge-page')
+        .forEach((element) => {
+          element.scrollTop = 0;
+          element.scrollLeft = 0;
+        });
+    };
+
+    resetScroll();
+    const frame = requestAnimationFrame(resetScroll);
+    return () => cancelAnimationFrame(frame);
+  }, [location.pathname, location.search, location.hash]);
 
   // 系统公告:全部未读公告(WS 推送 + 启动补拉),一次滚动展示
   const [announcements, setAnnouncements] = useState<AnnouncementData[]>([]);

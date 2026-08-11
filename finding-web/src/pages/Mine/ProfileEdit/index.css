@@ -124,15 +124,15 @@
 .pe-locate-btn {
   flex-shrink: 0;
   display: inline-flex; align-items: center; gap: 3px;
-  border: 1px solid #ff6b81;
+  border: 1px solid #29241f;
   background: #fff;
-  color: #ff6b81;
+  color: #29241f;
   font-size: 12px;
   padding: 5px 12px;
   border-radius: 14px;
   cursor: pointer;
 }
-.pe-locate-btn:active { background: #fff0f3; }
+.pe-locate-btn:active { background: #f5f5f5; }
 .pe-locate-btn:disabled { opacity: 0.6; }
 
 /* 性别选择 */
@@ -153,9 +153,9 @@
   transition: all 0.15s;
 }
 .pe-gender-chip.active {
-  background: #fff0f3;
-  border-color: #ff6b81;
-  color: #ff6b81;
+  background: #f5f5f5;
+  border-color: #29241f;
+  color: #29241f;
 }
 
 /* ── 保存按钮 ── */
@@ -166,7 +166,7 @@
   padding: 14px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff;
   font-size: 16px;
   font-weight: 600;

@@ -1,6 +1,6 @@
 .up-page {
   min-height: 100vh;
-  background: #f8f8f8;
+  background: #fff;
   max-width: 480px;
   margin: 0 auto;
 }
@@ -11,7 +11,7 @@
 }
 .up-header > span { flex: 1; }
 .up-report-btn {
-  background: none; border: none; font-size: 13px; color: #ff6b81; cursor: pointer; padding: 0;
+  background: none; border: none; font-size: 13px; color: #29241f; cursor: pointer; padding: 0;
 }
 .up-loading { text-align: center; color: #ccc; padding: 60px 0; }
 .up-card {
@@ -29,7 +29,7 @@
 .up-meta-item { font-size: 13px; color: #999; display: flex; align-items: center; gap: 4px; }
 .up-actions { padding: 0 16px; }
 .up-chat-btn {
-  width: 100%; padding: 12px; background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  width: 100%; padding: 12px; background: #29241f;
   color: #fff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;
 }
 

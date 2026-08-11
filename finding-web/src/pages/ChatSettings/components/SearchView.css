@@ -14,12 +14,12 @@
   font-size: 14px;
   outline: none;
 }
-.cs-search-input:focus { border-color: #ff6b81; }
+.cs-search-input:focus { border-color: #29241f; }
 .cs-search-btn {
   border: none;
   border-radius: 8px;
   padding: 0 16px;
-  background: #ff6b81;
+  background: #29241f;
   color: #fff;
   font-size: 14px;
   cursor: pointer;

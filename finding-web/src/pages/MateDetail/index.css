@@ -12,12 +12,12 @@
 }
 .md-header h3 { margin: 0; font-size: 16px; flex: 1; }
 .md-report-btn {
-  background: none; border: none; font-size: 13px; color: #ff6b81; cursor: pointer; padding: 0;
+  background: none; border: none; font-size: 13px; color: #29241f; cursor: pointer; padding: 0;
 }
 
 /* 活动头部 */
 .md-hero {
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff; padding: 28px 20px 24px;
   display: flex; flex-direction: column; align-items: center;
   gap: 10px;
@@ -48,7 +48,7 @@
 .md-info-label { font-size: 12px; color: #999; display: block; }
 .md-info-value { font-size: 15px; color: #333; font-weight: 500; }
 .md-full-badge {
-  margin-left: 8px; background: #fff0f3; color: #ff6b81;
+  margin-left: 8px; background: #f5f5f5; color: #29241f;
   padding: 1px 8px; border-radius: 8px; font-size: 11px;
 }
 
@@ -76,8 +76,8 @@
 .md-author-name { font-size: 15px; font-weight: 600; display: block; }
 .md-author-school { font-size: 12px; color: #999; }
 .md-owner-badge {
-  margin-left: auto; font-size: 12px; color: #ff6b81;
-  background: #fff0f3; padding: 3px 10px; border-radius: 10px;
+  margin-left: auto; font-size: 12px; color: #29241f;
+  background: #f5f5f5; padding: 3px 10px; border-radius: 10px;
 }
 
 /* 底部操作栏 */
@@ -93,7 +93,7 @@
   border: none; font-size: 16px; font-weight: 600; cursor: pointer;
 }
 .md-btn-join {
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff;
 }
 .md-btn-leave {

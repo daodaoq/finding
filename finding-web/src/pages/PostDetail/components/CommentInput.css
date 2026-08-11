@@ -9,7 +9,7 @@
 }
 .reply-indicator {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 16px; background: var(--primary-soft); font-size: 12px; color: #ff6b81;
+  padding: 6px 16px; background: var(--primary-soft); font-size: 12px; color: #29241f;
 }
 .reply-indicator button { background: none; border: none; font-size: 14px; cursor: pointer; color: #999; }
 .pd-input-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
@@ -17,10 +17,10 @@
   flex: 1; height: 36px; border: 1px solid var(--line); border-radius: 18px;
   padding: 0 16px; font-size: 14px; outline: none; background: var(--paper);
 }
-.pd-input:focus { border-color: #ff6b81; background: var(--surface); }
+.pd-input:focus { border-color: #29241f; background: var(--surface); }
 .pd-send-btn {
   padding: 8px 18px; border-radius: 18px; border: none;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76); color: #fff;
+  background: #29241f; color: #fff;
   font-size: 13px; font-weight: 600; cursor: pointer;
 }
 .pd-send-btn:disabled { background: #eee; color: #ccc; }

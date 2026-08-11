@@ -28,7 +28,7 @@
   transition: background 0.2s;
   flex-shrink: 0;
 }
-.set-switch.on { background: #ff6b81; }
+.set-switch.on { background: #29241f; }
 .set-switch-dot {
   position: absolute;
   top: 2px; left: 2px;
@@ -57,13 +57,13 @@
   flex-shrink: 0;
   position: relative;
 }
-.set-radio.active { border-color: #ff6b81; }
+.set-radio.active { border-color: #29241f; }
 .set-radio.active::after {
   content: '';
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background: #ff6b81;
+  background: #29241f;
 }
 
 /* 聊天背景色板 */
@@ -89,7 +89,7 @@
   position: relative;
   overflow: hidden;
 }
-.bg-cell.active { border-color: #ff6b81; }
+.bg-cell.active { border-color: #29241f; }
 .bg-cell.active::after {
   content: '✓';
   position: absolute;
@@ -123,7 +123,7 @@
   border-radius: 10px;
   text-align: center;
   font-size: 13px;
-  color: #ff6b81;
+  color: #29241f;
   cursor: pointer;
   background: #fff;
 }
@@ -146,7 +146,7 @@
   padding: 13px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff;
   font-size: 15px;
   font-weight: 600;

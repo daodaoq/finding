@@ -14,7 +14,7 @@
   font-weight: 600;
 }
 .create-btn {
-  background: #ff6b81;
+  background: #29241f;
   color: #fff;
   border: none;
   padding: 6px 16px;
@@ -35,7 +35,7 @@
   font-size: 15px;
   outline: none;
 }
-.group-name-input input:focus { border-color: #ff6b81; }
+.group-name-input input:focus { border-color: #29241f; }
 .selected-count {
   padding: 8px 16px;
   font-size: 13px;
@@ -51,7 +51,7 @@
   padding: 10px 16px;
   cursor: pointer;
 }
-.user-item:active { background: #f8f8f8; }
+.user-item:active { background: #fff; }
 .user-avatar {
   width: 40px; height: 40px;
   border-radius: 50%;
@@ -68,4 +68,4 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; color: #fff;
 }
-.checkbox.checked { background: #ff6b81; border-color: #ff6b81; }
+.checkbox.checked { background: #29241f; border-color: #29241f; }

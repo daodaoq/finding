@@ -150,7 +150,7 @@ export default function UserProfilePage() {
             onClick={handleFollowToggle}
             style={{
               border: 'none', padding: '0 16px', height: 36, borderRadius: 18, fontSize: 14,
-              background: profile.isFollowed ? '#f0f0f0' : '#ff6b81', color: profile.isFollowed ? '#666' : '#fff',
+              background: profile.isFollowed ? '#f0f0f0' : '#29241f', color: profile.isFollowed ? '#666' : '#fff',
             }}
           >
             {profile.isFollowed ? '已关注' : '+ 关注'}

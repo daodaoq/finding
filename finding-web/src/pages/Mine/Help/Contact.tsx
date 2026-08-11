@@ -35,7 +35,7 @@ export default function ContactPage() {
             <span><AppIcon name={c.icon} size={18} /></span>
             <span style={{ color: '#888', fontSize: 14 }}>{c.label}</span>
             <span style={{ marginLeft: 'auto', color: '#333' }}>{c.value}</span>
-            {c.copyable && <span style={{ fontSize: 12, color: '#ff6b81' }}>复制</span>}
+            {c.copyable && <span style={{ fontSize: 12, color: '#29241f' }}>复制</span>}
           </div>
         ))}
       </div>

@@ -1,4 +1,39 @@
-.post-card { background: var(--surface); padding: 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.post-card {
+  margin: 10px 12px;
+  padding: 18px 18px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .04);
+  cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.post-card:hover { border-color: #e5e5e5; box-shadow: 0 5px 16px rgba(0, 0, 0, .08); }
+.post-card:active { transform: translateY(1px); }
 .post-header, .post-author, .post-header-right, .post-footer, .post-manage { display: flex; align-items: center; }
-.post-header { justify-content: space-between; margin-bottom: 12px; }.post-author { gap: 10px; }.post-avatar { display: grid; place-items: center; width: 38px; height: 38px; overflow: hidden; border: 1px solid var(--line); border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-size: 14px; font-weight: 600; }.post-avatar img { width: 100%; height: 100%; object-fit: cover; }.post-author-info { display: flex; flex-direction: column; gap: 2px; }.post-nickname { font-size: 14px; font-weight: 600; color: var(--ink); }.post-time { font-size: 12px; color: var(--muted); }
-.post-manage { gap: 6px; }.post-manage-btn { border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; }.post-manage-btn.danger { color: var(--primary); }.post-body { margin-bottom: 12px; color: var(--ink); font-size: 15px; line-height: 1.65; word-break: break-word; }.post-images { display: grid; gap: 4px; margin-bottom: 12px; }.post-images.images-1 { grid-template-columns: 1fr; }.post-images.images-2, .post-images.images-3 { grid-template-columns: 1fr 1fr; }.post-images img { width: 100%; aspect-ratio: 1; border-radius: var(--radius); object-fit: cover; }.post-footer { gap: 18px; color: var(--muted); font-size: 12px; }.post-footer > span, .post-footer button { display: inline-flex; align-items: center; gap: 4px; }.post-footer button { padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }.like-btn.liked { color: var(--primary); }
+.post-header { justify-content: space-between; margin-bottom: 14px; }
+.post-author { gap: 11px; min-width: 0; }
+.post-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; overflow: hidden; border: 1px solid var(--line); border-radius: 50%; background: var(--primary-soft); color: var(--accent); font-size: 14px; font-weight: 600; }
+.post-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.post-author-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.post-nickname { overflow: hidden; color: var(--ink); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.post-time { color: var(--muted); font-size: 12px; }
+.post-manage { gap: 6px; }
+.post-manage-btn { border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 9px; background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; }
+.post-manage-btn.danger { color: var(--primary); }
+.post-body { margin: 0 0 14px; color: var(--ink); font-size: 15px; line-height: 1.7; word-break: break-word; }
+.post-images { display: grid; gap: 6px; max-width: 460px; margin: 0 0 15px; }
+.post-images.images-1 { grid-template-columns: minmax(0, .72fr); }
+.post-images.images-2, .post-images.images-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-images img { width: 100%; aspect-ratio: 1.18; border-radius: 6px; object-fit: cover; background: var(--primary-soft); }
+.post-footer { gap: 0; justify-content: space-between; padding-top: 11px; border-top: 1px solid #e5e5e5; color: var(--muted); font-size: 12px; }
+.post-footer > span, .post-footer button { display: inline-flex; align-items: center; gap: 5px; }
+.post-footer button { min-height: 28px; padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; }
+.post-footer button:hover { background: var(--primary-soft); color: var(--accent); }
+.like-btn.liked { color: var(--primary); }
+
+@media (max-width: 480px) {
+  .post-card { margin: 8px 10px; padding: 15px 15px 12px; }
+  .post-images { max-width: 100%; }
+  .post-images.images-1 { grid-template-columns: minmax(0, .82fr); }
+}

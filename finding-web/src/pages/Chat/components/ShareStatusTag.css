@@ -8,7 +8,7 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.share-tag.active { background: #ff6b81; color: #fff; }
+.share-tag.active { background: #29241f; color: #fff; }
 .share-tag.warn { background: #fff3e0; color: #ff9800; border: 1px solid #ffb74d; }
 .share-tag.pending { background: #f0f0f0; color: #999; cursor: default; }
 .share-tag.approved { background: #e8f5e9; color: #4caf50; border: 1px solid #a5d6a7; }

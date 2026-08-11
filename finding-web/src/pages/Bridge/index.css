@@ -1,5 +1,5 @@
 .bridge-page {
-  background: #f8f8f8;
+  background: #fff5f7 !important;
   overflow-y: auto;
   height: 100vh;
   -webkit-overflow-scrolling: touch;
@@ -7,7 +7,7 @@
 
 /* ── 顶部导航栏 ── */
 .bridge-top-nav {
-  background: #fff;
+  background: #fffafb;
   padding: 10px 16px;
   display: flex;
   align-items: center;
@@ -15,7 +15,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f2dfe4;
 }
 
 .bridge-nav-left {
@@ -65,22 +65,49 @@
 
 /* ── 轮播Banner区 ── */
 .bridge-banner-wrap {
-  padding: 12px 16px 0;
+  padding: 10px 16px 0;
+}
+
+.bridge-recommend-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 16px 10px;
+}
+
+.bridge-recommend-heading h2 {
+  margin: 0;
+  color: #29241f;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.bridge-recommend-heading p {
+  margin: 4px 0 0;
+  color: #a39499;
+  font-size: 12px;
+}
+
+.bridge-recommend-count {
+  flex: none;
+  color: #b08a94;
+  font-size: 12px;
 }
 
 /* ── 心动匹配快捷入口 ── */
 .bridge-quick-section {
-  background: #fff;
+  background: #fffafb;
   margin: 12px 16px;
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px 16px 15px;
 }
 
 .bridge-quick-title {
   font-size: 15px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 14px;
+  margin-bottom: 11px;
 }
 
 .bridge-quick-icons {
@@ -106,14 +133,19 @@
 
 .bridge-quick-icon {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fff0f3, #ffe0e6);
+  background: #fdecef;
+  color: #e7a6b5;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26px;
+}
+
+.bridge-quick-icon--like {
+  background: #fdecef;
 }
 
 .bridge-quick-badge {
@@ -142,7 +174,7 @@
 
 /* ── 单卡推荐区 ── */
 .bridge-swipe-section {
-  padding: 4px 0 0;
+  padding: 0 0 12px;
 }
 
 .bridge-swipe-loading {

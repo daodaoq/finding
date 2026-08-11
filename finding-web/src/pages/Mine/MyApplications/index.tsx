@@ -19,8 +19,8 @@ export default function MyApplicationsPage() {
       {loading && <LoadingSkeleton />}
       {!loading && items.map(item => <button key={`${item.invitationId}-${item.applyTime}`} className="subpage-list-item" onClick={() => navigate(`/mate/${item.invitationId}`)} style={{ textAlign: 'left', width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><strong>{item.title}</strong><span>{statusText[item.applicationStatus] || '未知状态'}</span></div>
-        <div style={{ fontSize: 13, color: '#766c62', marginTop: 6 }}>{item.activityTime ? new Date(item.activityTime).toLocaleString() : ''} · {item.location || '地点待定'}</div>
-        {item.message && <div style={{ fontSize: 13, color: '#766c62', marginTop: 6 }}>留言：{item.message}</div>}
+        <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>{item.activityTime ? new Date(item.activityTime).toLocaleString() : ''} · {item.location || '地点待定'}</div>
+        {item.message && <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>留言：{item.message}</div>}
       </button>)}
       {!loading && items.length === 0 && <EmptyState message="还没有搭子申请记录" />}
     </div>

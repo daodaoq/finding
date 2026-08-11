@@ -65,13 +65,13 @@
 .ann-item-body ol { padding-left: 18px; margin: 4px 0; }
 .ann-item-body li { margin: 2px 0; }
 .ann-item-body strong { color: #333; }
-.ann-item-body a { color: #ff6b81; text-decoration: underline; }
+.ann-item-body a { color: #29241f; text-decoration: underline; }
 .ann-item-body blockquote {
-  border-left: 3px solid #ff9a76;
+  border-left: 3px solid #ededed;
   margin: 6px 0;
   padding: 2px 10px;
   color: #888;
-  background: #fff7f5;
+  background: #fafafa;
   border-radius: 0 6px 6px 0;
 }
 .ann-item-body code {

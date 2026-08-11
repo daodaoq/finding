@@ -24,6 +24,6 @@
   font-size: 15px; font-weight: 500; cursor: pointer;
 }
 .confirm-btn.cancel { background: #f5f5f5; color: #666; }
-.confirm-btn.primary { background: linear-gradient(135deg, #ff6b81, #ff9a76); color: #fff; }
+.confirm-btn.primary { background: #29241f; color: #fff; }
 .confirm-btn.danger { background: #ff4757; color: #fff; }
 .confirm-btn:active { opacity: 0.85; }

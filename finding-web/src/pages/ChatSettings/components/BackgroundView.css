@@ -23,7 +23,7 @@
   border: 3px solid transparent;
   cursor: pointer;
 }
-.cs-bg-swatch.active { border-color: #ff6b81; }
+.cs-bg-swatch.active { border-color: #29241f; }
 .cs-bg-actions {
   display: flex;
   gap: 10px;

@@ -124,18 +124,18 @@ export default function GroupInfoPage() {
                 取消
               </button>
               <button onClick={handleSaveAnnouncement}
-                style={{ border: 'none', background: '#ff6b81', color: '#fff', padding: '6px 14px', borderRadius: 14, fontSize: 13 }}>
+                style={{ border: 'none', background: '#29241f', color: '#fff', padding: '6px 14px', borderRadius: 14, fontSize: 13 }}>
                 保存
               </button>
             </div>
           </div>
         ) : (
-          <div style={{ background: '#fff7f8', borderRadius: 8, padding: 12, fontSize: 14, color: '#555', position: 'relative' }}>
+          <div style={{ background: '#fafafa', borderRadius: 8, padding: 12, fontSize: 14, color: '#555', position: 'relative' }}>
             {group.announcement || '暂无公告'}
             {isOwner && (
               <button
                 onClick={() => { setAnnouncementDraft(group.announcement || ''); setEditingAnnouncement(true); }}
-                style={{ position: 'absolute', top: 8, right: 10, border: 'none', background: 'none', color: '#ff6b81', fontSize: 13 }}
+                style={{ position: 'absolute', top: 8, right: 10, border: 'none', background: 'none', color: '#29241f', fontSize: 13 }}
               >编辑</button>
             )}
           </div>
@@ -210,7 +210,7 @@ export default function GroupInfoPage() {
               disabled={selectedInvite.length === 0}
               style={{
                 width: '100%', marginTop: 16, padding: 12, border: 'none', borderRadius: 22,
-                background: selectedInvite.length ? '#ff6b81' : '#eee', color: selectedInvite.length ? '#fff' : '#999', fontSize: 15,
+                background: selectedInvite.length ? '#29241f' : '#eee', color: selectedInvite.length ? '#fff' : '#999', fontSize: 15,
               }}
             >
               邀请加入

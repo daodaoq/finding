@@ -9,7 +9,7 @@
 .cp-header h3 { margin: 0; font-size: 16px; flex: 1; }
 .cp-submit-btn {
   padding: 7px 18px; border-radius: 16px; border: none;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76); color: #fff;
+  background: #29241f; color: #fff;
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .cp-submit-btn:disabled { background: #eee; color: #ccc; cursor: not-allowed; }
@@ -43,6 +43,6 @@
 
 .cp-login-hint {
   margin: 40px 16px; padding: 16px; text-align: center;
-  background: #fff0f3; border-radius: 12px;
-  font-size: 14px; color: #ff6b81; cursor: pointer;
+  background: #f5f5f5; border-radius: 12px;
+  font-size: 14px; color: #29241f; cursor: pointer;
 }

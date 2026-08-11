@@ -13,13 +13,13 @@
   font-weight: 500;
   color: #333;
 }
-.faq-q > span:first-child { color: #ff6b81; flex-shrink: 0; }
+.faq-q > span:first-child { color: #29241f; flex-shrink: 0; }
 .faq-q > span:nth-child(2) { flex: 1; }
 .faq-toggle { color: #ccc; font-size: 18px; flex-shrink: 0; }
 .faq-a {
   margin-top: 8px;
   padding: 10px 12px;
-  background: #f8f8f8;
+  background: #fff;
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.7;
@@ -36,7 +36,7 @@
 .guide-section h3 {
   font-size: 15px;
   margin: 0 0 10px;
-  color: #ff6b81;
+  color: #29241f;
 }
 .guide-section p {
   font-size: 13px;
@@ -75,12 +75,12 @@
   outline: none;
   box-sizing: border-box;
 }
-.human-form textarea:focus, .human-form input:focus { border-color: #ff9a76; }
+.human-form textarea:focus, .human-form input:focus { border-color: #ededed; }
 .human-submit {
   padding: 12px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff;
   font-size: 15px;
   font-weight: 600;

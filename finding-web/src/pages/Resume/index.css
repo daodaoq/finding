@@ -1,6 +1,6 @@
 .re-page {
   min-height: 100vh;
-  background: #f8f8f8;
+  background: #fff;
   max-width: 480px;
   margin: 0 auto;
 }
@@ -21,7 +21,7 @@
 .re-save {
   margin-left: auto;
   border: none;
-  background: #ff6b81;
+  background: #29241f;
   color: #fff;
   font-size: 13px;
   padding: 6px 14px;
@@ -74,7 +74,7 @@
   background: #fff;
   outline: none;
 }
-.re-input:focus { border-color: #ff6b81; }
+.re-input:focus { border-color: #29241f; }
 textarea.re-input { resize: none; line-height: 1.5; }
 
 /* 板块8 相册 */
@@ -153,14 +153,14 @@ textarea.re-input { resize: none; line-height: 1.5; }
   cursor: pointer;
 }
 .re-album-plus { font-size: 28px; }
-.re-album-uploading { font-size: 12px; color: #ff6b81; }
+.re-album-uploading { font-size: 12px; color: #29241f; }
 
 .re-submit {
   width: 100%;
   padding: 13px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff;
   font-size: 16px;
   cursor: pointer;

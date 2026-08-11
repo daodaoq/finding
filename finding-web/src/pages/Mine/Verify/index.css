@@ -88,7 +88,7 @@
 .ver-submit-btn {
   display: block; width: calc(100% - 32px); margin: 24px 16px;
   padding: 14px; border: none; border-radius: 12px;
-  background: linear-gradient(135deg, #ff6b81, #ff9a76);
+  background: #29241f;
   color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
 }
 .ver-submit-btn:disabled { background: #eee; color: #ccc; }
@@ -96,8 +96,8 @@
 /* 重新提交按钮 */
 .ver-retry-btn {
   display: block; width: calc(100% - 32px); margin: 16px 16px 0;
-  padding: 14px; border: 1px solid #ff6b81; border-radius: 12px;
-  background: #fff; color: #ff6b81; font-size: 16px; font-weight: 600; cursor: pointer;
+  padding: 14px; border: 1px solid #29241f; border-radius: 12px;
+  background: #fff; color: #29241f; font-size: 16px; font-weight: 600; cursor: pointer;
 }
 
 /* 我的认证信息详情(只读) */

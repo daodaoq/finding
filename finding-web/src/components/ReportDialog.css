@@ -25,9 +25,9 @@
 }
 
 .report-reason.active {
-  border-color: #ff6b81;
-  color: #ff6b81;
-  background: #fff0f3;
+  border-color: #29241f;
+  color: #29241f;
+  background: #f5f5f5;
 }
 
 .report-input {
@@ -44,7 +44,7 @@
 }
 
 .report-input:focus {
-  border-color: #ff9a76;
+  border-color: #ededed;
 }
 
 /* 证据上传 */

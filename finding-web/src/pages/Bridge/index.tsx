@@ -178,7 +178,7 @@ export default function BridgePage() {
               className="bridge-quick-item"
               onClick={() => handleQuickAction(action.key)}
             >
-              <span className="bridge-quick-icon">
+              <span className={`bridge-quick-icon bridge-quick-icon--${action.key}`}>
                 <AppIcon name={action.icon} size={22} />
                 {action.key === 'letter' && bridgePending > 0 && (
                   <span className="bridge-quick-badge">
@@ -193,6 +193,14 @@ export default function BridgePage() {
       </div>
 
       {/* 单卡推荐:一次一个用户,爱心喜欢/叉号换下一个 */}
+      <div className="bridge-recommend-heading">
+        <div>
+          <h2>今日推荐</h2>
+          <p>根据你的偏好，为你找到可能聊得来的人</p>
+        </div>
+        <span className="bridge-recommend-count">逐个认识</span>
+      </div>
+
       <div className="bridge-swipe-section">
         {!isLoggedIn ? (
           <EmptyState

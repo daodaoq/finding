@@ -66,9 +66,9 @@ export default function MyMatesPage() {
   };
 
   const getFollowStyle = (u: User) => {
-    if (u.isFollowed) return { color: '#ff6b81', borderColor: '#ff6b81' };
+    if (u.isFollowed) return { color: '#29241f', borderColor: '#29241f' };
     if (activeTab === 'following') return {};
-    return { background: '#ff6b81', color: '#fff', borderColor: '#ff6b81' };
+    return { background: '#29241f', color: '#fff', borderColor: '#29241f' };
   };
 
   const emptyMessage = () => {
