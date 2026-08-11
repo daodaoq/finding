@@ -1,3 +1,5 @@
+import { tokenStorage } from '../utils/tokenStorage';
+
 /**
  * 全局唯一 WebSocket 连接控制器 —— 单个标签页只保持一条 /ws/chat 连接。
  *
@@ -49,7 +51,7 @@ class ChatSocket {
   connect() {
     this.manualClose = false;
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
-    if (!localStorage.getItem('accessToken')) return;
+    if (!tokenStorage.getAccess()) return;
     this.open();
   }
 
@@ -88,7 +90,7 @@ class ChatSocket {
   }
 
   private open() {
-    const token = localStorage.getItem('accessToken');
+    const token = tokenStorage.getAccess();
     if (!token) return;
     const url = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`;
     const ws = new WebSocket(url);
@@ -137,7 +139,7 @@ class ChatSocket {
   };
 
   private hasValidToken(): boolean {
-    const token = localStorage.getItem('accessToken');
+    const token = tokenStorage.getAccess();
     if (!token) return false;
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));

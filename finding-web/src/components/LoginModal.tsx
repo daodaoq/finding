@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
+import { tokenStorage } from '../utils/tokenStorage';
 import { showToast } from './Toast';
 import './LoginModal.css';
 
@@ -39,8 +40,7 @@ export default function LoginModal({ visible, onClose, onSuccess }: Props) {
         ...(mode === 'password' ? { password } : { smsCode }),
       });
       const { accessToken, refreshToken } = res.data.data;
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      tokenStorage.set(accessToken, refreshToken);
       const meRes = await authApi.getMe();
       setAuth(meRes.data.data, accessToken);
       showToast('登录成功');

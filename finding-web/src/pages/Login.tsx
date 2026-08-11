@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
+import { tokenStorage } from '../utils/tokenStorage';
 import { showToast } from '../components/Toast';
 import './Login.css';
 
@@ -24,8 +25,7 @@ export default function LoginPage() {
       });
       const { accessToken, refreshToken } = res.data.data;
       // 先存储 token，后续请求才能带上 Authorization 头
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      tokenStorage.set(accessToken, refreshToken);
       // 获取用户信息
       const meRes = await authApi.getMe();
       setAuth(meRes.data.data, accessToken);

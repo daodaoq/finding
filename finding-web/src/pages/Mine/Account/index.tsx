@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/auth';
 import { useAuthStore } from '../../../store/authStore';
+import { tokenStorage } from '../../../utils/tokenStorage';
 import { showToast } from '../../../components/Toast';
 import '../subpage.css';
 import '../Settings/settings.css';
@@ -28,8 +29,7 @@ export default function AccountPage() {
     setDeleting(true);
     try {
       await authApi.deleteAccount(deletePwd);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      tokenStorage.clear();
       useAuthStore.getState().logout();
       navigate('/login', { replace: true });
     } catch (e: any) {
