@@ -1,6 +1,6 @@
 import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
-import type { BridgeRecommendUser, ChatApply } from '../types/bridge';
+import type { BridgeRecommendUser, ChatApply, UserCardConfig } from '../types/bridge';
 import type { InfoShareStatus } from '../types/resume';
 
 export interface UserMatchPreference {
@@ -68,4 +68,16 @@ export const bridgeApi = {
   /** 对某候选「不感兴趣」:排除出推荐流 */
   skipUser: (userId: number) =>
     request.post<ApiResponse<null>>(`/bridge/recommend/${userId}/skip`),
+
+  /** 我的相识卡片展示配置 */
+  getCardConfig: () =>
+    request.get<ApiResponse<UserCardConfig>>('/bridge/card-config'),
+
+  /** 更新我的相识卡片展示配置 */
+  updateCardConfig: (data: Partial<UserCardConfig>) =>
+    request.put<ApiResponse<null>>('/bridge/card-config', data),
+
+  /** 预览我的卡片(别人视角,按配置裁剪) */
+  previewMyCard: () =>
+    request.get<ApiResponse<BridgeRecommendUser>>('/bridge/card-config/preview'),
 };

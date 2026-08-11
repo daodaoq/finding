@@ -19,5 +19,5 @@ export const MATE_CATEGORIES = [
 ] as const;
 
 export const QUICK_ACTIONS = [
-  { key: 'like', label: '喜欢', icon: 'heart' }, { key: 'letter', label: '来信', icon: 'send' },
+  { key: 'like', label: '喜欢', icon: 'heart' }, { key: 'letter', label: '来信', icon: 'send' }, { key: 'card', label: '我的卡片', icon: 'star' },
 ] as const;

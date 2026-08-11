@@ -121,6 +121,9 @@ export default function BridgePage() {
       case 'letter':
         requireLogin(() => navigate('/bridge/receive-apply'));
         break;
+      case 'card':
+        requireLogin(() => navigate('/bridge/my-card'));
+        break;
     }
   };
 

@@ -1,3 +1,16 @@
+/** 相识卡片展示项配置(0=隐藏 1=显示) */
+export interface UserCardConfig {
+  showPhoto: number;
+  showNickname: number;
+  showGender: number;
+  showSchool: number;
+  showCity: number;
+  showDistance: number;
+  showSignature: number;
+  showMatchReasons: number;
+  showLastOnline: number;
+}
+
 export interface BridgeRecommendUser {
   userId: number;
   nickname: string;
@@ -6,7 +19,8 @@ export interface BridgeRecommendUser {
   school: string;
   signature: string;
   city: string;
-  distanceKm: number;
+  /** 距离km(无定位或隐藏时为 null) */
+  distanceKm?: number;
   lastLoginAt: string;
   isLiked: boolean;
   mutualFriends: number;

@@ -9,8 +9,14 @@ interface Props {
   disabled?: boolean;
 }
 
-/** 单卡推荐:一次展示一个用户,底部悬浮 爱心=喜欢 / 叉号=不感兴趣 */
+/**
+ * 单卡推荐:一次展示一个用户,底部悬浮 爱心=喜欢 / 叉号=不感兴趣。
+ * 各字段按存在性渲染:候选人的卡片配置会隐藏未开启的字段(后端返回 null)。
+ */
 export default function SwipeCard({ user, onLike, onSkip, disabled }: Props) {
+  const hasMeta = !!(user.school || user.city || user.distanceKm != null);
+  const hasOverlay = !!(user.nickname || hasMeta);
+
   return (
     <div className="swipe-wrap">
       <div className="swipe-card">
@@ -19,41 +25,48 @@ export default function SwipeCard({ user, onLike, onSkip, disabled }: Props) {
           {user.avatar ? (
             <img src={user.avatar} alt="" />
           ) : (
-            <div className="swipe-photo-fallback"><AppIcon name="user" size={64} /></div>
+            <div className="swipe-photo-fallback" />
           )}
-          <div className="swipe-photo-shade" />
-          {/* 照片底部信息浮层 */}
-          <div className="swipe-info-overlay">
-            <div className="swipe-name-row">
-              <span className="swipe-name">{user.nickname || '用户'}</span>
-              <span className={`swipe-gender ${user.gender === 1 ? 'male' : 'female'}`}>
-                {user.gender === 1 ? '♂' : '♀'}
-              </span>
-            </div>
-            <div className="swipe-meta">
-              {user.school && <span>{user.school}</span>}
-              <span>
-                {user.city || '未知城市'}
-                {user.distanceKm != null ? ` · ${fmtDistance(user.distanceKm)}` : ''}
-              </span>
-            </div>
-          </div>
+          {hasOverlay && (
+            <>
+              <div className="swipe-photo-shade" />
+              <div className="swipe-info-overlay">
+                {user.nickname && (
+                  <div className="swipe-name-row">
+                    <span className="swipe-name">{user.nickname}</span>
+                    {!!user.gender && (
+                      <span className={`swipe-gender ${user.gender === 1 ? 'male' : 'female'}`}>
+                        {user.gender === 1 ? '♂' : '♀'}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {hasMeta && (
+                  <div className="swipe-meta">
+                    {user.school && <span>{user.school}</span>}
+                    <span>
+                      {user.city || '未知城市'}
+                      {user.distanceKm != null ? ` · ${fmtDistance(user.distanceKm)}` : ''}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* 公开自我介绍区 */}
-        <div className="swipe-body">
-          {user.signature ? (
-            <p className="swipe-bio">{user.signature}</p>
-          ) : (
-            <p className="swipe-bio swipe-bio--empty">这个人很懒，还没有写自我介绍</p>
-          )}
-          {user.matchReasons && user.matchReasons.length > 0 && (
-            <div className="swipe-reasons">
-              {user.matchReasons.map((r) => <span key={r} className="swipe-reason-chip">{r}</span>)}
-            </div>
-          )}
-          <p className="swipe-online">{fmtOnline(user.lastLoginAt)}</p>
-        </div>
+        {/* 公开自我介绍区(仅在有内容时渲染) */}
+        {(user.signature || (user.matchReasons && user.matchReasons.length > 0) || user.lastLoginAt) && (
+          <div className="swipe-body">
+            {user.signature && <p className="swipe-bio">{user.signature}</p>}
+            {user.matchReasons && user.matchReasons.length > 0 && (
+              <div className="swipe-reasons">
+                {user.matchReasons.map((r) => <span key={r} className="swipe-reason-chip">{r}</span>)}
+              </div>
+            )}
+            {user.lastLoginAt && <p className="swipe-online">{fmtOnline(user.lastLoginAt)}</p>}
+          </div>
+        )}
       </div>
 
       {/* 悬浮操作按钮 */}

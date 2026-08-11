@@ -8,6 +8,7 @@ const HomePage = lazy(() => import('../pages/Home'));
 const BridgePage = lazy(() => import('../pages/Bridge'));
 const SendApplyList = lazy(() => import('../pages/Bridge/SendApplyList'));
 const ReceiveApplyList = lazy(() => import('../pages/Bridge/ReceiveApplyList'));
+const MyCardPage = lazy(() => import('../pages/Bridge/MyCard'));
 const SquarePage = lazy(() => import('../pages/Square'));
 const MatePage = lazy(() => import('../pages/Mate'));
 const MessagesPage = lazy(() => import('../pages/Messages'));
@@ -80,6 +81,7 @@ const router = createBrowserRouter([
       { path: 'bridge', element: withSuspense(<BridgePage />) },
       { path: 'bridge/send-apply', element: withSuspense(<SendApplyList />) },
       { path: 'bridge/receive-apply', element: withSuspense(<ReceiveApplyList />) },
+      { path: 'bridge/my-card', element: withSuspense(<MyCardPage />) },
       { path: 'square', element: withSuspense(<SquarePage />) },
       { path: 'square/post/:id', element: withSuspense(<PostDetailPage />) },
       { path: 'mate', element: withSuspense(<MatePage />) },
