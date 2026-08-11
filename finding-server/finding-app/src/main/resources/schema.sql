@@ -511,9 +511,10 @@ CREATE TABLE IF NOT EXISTS `chat_apply` (
 CREATE TABLE IF NOT EXISTS `chat_outbox` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `message_id` BIGINT NOT NULL COMMENT 'private_chat.id',
-    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0=待发布 1=已发布',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0=待发布 1=已发布 2=死信',
     `retry_count` INT NOT NULL DEFAULT 0,
     `last_error` VARCHAR(500) DEFAULT NULL,
+    `next_retry_at` DATETIME DEFAULT NULL COMMENT '下一次重试时间(指数退避)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `published_at` DATETIME DEFAULT NULL,
     PRIMARY KEY (`id`),

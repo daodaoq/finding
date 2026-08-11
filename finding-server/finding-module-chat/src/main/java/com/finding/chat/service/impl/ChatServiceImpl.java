@@ -351,7 +351,7 @@ public class ChatServiceImpl implements ChatService {
         // 事务内写 Outbox(与消息同事务):发布事件不丢失,RabbitMQ 恢复后由定时任务补发
         ChatOutbox outbox = new ChatOutbox();
         outbox.setMessageId(chat.getId());
-        outbox.setStatus(0);
+        outbox.setStatus(ChatOutbox.STATUS_PENDING);
         outbox.setRetryCount(0);
         chatOutboxMapper.insert(outbox);
 
