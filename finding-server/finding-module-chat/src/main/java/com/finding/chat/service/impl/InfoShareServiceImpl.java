@@ -2,8 +2,11 @@ package com.finding.chat.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.finding.chat.constant.ChatApplyStatus;
+import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
 import com.finding.chat.event.InfoSharePushEvent;
+import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.InfoShareMapper;
 import com.finding.chat.service.InfoShareService;
 import com.finding.chat.vo.InfoShareStatusVO;
@@ -35,6 +38,7 @@ public class InfoShareServiceImpl implements InfoShareService {
     private final UserRelationshipService relationshipService;
     private final InMemoryRateLimiter rateLimiter;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChatApplyMapper chatApplyMapper;
 
     @Override
     @Transactional
@@ -58,6 +62,14 @@ public class InfoShareServiceImpl implements InfoShareService {
                 throw new BusinessException(ResultCode.RELATION_BLOCKED);
             }
             throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE);
+        }
+        // 业务规则:必须先建立聊天关系(任一方向有已通过的聊天申请)才能互换资料
+        Long approvedCount = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
+                .eq(ChatApply::getStatus, ChatApplyStatus.APPROVED.getCode())
+                .and(w -> w.and(x -> x.eq(ChatApply::getFromUserId, fromUserId).eq(ChatApply::getToUserId, toUserId))
+                        .or().and(x -> x.eq(ChatApply::getFromUserId, toUserId).eq(ChatApply::getToUserId, fromUserId))));
+        if (approvedCount == null || approvedCount == 0) {
+            throw new BusinessException(ResultCode.INFO_SHARE_NEED_CHAT);
         }
 
         InfoShare existing = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()

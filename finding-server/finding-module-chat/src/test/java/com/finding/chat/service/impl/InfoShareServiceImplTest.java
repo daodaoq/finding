@@ -2,7 +2,9 @@ package com.finding.chat.service.impl;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
+import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.InfoShareMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
@@ -45,6 +47,7 @@ class InfoShareServiceImplTest {
     @Mock private UserRelationshipService relationshipService;
     @Mock private InMemoryRateLimiter rateLimiter;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private ChatApplyMapper chatApplyMapper;
 
     @InjectMocks
     private InfoShareServiceImpl service;
@@ -53,6 +56,7 @@ class InfoShareServiceImplTest {
     void initMybatisLambdaCache() {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), InfoShare.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), ChatApply.class);
     }
 
     private User activeUser() {
@@ -110,6 +114,7 @@ class InfoShareServiceImplTest {
         when(rateLimiter.tryAcquire(anyString(), anyInt(), anyLong())).thenReturn(true);
         when(userMapper.selectById(2L)).thenReturn(activeUser());
         when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(chatApplyMapper.selectCount(any())).thenReturn(1L); // 已通过聊天申请
         when(infoShareMapper.selectOne(any())).thenReturn(null);
         when(infoShareMapper.insert(any())).thenReturn(1);
         when(userMapper.selectById(1L)).thenReturn(activeUser());
@@ -117,6 +122,18 @@ class InfoShareServiceImplTest {
         assertDoesNotThrow(() -> service.requestShare(1L, 2L));
         verify(infoShareMapper).insert(any());
         verify(messageService).notify(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void requestShare_withoutChatRelationship_throws() {
+        when(rateLimiter.tryAcquire(anyString(), anyInt(), anyLong())).thenReturn(true);
+        when(userMapper.selectById(2L)).thenReturn(activeUser());
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(chatApplyMapper.selectCount(any())).thenReturn(0L); // 无已通过的聊天申请
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.requestShare(1L, 2L));
+        assertEquals(ResultCode.INFO_SHARE_NEED_CHAT.getCode(), ex.getCode());
+        verify(infoShareMapper, never()).insert(any());
     }
 
     // ── handleShare: 条件更新防并发 ──
