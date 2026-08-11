@@ -27,7 +27,8 @@ export default function CreateMatePage() {
     mateApi.detail(editingId).then(({ data }) => {
       const m = data.data;
       setCategory(m.category); setTitle(m.title); setDescription(m.description || '');
-      setActivityTime(m.activityTime ? new Date(m.activityTime).toISOString().slice(0, 16) : '');
+      // 服务端返回的是无时区的本地时间,直接取字符串回填,避免二次时区偏移
+      setActivityTime(m.activityTime ? m.activityTime.replace(' ', 'T').slice(0, 16) : '');
       setLocation(m.location || ''); setMaxParticipants(m.maxParticipants); setIsAnonymous(m.isAnonymous || 0);
     }).catch(() => showToast('活动不存在或无法编辑'));
   }, [editingId]);
@@ -43,7 +44,8 @@ export default function CreateMatePage() {
         const payload = {
           category, title: title.trim(),
           description: description.trim(),
-          activityTime: new Date(activityTime).toISOString(),
+          // 直接提交本地时间字符串(无时区),由后端按 LocalDateTime 保存,避免时区偏移
+          activityTime,
           location: location.trim(),
           maxParticipants,
           isAnonymous,
