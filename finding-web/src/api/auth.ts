@@ -50,6 +50,10 @@ export const authApi = {
   getAccount: () =>
     request.get<ApiResponse<{ phone: string }>>('/auth/account'),
 
+  /** 注销账号(需输入密码二次确认) */
+  deleteAccount: (password: string) =>
+    request.post<ApiResponse<null>>('/auth/delete-account', { password }),
+
   submitVerification: (data: { realName: string; studentId: string; school: string; studentCard?: string }) => {
     const params = new URLSearchParams();
     params.append('realName', data.realName);

@@ -14,10 +14,30 @@ export default function AccountPage() {
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deletePwd, setDeletePwd] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     authApi.getAccount().then((res) => setPhone(res.data.data?.phone || '')).catch(() => {});
   }, []);
+
+  /** 注销账号:密码二次确认 → 后端匿名化+停用 → 清本地登录态 */
+  const confirmDelete = async () => {
+    if (!deletePwd) { showToast('请输入密码以确认注销'); return; }
+    setDeleting(true);
+    try {
+      await authApi.deleteAccount(deletePwd);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      useAuthStore.getState().logout();
+      navigate('/login', { replace: true });
+    } catch (e: any) {
+      showToast(e?.message || '注销失败');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const maskPhone = (p: string) => (p.length === 11 ? `${p.slice(0, 3)}****${p.slice(7)}` : p);
 
@@ -78,6 +98,40 @@ export default function AccountPage() {
       <button className="acct-logout" onClick={() => { logout(); navigate('/login'); }}>
         退出登录
       </button>
+
+      <div className="set-card acct-danger-card">
+        <div className="set-row">
+          <span className="set-label">注销账号</span>
+          <button className="acct-danger" onClick={() => setShowDelete(true)}>注销账号</button>
+        </div>
+        <p className="set-hint">注销后账号资料将被匿名化且不可恢复，请谨慎操作</p>
+      </div>
+
+      {/* 注销确认弹层 */}
+      {showDelete && (
+        <div className="del-overlay" onClick={() => setShowDelete(false)}>
+          <div className="del-card" onClick={(e) => e.stopPropagation()}>
+            <h4>确认注销账号？</h4>
+            <p>
+              注销后：无法再登录、个人资料被匿名化（你发布的公开内容作者将显示「已注销用户」）、
+              已发出的聊天记录保留但你的昵称/头像消失。此操作<b>不可恢复</b>。
+            </p>
+            <input
+              type="password"
+              placeholder="请输入登录密码确认"
+              value={deletePwd}
+              onChange={(e) => setDeletePwd(e.target.value)}
+              className="acct-input"
+            />
+            <div className="del-buttons">
+              <button className="del-cancel" onClick={() => { setShowDelete(false); setDeletePwd(''); }}>取消</button>
+              <button className="del-confirm" onClick={confirmDelete} disabled={deleting}>
+                {deleting ? '注销中...' : '确认注销'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
