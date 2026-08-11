@@ -97,7 +97,11 @@ export default function MyMatesPage() {
       <div className="subpage-list">
         {loading && <LoadingSkeleton />}
         {!loading && users.map(u => (
-          <div key={u.id} className="user-row">
+          <div
+            key={u.id}
+            className="user-row"
+            onClick={() => navigate(`/user/${u.id}`)}
+          >
             <div className="user-row-avatar">
               {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={20} />}
             </div>
@@ -108,7 +112,7 @@ export default function MyMatesPage() {
             <button
               className="follow-btn-sm"
               style={getFollowStyle(u)}
-              onClick={() => handleFollow(u)}
+              onClick={(e) => { e.stopPropagation(); handleFollow(u); }}
             >
               {getFollowLabel(u)}
             </button>

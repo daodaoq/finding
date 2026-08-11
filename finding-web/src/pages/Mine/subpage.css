@@ -57,7 +57,9 @@
 .user-row {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px; border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
 }
+.user-row:active { background: #fafafa; }
 .user-row-avatar {
   width: 44px; height: 44px; border-radius: 50%;
   background: #f0f0f0; display: flex; align-items: center; justify-content: center;
