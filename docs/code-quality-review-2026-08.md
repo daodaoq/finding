@@ -81,7 +81,7 @@
 - 建立全局异常处理，统一返回业务码和 traceId。
 - 为 WebSocket 连接、消息投递、上传失败、异步消费者失败增加指标和告警。
 
-### P1-2：核心服务类偏大，职责需要拆分 🕒 部分完成
+### P1-2：核心服务类偏大，职责需要拆分 ❌ 不做（服务拆分部分）
 
 **证据**
 
@@ -97,7 +97,7 @@
 - 将“聊天消息写库 + outbox”“报名 + 名额变动”“信息互换审批”分别定义清晰事务边界。
 - 以枚举/状态迁移表替代散落的数值状态判断，并为非法迁移加测试。
 
-**完成情况（2026-08-11）**：已落地「枚举/状态迁移表 + 非法迁移测试」——新增 `InfoShareStatus` 枚举（替换 InfoShare 服务与两个 Listener 的裸魔数，`handleShare` 增加迁移校验）；`ChatApplyStatus`/`MateInvitationStatus`/`MateParticipantStatus` 统一提供 `canTransitTo` 迁移表；新增 14 例迁移测试。尚未执行 command/query/policy 服务拆分（体量大且现有覆盖薄，建议后续配测试渐进推进）。
+**完成情况（2026-08-11）**：已落地「枚举/状态迁移表 + 非法迁移测试」——新增 `InfoShareStatus` 枚举（替换 InfoShare 服务与两个 Listener 的裸魔数，`handleShare` 增加迁移校验）；`ChatApplyStatus`/`MateInvitationStatus`/`MateParticipantStatus` 统一提供 `canTransitTo` 迁移表；新增 14 例迁移测试。**command/query/policy 服务拆分已决定不做**（体量大、现有覆盖薄、维护收益未达预期，暂缓）。
 
 ### P1-3：事务后事件的可靠性需要验收 ✅ 已完成
 
