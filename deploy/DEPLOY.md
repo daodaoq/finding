@@ -787,3 +787,46 @@ sudo systemctl status finding-webhook
 > 提示：当前流程是「服务器本地构建」（`npm ci` + `vite build` + `mvn package`），
 > 构建期内存会有 1–2G 瞬时尖峰，所以建议挂 swap。若要更规范，可改用 Gitee Go 云端构建
 > 只把 jar/dist 产物推到服务器（生产机不装构建工具），后续可按需演进。
+
+---
+
+### 10.7 角色分工（开发人员 vs 生产服务器 Agent）
+
+> 原则：**网页/账号级操作由开发人员做，服务器上的操作用户 Agent 做**，几个点需两边交接信息。
+
+#### 开发人员负责（本机 + Gitee 网页）
+
+| # | 事项 | 说明 |
+|---|------|------|
+| 1 | 把服务器 SSH 公钥加进 Gitee | 等 Agent 生成密钥后把公钥给你，到 Gitee → 设置 → SSH 公钥粘贴（私有仓库拉取必需） |
+| 2 | 配置 Gitee WebHook | 仓库 → 管理 → WebHooks：URL 填 `http://服务器IP:8090/gitee-webhook`（IP 问 Agent），密码填 `.env` 的 `GITEE_WEBHOOK_SECRET`，勾选 Push，点测试 |
+| 3 | 确认/生成部署密码 | 自己 `openssl rand -hex 16` 生成后告诉 Agent 填 `.env`，或让 Agent 生成后告诉你、你再填 Gitee（两边一致即可） |
+| 4 | 推送测试 + 日常开发 | `git push` 触发部署；之后正常推码即可 |
+
+#### 生产服务器 Agent 负责（Ubuntu 服务器）
+
+| # | 事项 | 说明 |
+|---|------|------|
+| 1 | 生成 SSH 密钥 | `ssh-keygen`，把公钥交给开发人员（配合上面第 1 步） |
+| 2 | clone 到 /opt/finding | `git clone git@gitee.com:daodaoq/finding.git /opt/finding` |
+| 3 | 配置 `.env` | 复制 `.env.example`，填 `GITEE_WEBHOOK_SECRET`（用开发人员给的或自生成）及其它生产密钥 |
+| 4 | 首次手动部署 | `./deploy.sh`（把系统跑起来，webhook 文件已在服务器上） |
+| 5 | 装 systemd 服务 | `cp finding-webhook.service /etc/systemd/system/` + `systemctl enable --now` |
+| 6 | 放行 8090 端口 + 挂 swap | `ufw allow 8090`；`fallocate -l 2G /swapfile` 等 |
+| 7 | 日常运维 | 看 `deploy.log` / `journalctl`，部署失败排查、`git revert` 回滚 |
+
+#### 两边交接信息
+
+| 方向 | 内容 |
+|------|------|
+| Agent → 开发人员 | ① SSH 公钥 ② 服务器公网 IP ③ webhook 服务是否已启动 |
+| 开发人员 → Agent | ① `GITEE_WEBHOOK_SECRET` 的值（或让 Agent 生成）② Gitee WebHook 已配置完成 |
+
+#### 推荐执行顺序
+
+1. Agent：生成密钥 → clone（配上面第 1、2 步），把公钥给开发人员
+2. 开发人员：加公钥 + 定密码并告诉 Agent（配上面第 1、3 步）
+3. Agent：配 `.env` → 首次部署 → 装服务 → 端口/swap（配上面第 3–6 步）
+4. Agent：确认 webhook 服务起来 + 给开发人员服务器 IP
+5. 开发人员：配 Gitee WebHook + 测试（配上面第 2 步）
+6. 开发人员：`git push` 一次做端到端验证（配上面第 4 步）
