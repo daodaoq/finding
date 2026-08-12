@@ -22,6 +22,7 @@ import ForbiddenWords from './pages/ForbiddenWords';
 import ChatAudit from './pages/ChatAudit';
 import Feedback from './pages/Feedback';
 import Login from './pages/Login';
+import LoveGuideReview from './pages/LoveGuideReview';
 
 /**
  * 将 navigate 注册到模块级导航器,供 axios 拦截器等 Router 上下文外的代码 SPA 内跳转。
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="posts" element={<Posts />} />
             <Route path="post-review" element={<PostReview />} />
+            <Route path="love-guide-review" element={<LoveGuideReview />} />
             <Route path="mate-review" element={<MateReview />} />
             <Route path="appeals" element={<Appeals />} />
             <Route path="comments" element={<Comments />} />

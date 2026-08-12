@@ -54,6 +54,7 @@ const CreatePostPage = lazy(() => import('../pages/CreatePost'));
 const CreateMatePage = lazy(() => import('../pages/CreateMate'));
 const LoginPage = lazy(() => import('../pages/Login'));
 const RegisterPage = lazy(() => import('../pages/Register'));
+const LoveGuidePage = lazy(() => import('../pages/LoveGuide'));
 
 /** 路由切换时的懒加载占位 */
 function PageFallback() {
@@ -130,6 +131,7 @@ const router = createBrowserRouter([
       { path: 'create-post', element: withSuspense(<CreatePostPage />) },
       { path: 'create-mate', element: withSuspense(<CreateMatePage />) },
       { path: 'create-mate/:id', element: withSuspense(<CreateMatePage />) },
+      { path: 'love-guide', element: withSuspense(<LoveGuidePage />) },
     ],
   },
   {

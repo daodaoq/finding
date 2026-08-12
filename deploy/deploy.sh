@@ -157,6 +157,19 @@ until docker exec finding-mysql mysqladmin ping -h localhost -u root -p"${MYSQL_
 done
 ok "MySQL 已就绪"
 
+# init.sql only runs when the MySQL volume is first created. Apply idempotent
+# incremental migrations on every deploy so existing databases receive schema updates.
+MIGRATION_DIR="$DEPLOY_DIR/migrations"
+if [ -d "$MIGRATION_DIR" ]; then
+    info "应用数据库增量迁移..."
+    for migration in "$MIGRATION_DIR"/*.sql; do
+        [ -e "$migration" ] || continue
+        info "执行迁移: $(basename "$migration")"
+        docker exec -i finding-mysql mysql -u root -p"${MYSQL_ROOT_PASSWORD}" finding < "$migration"
+    done
+    ok "数据库增量迁移完成"
+fi
+
 # 等待 Redis
 until docker exec finding-redis redis-cli -a "${REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG; do
     sleep 1

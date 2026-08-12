@@ -30,6 +30,7 @@ const menuItems: MenuProps['items'] = [
     children: [
       { key: '/posts', label: '动态管理' },
       { key: '/post-review', label: '动态审核' },
+      { key: '/love-guide-review', label: '恋爱干货审核' },
       { key: '/comments', label: '评论管理' },
       { key: '/banners', label: '轮播管理' },
       { key: '/announcements', label: '系统公告' },
@@ -57,6 +58,7 @@ const groupByPath: Record<string, string> = {
   '/feedback': 'users-and-risk',
   '/posts': 'content-operations',
   '/post-review': 'content-operations',
+  '/love-guide-review': 'content-operations',
   '/comments': 'content-operations',
   '/banners': 'content-operations',
   '/announcements': 'content-operations',
@@ -74,6 +76,7 @@ const breadcrumbMap: Record<string, string> = {
   '/reports': '投诉管理',
   '/posts': '动态管理',
   '/post-review': '动态审核',
+  '/love-guide-review': '恋爱干货审核',
   '/mate-review': '搭子审核',
   '/appeals': '申诉管理',
   '/comments': '评论管理',
