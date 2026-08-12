@@ -7,16 +7,20 @@ import com.finding.common.Result;
 import com.finding.common.ResultCode;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserVerification;
+import com.finding.user.event.UserVerifiedEvent;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserVerificationMapper;
+import com.finding.user.security.JwtInterceptor;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 /**
  * 管理员 - 学生认证审核。
+ * 审核结果通过事件通知被审核用户(见 app 模块 UserVerifiedListener)。
  */
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -25,6 +29,7 @@ public class AdminVerificationController {
 
     private final UserVerificationMapper verificationMapper;
     private final UserMapper userMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @GetMapping("/verifications")
     public Result<PageVO<Map<String, Object>>> listVerifications(
@@ -85,6 +90,9 @@ public class AdminVerificationController {
             userMapper.updateById(user);
         }
 
+        // 通知用户认证已通过
+        eventPublisher.publishEvent(new UserVerifiedEvent(
+                v.getUserId(), true, null, JwtInterceptor.getCurrentUserId()));
         return Result.ok();
     }
 
@@ -107,6 +115,9 @@ public class AdminVerificationController {
             userMapper.updateById(user);
         }
 
+        // 通知用户认证未通过及原因
+        eventPublisher.publishEvent(new UserVerifiedEvent(
+                v.getUserId(), false, comment, JwtInterceptor.getCurrentUserId()));
         return Result.ok();
     }
 }
