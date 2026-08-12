@@ -275,9 +275,11 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 
 **完成情况（2026-08-12）**：已通过用户端 Playwright 冒烟覆盖管理端“登录拦截 / 管理员登录 / 用户表格加载”三条路径。**未做**：admin 自身的 lint/组件测试脚本、其余审核操作 E2E。
 
-### P2-5：全局主题与用户端设计令牌需解耦 🕒 未做
+### P2-5：全局主题与用户端设计令牌需解耦 ✅ 已完成
 
 管理端使用 Ant Design 的 `colorPrimary: '#ff6b81'`，用户端当前为纯白黑灰与局部淡粉的主题。两者应各自定义主题 token，不应依赖复制粘贴的颜色值；后台以信息密度和状态颜色清晰为优先。
+
+**完成情况（2026-08-12）**：admin 在 App.tsx 定义独立语义主题（colorPrimary 品牌色 / Success / Warning / Error / Info + 小圆角），18 个文件 40+ 处硬编码色值全部改用 `theme.useToken()` 消费，与用户端设计令牌彻底解耦；仅登录页渐变装饰色保留并注明。
 
 ---
 
