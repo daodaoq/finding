@@ -13,32 +13,18 @@ interface Props {
 
 /**
  * 全局登录弹窗 —— 游客点击需要登录的功能时弹出。
+ * 验证码登录暂未开放:如需恢复,可参考 git 历史中 mode='sms' 相关的状态与表单代码
  */
 export default function LoginModal({ visible, onClose, onSuccess }: Props) {
   const [phone, setPhone] = useState('');
-  const [mode, setMode] = useState<'password' | 'sms'>('password');
   const [password, setPassword] = useState('');
-  const [smsCode, setSmsCode] = useState('');
-  const [countdown, setCountdown] = useState(0);
   const setAuth = useAuthStore((s) => s.setAuth);
-
-  const handleSendCode = async () => {
-    if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的手机号'); return; }
-    try {
-      await authApi.sendCode(phone, 'login');
-      showToast('验证码已发送');
-      setCountdown(60);
-      const t = setInterval(() => setCountdown((c) => { if (c <= 1) { clearInterval(t); return 0; } return c - 1; }), 1000);
-    } catch (e: any) { showToast(e?.message || '发送失败'); }
-  };
 
   const handleLogin = async () => {
     if (!phone) return;
+    if (!password.trim()) { showToast('请输入密码'); return; }
     try {
-      const res = await authApi.login({
-        phone, loginType: mode,
-        ...(mode === 'password' ? { password } : { smsCode }),
-      });
+      const res = await authApi.login({ phone, loginType: 'password', password });
       const { accessToken, refreshToken } = res.data.data;
       tokenStorage.set(accessToken, refreshToken);
       const meRes = await authApi.getMe();
@@ -60,22 +46,8 @@ export default function LoginModal({ visible, onClose, onSuccess }: Props) {
           <button className="modal-close-btn" onClick={onClose}>✕</button>
         </div>
 
-        <div className="login-tabs-sm">
-          <button className={mode === 'password' ? 'active' : ''} onClick={() => setMode('password')}>密码登录</button>
-          <button className={mode === 'sms' ? 'active' : ''} onClick={() => setMode('sms')}>验证码登录</button>
-        </div>
-
         <input className="input-sm" type="tel" placeholder="手机号" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={11} />
-        {mode === 'password' ? (
-          <input className="input-sm" type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
-        ) : (
-          <div className="sms-row-sm">
-            <input className="input-sm sms-input-sm" type="text" placeholder="验证码" value={smsCode} onChange={(e) => setSmsCode(e.target.value)} maxLength={6} />
-            <button className="sms-btn-sm" onClick={handleSendCode} disabled={countdown > 0}>
-              {countdown > 0 ? `${countdown}s` : '获取验证码'}
-            </button>
-          </div>
-        )}
+        <input className="input-sm" type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button className="login-submit-sm" onClick={handleLogin}>登录</button>
       </div>
     </div>

@@ -24,9 +24,8 @@ export interface User {
 
 export interface LoginParams {
   phone: string;
-  loginType: 'password' | 'sms';
+  loginType: 'password';
   password?: string;
-  smsCode?: string;
 }
 
 export interface RegisterParams {

@@ -25,9 +25,6 @@ export const authApi = {
   register: (data: RegisterParams) =>
     request.post<ApiResponse<null>>('/auth/register', data),
 
-  sendCode: (phone: string, type: string) =>
-    request.post<ApiResponse<null>>('/auth/send-code', { phone, type }),
-
   /** 获取图片验证码 */
   getCaptcha: () =>
     request.get<ApiResponse<{ captchaKey: string; captchaImage: string }>>('/auth/captcha'),
