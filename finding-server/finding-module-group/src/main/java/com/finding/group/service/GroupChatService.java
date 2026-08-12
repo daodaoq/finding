@@ -96,7 +96,7 @@ public class GroupChatService {
             GroupChatVO vo = toVO(g, userId);
             GroupMessage last = lastMsgMap.get(g.getId());
             if (last != null) {
-                vo.setLastMessage("image".equals(last.getMessageType()) ? "[图片]" : last.getContent());
+                vo.setLastMessage(previewText(last));
                 vo.setLastMessageAt(last.getCreatedAt());
             }
             // 未读数 = 我未读之后且不是我自己发的
@@ -158,14 +158,23 @@ public class GroupChatService {
 
     /** 发送群消息 */
     public GroupMessageVO sendMessage(Long groupId, Long fromUserId, String content, String messageType) {
+        messageType = messageType != null ? messageType : "text";
+        // 消息类型边界校验 + 媒体消息仅允许本站上传源(与私聊一致)
+        if (!"text".equals(messageType) && !"image".equals(messageType) && !"video".equals(messageType)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的消息类型");
+        }
+        if (("image".equals(messageType) || "video".equals(messageType))
+                && (content == null || !content.startsWith("/api/v1/images/"))) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "图片/视频消息只允许使用本站上传的文件");
+        }
+        // XSS 清洗 + 违禁词拦截
+        content = XssUtil.clean(content);
+        sensitiveWordFilter.assertClean(content);
         GroupMessage msg = new GroupMessage();
         msg.setGroupId(groupId);
         msg.setFromUserId(fromUserId);
         msg.setContent(content);
-        msg.setMessageType(messageType != null ? messageType : "text");
-        // XSS 清洗 + 违禁词拦截
-        content = XssUtil.clean(content);
-        sensitiveWordFilter.assertClean(content);
+        msg.setMessageType(messageType);
         messageMapper.insert(msg);
 
         User u = userMapper.selectById(fromUserId);
@@ -196,6 +205,13 @@ public class GroupChatService {
         vo.setIsRecalled(msg.getIsRecalled());
         vo.setCreatedAt(msg.getCreatedAt());
         return vo;
+    }
+
+    /** 群列表最后一条消息预览:text 原文,图片/视频显示占位 */
+    private String previewText(GroupMessage m) {
+        if ("image".equals(m.getMessageType())) return "[图片]";
+        if ("video".equals(m.getMessageType())) return "[视频]";
+        return m.getContent();
     }
 
     /** 群消息历史 */

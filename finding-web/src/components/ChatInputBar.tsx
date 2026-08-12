@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { uploadApi } from '../api/upload';
+import { showToast } from './Toast';
 import AppIcon from './AppIcon';
 import './ChatInputBar.css';
 
@@ -23,7 +24,10 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers, repl
   const [showMentions, setShowMentions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
   const lastTypingAt = useRef(0);
+  /** 视频上传大小上限(与后端 finding.upload.max-video-size 一致) */
+  const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -45,6 +49,35 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers, repl
     setPanelOpen(false);
     // 延迟打开文件选择器，等面板动画结束
     setTimeout(() => fileRef.current?.click(), 150);
+  };
+
+  const handlePickVideo = () => {
+    setPanelOpen(false);
+    setTimeout(() => videoRef.current?.click(), 150);
+  };
+
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_VIDEO_SIZE) {
+      showToast('视频不能超过 50MB');
+      if (videoRef.current) videoRef.current.value = '';
+      return;
+    }
+    onUploading?.(true);
+    setUploadProgress(0);
+    try {
+      const res = await uploadApi.uploadVideo(file, (p) => setUploadProgress(p));
+      if (res.data.data) {
+        onSend(res.data.data, 'video');
+      }
+    } catch {
+      // 拦截器已提示
+    } finally {
+      onUploading?.(false);
+      setUploadProgress(null);
+      if (videoRef.current) videoRef.current.value = '';
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +109,10 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers, repl
             <div className="panel-item" onClick={handlePickImage}>
               <span className="panel-icon"><AppIcon name="image" size={28} /></span>
               <span className="panel-label">图片</span>
+            </div>
+            <div className="panel-item" onClick={handlePickVideo}>
+              <span className="panel-icon"><AppIcon name="video" size={28} /></span>
+              <span className="panel-label">视频</span>
             </div>
           </div>
         </>
@@ -125,6 +162,13 @@ export default function ChatInputBar({ onSend, onUploading, mentionMembers, repl
           accept="image/*"
           style={{ display: 'none' }}
           onChange={handleFileChange}
+        />
+        <input
+          ref={videoRef}
+          type="file"
+          accept="video/*"
+          style={{ display: 'none' }}
+          onChange={handleVideoChange}
         />
         <button className="input-action-btn" onClick={() => setPanelOpen(!panelOpen)}>
           {panelOpen ? '✕' : '＋'}

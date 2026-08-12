@@ -262,7 +262,7 @@ public class ChatServiceImpl implements ChatService {
 
             PrivateChat lastMsg = lastMsgMap.get(contact.getRoomId());
             if (lastMsg != null) {
-                vo.setLastMessage("image".equals(lastMsg.getMessageType()) ? "[图片]" : lastMsg.getContent());
+                vo.setLastMessage(previewText(lastMsg));
             }
 
             vo.setUnreadCount(unreadMap.getOrDefault(contact.getRoomId(), 0));
@@ -289,9 +289,9 @@ public class ChatServiceImpl implements ChatService {
             throw new BusinessException(ResultCode.RELATION_BLOCKED);
         }
 
-        // 消息类型边界校验:仅 text / image
+        // 消息类型边界校验:仅 text / image / video
         String messageType = dto.getMessageType() != null ? dto.getMessageType() : "text";
-        if (!"text".equals(messageType) && !"image".equals(messageType)) {
+        if (!"text".equals(messageType) && !"image".equals(messageType) && !"video".equals(messageType)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的消息类型");
         }
 
@@ -302,9 +302,9 @@ public class ChatServiceImpl implements ChatService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "消息内容不能为空");
         }
 
-        // 图片消息只允许本站上传源,拒绝外部跟踪图片
-        if ("image".equals(messageType) && !isTrustedImageUrl(dto.getContent())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "图片消息只允许使用本站上传的图片");
+        // 图片/视频消息只允许本站上传源,拒绝外部跟踪地址
+        if (("image".equals(messageType) || "video".equals(messageType)) && !isTrustedMediaUrl(dto.getContent())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "图片/视频消息只允许使用本站上传的文件");
         }
 
         // 幂等:同一 senderId + clientMessageId 已存在 → 直接返回已有消息(弱网重试不重复落库)
@@ -588,9 +588,16 @@ public class ChatServiceImpl implements ChatService {
         return vo;
     }
 
-    /** 图片消息只允许本站上传代理 URL(/api/v1/images/),拒绝外部跟踪图片 */
-    private boolean isTrustedImageUrl(String url) {
+    /** 图片/视频消息只允许本站上传代理 URL(/api/v1/images/),拒绝外部跟踪地址 */
+    private boolean isTrustedMediaUrl(String url) {
         return url != null && url.startsWith("/api/v1/images/");
+    }
+
+    /** 会话列表最后一条消息预览:text 原文,图片/视频显示占位 */
+    private String previewText(PrivateChat m) {
+        if ("image".equals(m.getMessageType())) return "[图片]";
+        if ("video".equals(m.getMessageType())) return "[视频]";
+        return m.getContent();
     }
 
     /** 读取用户全局默认免打扰(单个聊天未显式设置时继承) */
@@ -650,7 +657,7 @@ public class ChatServiceImpl implements ChatService {
                         .last("LIMIT 1"));
         if (!lastMsgs.isEmpty()) {
             PrivateChat last = lastMsgs.get(0);
-            vo.setLastMessage("image".equals(last.getMessageType()) ? "[图片]" : last.getContent());
+            vo.setLastMessage(previewText(last));
             vo.setLastMessageAt(last.getCreatedAt());
         }
 

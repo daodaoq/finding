@@ -12,8 +12,8 @@ spring:
     default-property-inclusion: non_null
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 120MB
 
 # 所有日志行携带 traceId(RequestLogInterceptor 写入 MDC;无请求上下文时显示 -)
 logging:
@@ -60,7 +60,8 @@ minio:
 # 文件上传限制
 finding:
   upload:
-    max-size: 5242880   # 5MB
+    max-size: 5242880   # 5MB(图片)
+    max-video-size: 52428800  # 50MB(视频,chat 发视频)
     allowed-types: image/jpeg,image/png,image/webp
   # 相亲匹配评分权重(可调,默认值见 MatchScoreWeights)
   recommend:

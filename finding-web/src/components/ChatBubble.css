@@ -66,6 +66,40 @@
   cursor: pointer;
 }
 
+/* 视频消息 */
+.chat-video {
+  position: relative;
+  width: 200px;
+  max-width: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.chat-video video {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  background: #000;
+  object-fit: cover;
+}
+.chat-video-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.15);
+}
+.chat-video-play span {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+}
+
 /* 图片预览 */
 .image-preview-overlay {
   position: fixed;

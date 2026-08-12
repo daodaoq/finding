@@ -31,6 +31,10 @@ public class UploadServiceImpl implements UploadService {
     @Value("${finding.upload.max-size:5242880}")
     private long maxSize;
 
+    /** 视频大小上限(默认 50MB) */
+    @Value("${finding.upload.max-video-size:52428800}")
+    private long maxVideoSize;
+
     /** 图片公网访问域名(如 https://api.example.com),为空则跳过鉴黄(本地开发) */
     @Value("${finding.image-safety.public-base-url:}")
     private String publicBaseUrl;
@@ -38,6 +42,10 @@ public class UploadServiceImpl implements UploadService {
     /** 允许的图片类型 */
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp");
+
+    /** 允许的视频类型 */
+    private static final Set<String> ALLOWED_VIDEO_TYPES = Set.of(
+            "video/mp4", "video/webm");
 
     /** 初始化：确保 Bucket 存在 */
     @PostConstruct
@@ -73,12 +81,7 @@ public class UploadServiceImpl implements UploadService {
         String objectName = UUID.randomUUID().toString().replace("-", "") + ext;
 
         try {
-            minioClient.putObject(PutObjectArgs.builder()
-                    .bucket(minioConfig.getBucket())
-                    .object(objectName)
-                    .stream(new ByteArrayInputStream(data), data.length, -1)
-                    .contentType(contentType)
-                    .build());
+            putObject(objectName, data, contentType);
 
             // 图片内容安全:鉴黄(公网URL)+ OCR 提取文字过违禁词;违规则删除已上传对象并拒绝
             try {
@@ -101,6 +104,57 @@ public class UploadServiceImpl implements UploadService {
         } catch (Exception e) {
             log.error("上传 MinIO 失败", e);
             throw new BusinessException(ResultCode.INTERNAL_ERROR, "文件上传失败");
+        }
+    }
+
+    @Override
+    public String uploadVideo(byte[] data, String originalFilename, String contentType) {
+        if (data.length > maxVideoSize) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "视频大小超过限制(50MB)");
+        }
+        if (!ALLOWED_VIDEO_TYPES.contains(contentType)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的文件类型，仅允许 MP4/WebM");
+        }
+        validateVideoMagic(data);
+
+        // 扩展名不可信,按已通过魔数校验的 Content-Type 归一化
+        String ext = "video/mp4".equals(contentType) ? ".mp4" : ".webm";
+        String objectName = UUID.randomUUID().toString().replace("-", "") + ext;
+
+        try {
+            putObject(objectName, data, contentType);
+            // 视频不做鉴黄/OCR(成本高且误伤大),返回代理 URL 供浏览器播放
+            String url = "/api/v1/images/" + objectName;
+            log.info("视频已上传至 MinIO: {} -> {}", originalFilename, url);
+            return url;
+        } catch (BusinessException be) {
+            throw be;
+        } catch (Exception e) {
+            log.error("上传 MinIO 失败", e);
+            throw new BusinessException(ResultCode.INTERNAL_ERROR, "文件上传失败");
+        }
+    }
+
+    /** 统一 MinIO 写入,图片/视频共用 */
+    private void putObject(String objectName, byte[] data, String contentType) throws Exception {
+        minioClient.putObject(PutObjectArgs.builder()
+                .bucket(minioConfig.getBucket())
+                .object(objectName)
+                .stream(new ByteArrayInputStream(data), data.length, -1)
+                .contentType(contentType)
+                .build());
+    }
+
+    /** 校验视频魔数:MP4(offset 4 = "ftyp") / WebM(EBML 头 0x1A45DFA3) */
+    private void validateVideoMagic(byte[] data) {
+        if (data.length < 12) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的文件类型，仅允许 MP4/WebM");
+        }
+        boolean mp4 = data[4] == 'f' && data[5] == 't' && data[6] == 'y' && data[7] == 'p';
+        boolean webm = (data[0] & 0xFF) == 0x1A && (data[1] & 0xFF) == 0x45
+                && (data[2] & 0xFF) == 0xDF && (data[3] & 0xFF) == 0xA3;
+        if (!mp4 && !webm) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的文件类型，仅允许 MP4/WebM");
         }
     }
 

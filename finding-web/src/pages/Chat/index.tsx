@@ -139,7 +139,7 @@ export default function ChatDetailPage() {
         onRetryMessage={actions.retryMessage}
         onReplyMessage={(msg) => actions.setReplyTo({
           id: msg.id,
-          content: msg.messageType === 'image' ? '[图片]' : msg.content,
+          content: msg.messageType === 'image' ? '[图片]' : msg.messageType === 'video' ? '[视频]' : msg.content,
           nickname: msg.fromUserId === user?.id ? '我' : targetNickname,
         })}
         onLoadMore={session.loadOlder}

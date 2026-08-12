@@ -397,9 +397,39 @@ class ChatServiceImplTest {
         when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
 
         MessageSendDTO dto = dto(100L, "x");
+        dto.setMessageType("audio");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.sendMessage(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void sendMessage_video_ok() {
+        allowRateLimit();
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+        when(privateChatMapper.insert(any())).thenReturn(1);
+        when(chatOutboxMapper.insert(any())).thenReturn(1);
+
+        MessageSendDTO dto = dto(100L, "/api/v1/images/abc.mp4");
+        dto.setMessageType("video");
+        assertDoesNotThrow(() -> service.sendMessage(1L, dto));
+
+        ArgumentCaptor<PrivateChat> captor = ArgumentCaptor.forClass(PrivateChat.class);
+        verify(privateChatMapper).insert(captor.capture());
+        assertEquals("video", captor.getValue().getMessageType());
+    }
+
+    @Test
+    void sendMessage_untrustedVideoUrl_rejected() {
+        allowRateLimit();
+        when(roomFriendMapper.selectOne(any())).thenReturn(rf(1L, 2L, 100L));
+        when(relationshipService.isBlockedEitherWay(1L, 2L)).thenReturn(false);
+
+        MessageSendDTO dto = dto(100L, "https://evil.com/track.mp4");
         dto.setMessageType("video");
         BusinessException ex = assertThrows(BusinessException.class, () -> service.sendMessage(1L, dto));
         assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+        assertTrue(ex.getMessage().contains("本站上传"));
     }
 
     @Test

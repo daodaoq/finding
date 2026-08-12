@@ -22,6 +22,12 @@ public class UploadController {
                 file.getBytes(), file.getOriginalFilename(), file.getContentType()));
     }
 
+    @PostMapping("/video")
+    public Result<String> uploadVideo(@RequestParam("file") MultipartFile file) throws IOException {
+        return Result.ok(uploadService.uploadVideo(
+                file.getBytes(), file.getOriginalFilename(), file.getContentType()));
+    }
+
     @PostMapping("/images")
     public Result<List<String>> uploadImages(@RequestParam("files") List<MultipartFile> files) throws IOException {
         List<String> urls = new java.util.ArrayList<>();

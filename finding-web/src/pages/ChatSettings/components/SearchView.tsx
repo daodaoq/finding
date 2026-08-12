@@ -50,7 +50,7 @@ export default function SearchView({
         {results?.map((m) => (
           <div key={m.id} className="cs-result-item">
             <span className="cs-result-name">{m.fromUserId === myId ? '我' : nickname}</span>
-            <span className="cs-result-text">{m.messageType === 'image' ? '[图片]' : m.content}</span>
+            <span className="cs-result-text">{m.messageType === 'image' ? '[图片]' : m.messageType === 'video' ? '[视频]' : m.content}</span>
             <span className="cs-result-time">{formatSessionTime(m.createdAt)}</span>
           </div>
         ))}

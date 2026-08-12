@@ -40,6 +40,7 @@ export default function ChatBubble({
   onReport, onRecall, onRetry, onReply,
 }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -91,7 +92,8 @@ export default function ChatBubble({
                 <span className="chat-quote-name">{replyToName || '引用'}</span>
                 <span className="chat-quote-content">
                   {replyTo.isRecalled === 1 ? '原消息已撤回'
-                    : replyTo.messageType === 'image' ? '[图片]' : replyTo.content}
+                    : replyTo.messageType === 'image' ? '[图片]'
+                    : replyTo.messageType === 'video' ? '[视频]' : replyTo.content}
                 </span>
               </div>
             )}
@@ -104,6 +106,13 @@ export default function ChatBubble({
                 className="chat-image"
                 onClick={() => setPreview(message.content)}
               />
+            ) : message.messageType === 'video' ? (
+              <div className="chat-video" onClick={() => setVideoPreview(message.content)}>
+                <video src={message.content} muted playsInline preload="metadata" />
+                <div className="chat-video-play">
+                  <span><AppIcon name="video" size={20} /></span>
+                </div>
+              </div>
             ) : (
               <span>{message.content}</span>
             )}
@@ -153,6 +162,21 @@ export default function ChatBubble({
         <div className="image-preview-overlay" onClick={() => setPreview(null)}>
           <img src={preview} alt="" className="image-preview-img" onClick={(e) => e.stopPropagation()} />
           <button className="image-preview-close" onClick={() => setPreview(null)}>✕</button>
+        </div>
+      )}
+
+      {/* 视频预览遮罩 */}
+      {videoPreview && (
+        <div className="image-preview-overlay" onClick={() => setVideoPreview(null)}>
+          <video
+            src={videoPreview}
+            className="image-preview-img"
+            controls
+            autoPlay
+            playsInline
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button className="image-preview-close" onClick={() => setVideoPreview(null)}>✕</button>
         </div>
       )}
     </>
