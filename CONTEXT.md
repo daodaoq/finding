@@ -27,3 +27,18 @@
 - 所有关系、隐私、状态与容量规则**必须由服务端最终裁决**,前端只做展示投影,不得只靠前端隐藏。
 - 业务模块不得各自重复编写 `user_block` / `user_settings` 查询,统一走 `UserRelationshipService`(用户模块)。
 - 错误码:拉黑用 `RELATION_BLOCKED(9101)`,联系权限拒绝用 `CONTACT_PERMISSION_DENIED(9102)`。
+
+## 数据库迁移约定
+
+**为什么必须幂等**:`deploy.sh` 每次部署都会把 `deploy/migrations/*.sql` **全部重跑一遍**(无 Flyway 类迁移追踪),所以每个迁移文件都必须能在已应用过的数据库上**重复执行成功**。
+
+- 建表:一律 `CREATE TABLE IF NOT EXISTS`。
+- 加列:MySQL 8 无 `ADD COLUMN IF NOT EXISTS`,用 `information_schema` 判断 + 存储过程动态执行(参考 `20260811_outbox_backoff_deadletter.sql` 的写法)。
+- `MODIFY COLUMN`、`CREATE INDEX` 重复执行仅重置相同定义,属幂等,可直接用。
+- 破坏性操作(删表/删列/清数据)**禁止**写入迁移;确需时用条件判断包住。
+- 插入种子数据:用 `INSERT ... ON DUPLICATE KEY UPDATE` 或先查后插,不可裸 `INSERT`。
+- **新增迁移必须在本地重复执行两遍验证**:
+  ```bash
+  docker exec -i finding-mysql mysql -u root -p"$MYSQL_ROOT_PASSWORD" finding < deploy/migrations/xxx.sql
+  ```
+  第二次仍 rc=0 才算通过。
