@@ -112,10 +112,10 @@ export default function SearchPage() {
 
         {!loading && results && (
           <>
-            {/* 用户 */}
+            {/* 用户:点进主页查看资料,由主页的「打招呼/发消息」按钮决定是否建立对话 */}
             {showTab('users') && results.users.records.map((u: User) => (
               <div key={u.id} className="search-item"
-                onClick={() => navigate(`/messages/chat?userId=${u.id}&name=${encodeURIComponent(u.nickname || '')}&avatar=${encodeURIComponent(u.avatar || '')}`)}>
+                onClick={() => navigate(`/user/${u.id}`)}>
                 <div className="sr-avatar">
                   {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={20} />}
                 </div>
