@@ -291,7 +291,7 @@ export default function UserProfilePage() {
       )}
 
       {/* 打招呼弹窗 */}
-      <Modal visible={greetingOpen} title="打个招呼" onClose={() => !sendingGreeting && setGreetingOpen(false)}>
+      <Modal visible={greetingOpen} title="打个招呼" centered onClose={() => !sendingGreeting && setGreetingOpen(false)}>
         <p className="up-greeting-hint">发送后对方确认即可开始聊天</p>
         <textarea
           className="up-greeting-input"
