@@ -1,9 +1,9 @@
 # ============================================================
-# Finding - Gitee WebHook 接收端 systemd 服务
+# Finding - GitHub WebHook 接收端 systemd 服务
 # ------------------------------------------------------------
 # 部署到服务器后：
 #   1. 把下面的 /opt/finding 换成你的项目实际路径
-#   2. 在 deploy/.env 里设置 GITEE_WEBHOOK_SECRET=<与 Gitee 一致的密码>
+#   2. 在 deploy/.env 里设置 GITHUB_WEBHOOK_SECRET=<与 GitHub 一致的 Secret>
 #   3. 安装并启动：
 #        sudo cp finding-webhook.service /etc/systemd/system/
 #        sudo systemctl daemon-reload
@@ -14,14 +14,14 @@
 #        sudo systemctl restart finding-webhook     # 重启（改配置后）
 # ============================================================
 [Unit]
-Description=Finding Gitee WebHook receiver (auto-deploy trigger)
+Description=Finding GitHub WebHook receiver (auto-deploy trigger)
 # 依赖网络就绪后再启动
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-# 用 deploy/.env 提供环境变量（含 GITEE_WEBHOOK_SECRET、WEBHOOK_PORT 等）
+# 用 deploy/.env 提供环境变量（含 GITHUB_WEBHOOK_SECRET、WEBHOOK_PORT 等）
 EnvironmentFile=/opt/finding/deploy/.env
 # 工作目录与脚本路径（改成你的实际路径）
 WorkingDirectory=/opt/finding/deploy

@@ -15,7 +15,7 @@
 7. [配置 HTTPS](#7-配置-https可选)
 8. [常用运维命令](#8-常用运维命令)
 9. [故障排查](#9-故障排查)
-10. [自动部署（Gitee WebHook / CI/CD）](#10-自动部署gitee-webhook--cicd)
+10. [自动部署（GitHub WebHook / CI/CD）](#10-自动部署github-webhook--cicd)
 
 ---
 
@@ -156,19 +156,18 @@ tar -xzf finding-deploy.tar.gz
 
 ### 方式 B：Git 拉取
 
-如果代码已经推送到 Git 仓库（GitHub 或 Gitee）：
+如果代码已经推送到 GitHub：
 
 ```bash
 ssh root@你的服务器IP
 cd /root
-git clone https://github.com/daodaoq/finding.git     # 或 Gitee 地址
-# Gitee 示例：git clone git@gitee.com:daodaoq/finding.git
+git clone git@github.com:daodaoq/finding.git
 cd finding
 # 把 deploy/init-data-full.sql 额外上传（Git 不追踪数据库数据）
 ```
 
 > 注意：采用「10. 自动部署」时，服务器就是用这个 clone 出的仓库来 `git pull`，
-> 所以**推荐直接把服务器仓库切到 Gitee**，与 CI/CD 同源。
+> 所以**直接用 GitHub 地址 clone**，与 CI/CD 同源。
 
 ### 方式 C：使用 FTP 工具
 
@@ -702,9 +701,9 @@ netstat -tlnp | grep -E "80|3306|6379|5672|9000"
 
 ---
 
-## 10. 自动部署（Gitee WebHook / CI/CD）
+## 10. 自动部署（GitHub WebHook / CI/CD）
 
-> 目标：代码推送到 Gitee 的 `master` 分支后，服务器自动拉取、构建并重新部署。
+> 目标：代码推送到 GitHub 的 `master` 分支后，服务器自动拉取、构建并重新部署。
 > 涉及文件：`deploy/webhook_server.py`（接收端）、`deploy/auto-deploy.sh`（拉取+部署）、
 > `deploy/finding-webhook.service`（systemd 服务）、`deploy/.env`（密钥）。
 
@@ -714,9 +713,9 @@ netstat -tlnp | grep -E "80|3306|6379|5672|9000"
 你本地 git push origin master
           │
           ▼
-Gitee 仓库 ──(WebHook POST)──▶ webhook_server.py  :8090
-                                     │ ① 校验密码(token)
-                                     │ ② 只放行 Push 事件 + master 分支
+GitHub 仓库 ──(WebHook POST)──▶ webhook_server.py  :8090
+                                     │ ① 校验 HMAC-SHA256 签名(X-Hub-Signature-256)
+                                     │ ② 只放行 push 事件 + master 分支
                                      ▼
                                auto-deploy.sh  （后台执行，立即返回 200）
                                      │ ③ git pull --ff-only
@@ -726,36 +725,42 @@ Gitee 仓库 ──(WebHook POST)──▶ webhook_server.py  :8090
 
 ### 10.2 服务器一次性准备
 
-1. **克隆仓库到服务器**（用 Gitee 地址，与 CI/CD 同源）
+1. **克隆仓库到服务器**（用 GitHub 地址，与 CI/CD 同源）
    ```bash
-   mkdir -p /opt && cd /opt && git clone git@gitee.com:daodaoq/finding.git
+   mkdir -p /opt && cd /opt && git clone git@github.com:daodaoq/finding.git
    ```
-   - 私有仓库需先把服务器 SSH 公钥加到 Gitee：
+   - 私有仓库推荐用 GitHub **Deploy Key**（只读、仅限本仓库，比个人 SSH 公钥更安全）：
      ```bash
-     cat ~/.ssh/id_ed25519.pub   # 复制 → Gitee 个人设置 → SSH 公钥（无则先 ssh-keygen -t ed25519）
+     ssh-keygen -t ed25519 -C "finding-deploy" -f ~/.ssh/finding_deploy
+     cat ~/.ssh/finding_deploy.pub   # 复制 → 仓库 Settings → Deploy keys → Add deploy key
      ```
-2. **配置部署密码**（`.env` 已被 gitignore，不会进仓库）
+     然后配置 Git 用该密钥：`git remote set-url origin git@github.com:daodaoq/finding.git`
+     （可在 `~/.ssh/config` 给 github.com 指定 `IdentityFile ~/.ssh/finding_deploy`）
+2. **配置部署密钥**（`.env` 已被 gitignore，不会进仓库）
    ```bash
    cd /opt/finding/deploy
    cp .env.example .env          # 已部署过则跳过
-   # 编辑 .env，设置（与第 3 步 Gitee 里填的完全一致）：
-   #   GITEE_WEBHOOK_SECRET=$(openssl rand -hex 16)
+   # 编辑 .env，设置（与第 3 步 GitHub 里填的完全一致）：
+   #   GITHUB_WEBHOOK_SECRET=$(openssl rand -hex 20)
    ```
-3. **挂 swap（推荐，构建期内存尖峰保护；你机器 3.6G 空闲建议挂 2G）**
+3. **挂 swap（推荐，构建期内存尖峰保护；机器空闲 3.6G 建议挂 2G）**
    ```bash
    fallocate -l 2G /swapfile && chmod 600 /swapfile
    mkswap /swapfile && swapon /swapfile
    echo '/swapfile none swap sw 0 0' >> /etc/fstab
    ```
 
-### 10.3 Gitee 仓库配置 WebHook
+### 10.3 GitHub 仓库配置 WebHook
 
-1. 仓库 → **管理 → WebHooks**
+1. 仓库 → **Settings → Webhooks → Add webhook**
 2. 填写：
-   - **URL**：`http://你的服务器IP:8090/gitee-webhook`（端口与 `.env` 的 `WEBHOOK_PORT` 一致；防火墙放行 8090）
-   - **密码**：与 `.env` 的 `GITEE_WEBHOOK_SECRET` 完全一致
-   - **事件**：勾选「Push」
-3. 添加后点「**测试**」：服务器 `tail -f /opt/finding/deploy/deploy.log` 应看到触发记录。
+   - **Payload URL**：`http://你的服务器IP:8090/github-webhook`（端口与 `.env` 的 `WEBHOOK_PORT` 一致；防火墙放行 8090）
+   - **Content type**：`application/json`
+   - **Secret**：与 `.env` 的 `GITHUB_WEBHOOK_SECRET` 完全一致
+   - **Which events**：勾选 **Just the push event**
+   - **Active**：保持勾选
+3. 保存后 GitHub **自动发一次 `ping`**：webhook_server.log 应看到 `event=ping`，GitHub 显示绿色 ✓ 即连通。
+   再推一次代码，`tail -f /opt/finding/deploy/deploy.log` 应看到部署流程。
 
 ### 10.4 启动接收端（systemd，开机自启）
 
@@ -779,14 +784,15 @@ sudo systemctl status finding-webhook
 | 现象 | 说明 / 排查 |
 |------|------------|
 | 推了代码但没部署 | 看 `webhook_server.log`：签名失败(401)？分支不匹配？事件不对？ |
+| WebHook 显示红色 ✗ | GitHub 没收到 2xx：检查防火墙 8090、Payload URL、服务是否运行 |
+| 401 / signature 校验失败 | `.env` 的 `GITHUB_WEBHOOK_SECRET` 与 GitHub Webhook 的 Secret 不一致 |
 | 构建失败 | `deploy.sh` 用 `set -e`，`deploy.log` 尾部有具体报错；回滚 = `git revert` 后重推或手动 `./deploy.sh` |
 | 部署中重复触发 | `auto-deploy.sh` 用 flock 单实例锁，进行中的部署会被跳过 |
-| WebHook 测试 401 | `.env` 的 `GITEE_WEBHOOK_SECRET` 与 Gitee 里填的密码不一致 |
 | 服务器 Agent 排查起点 | `tail -f deploy.log` → `journalctl -u finding-webhook -f` → `docker compose ps` → `docker logs finding-backend` |
 
 > 提示：当前流程是「服务器本地构建」（`npm ci` + `vite build` + `mvn package`），
-> 构建期内存会有 1–2G 瞬时尖峰，所以建议挂 swap。若要更规范，可改用 Gitee Go 云端构建
-> 只把 jar/dist 产物推到服务器（生产机不装构建工具），后续可按需演进。
+> 构建期内存会有 1–2G 瞬时尖峰，所以建议挂 swap。若要更规范，可改用 GitHub Actions
+> 云端构建、只把 jar/dist 产物推到服务器（生产机不装构建工具），后续可按需演进。
 
 ---
 
@@ -794,13 +800,13 @@ sudo systemctl status finding-webhook
 
 > 原则：**网页/账号级操作由开发人员做，服务器上的操作用户 Agent 做**，几个点需两边交接信息。
 
-#### 开发人员负责（本机 + Gitee 网页）
+#### 开发人员负责（本机 + GitHub 网页）
 
 | # | 事项 | 说明 |
 |---|------|------|
-| 1 | 把服务器 SSH 公钥加进 Gitee | 等 Agent 生成密钥后把公钥给你，到 Gitee → 设置 → SSH 公钥粘贴（私有仓库拉取必需） |
-| 2 | 配置 Gitee WebHook | 仓库 → 管理 → WebHooks：URL 填 `http://服务器IP:8090/gitee-webhook`（IP 问 Agent），密码填 `.env` 的 `GITEE_WEBHOOK_SECRET`，勾选 Push，点测试 |
-| 3 | 确认/生成部署密码 | 自己 `openssl rand -hex 16` 生成后告诉 Agent 填 `.env`，或让 Agent 生成后告诉你、你再填 Gitee（两边一致即可） |
+| 1 | 配置 GitHub Deploy Key | 等 Agent 生成密钥后把公钥给你，到仓库 Settings → Deploy keys 粘贴（私有仓库拉取必需） |
+| 2 | 配置 GitHub WebHook | 仓库 Settings → Webhooks → Add webhook：Payload URL 填 `http://服务器IP:8090/github-webhook`（IP 问 Agent），Secret 填 `.env` 的 `GITHUB_WEBHOOK_SECRET`，事件勾 Push |
+| 3 | 确认/生成部署密钥 | 自己 `openssl rand -hex 20` 生成后告诉 Agent 填 `.env`，或让 Agent 生成后告诉你、你再填 GitHub（两边一致即可） |
 | 4 | 推送测试 + 日常开发 | `git push` 触发部署；之后正常推码即可 |
 
 #### 生产服务器 Agent 负责（Ubuntu 服务器）
@@ -808,8 +814,8 @@ sudo systemctl status finding-webhook
 | # | 事项 | 说明 |
 |---|------|------|
 | 1 | 生成 SSH 密钥 | `ssh-keygen`，把公钥交给开发人员（配合上面第 1 步） |
-| 2 | clone 到 /opt/finding | `git clone git@gitee.com:daodaoq/finding.git /opt/finding` |
-| 3 | 配置 `.env` | 复制 `.env.example`，填 `GITEE_WEBHOOK_SECRET`（用开发人员给的或自生成）及其它生产密钥 |
+| 2 | clone 到 /opt/finding | `git clone git@github.com:daodaoq/finding.git /opt/finding` |
+| 3 | 配置 `.env` | 复制 `.env.example`，填 `GITHUB_WEBHOOK_SECRET`（用开发人员给的或自生成）及其它生产密钥 |
 | 4 | 首次手动部署 | `./deploy.sh`（把系统跑起来，webhook 文件已在服务器上） |
 | 5 | 装 systemd 服务 | `cp finding-webhook.service /etc/systemd/system/` + `systemctl enable --now` |
 | 6 | 放行 8090 端口 + 挂 swap | `ufw allow 8090`；`fallocate -l 2G /swapfile` 等 |
@@ -820,13 +826,13 @@ sudo systemctl status finding-webhook
 | 方向 | 内容 |
 |------|------|
 | Agent → 开发人员 | ① SSH 公钥 ② 服务器公网 IP ③ webhook 服务是否已启动 |
-| 开发人员 → Agent | ① `GITEE_WEBHOOK_SECRET` 的值（或让 Agent 生成）② Gitee WebHook 已配置完成 |
+| 开发人员 → Agent | ① `GITHUB_WEBHOOK_SECRET` 的值（或让 Agent 生成）② GitHub WebHook 已配置完成 |
 
 #### 推荐执行顺序
 
 1. Agent：生成密钥 → clone（配上面第 1、2 步），把公钥给开发人员
-2. 开发人员：加公钥 + 定密码并告诉 Agent（配上面第 1、3 步）
+2. 开发人员：加 Deploy Key + 定密钥并告诉 Agent（配上面第 1、3 步）
 3. Agent：配 `.env` → 首次部署 → 装服务 → 端口/swap（配上面第 3–6 步）
 4. Agent：确认 webhook 服务起来 + 给开发人员服务器 IP
-5. 开发人员：配 Gitee WebHook + 测试（配上面第 2 步）
+5. 开发人员：配 GitHub WebHook + 测试（配上面第 2 步）
 6. 开发人员：`git push` 一次做端到端验证（配上面第 4 步）
