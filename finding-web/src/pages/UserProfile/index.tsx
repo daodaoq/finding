@@ -161,47 +161,56 @@ export default function UserProfilePage() {
   return (
     <div className="up-page">
       <div className="up-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-        <span>用户信息</span>
+        <button className="up-back-btn" onClick={() => navigate(-1)} aria-label="返回"><AppIcon name="left" size={23} /></button>
+        <span>个人主页</span>
         {myId && userId !== myId && (
           <button className="up-report-btn" onClick={() => setShowReport(true)}>举报</button>
         )}
       </div>
 
-      <div className="up-card">
-        <div className="up-avatar">
-          {profile.avatar ? <img src={profile.avatar} alt="" /> : <AppIcon name="user" size={34} />}
+      <section className="up-profile-card">
+        <div
+          className={`up-cover ${profile.profileBackground ? 'has-image' : ''}`}
+          style={profile.profileBackground ? { backgroundImage: `url("${profile.profileBackground}")` } : undefined}
+        >
+          <div className="up-cover-shade" />
         </div>
-        <div className="up-name">{profile.nickname}</div>
-        {profile.signature && <div className="up-bio">{profile.signature}</div>}
+        <div className="up-profile-body">
+          <div className="up-identity-row">
+            <div className="up-avatar">
+              {profile.avatar ? <img src={profile.avatar} alt="" /> : <AppIcon name="user" size={38} />}
+            </div>
+            <div className="up-identity-copy">
+              <div className="up-name-row">
+                <h1 className="up-name">{profile.nickname}</h1>
+                {profile.realNameVerified === 2 && <span className="up-verified"><AppIcon name="check" size={13} /> 已认证</span>}
+              </div>
+              <p className={`up-bio ${profile.signature ? '' : 'is-empty'}`}>{profile.signature || '这个人很有趣，只是还没写个人介绍'}</p>
+            </div>
+          </div>
 
-        <div className="up-meta">
-          {profile.school && (
-            <div className="up-meta-item"><AppIcon name="grad" size={14} /> {profile.school}</div>
-          )}
-          {profile.city && (
-            <div className="up-meta-item"><AppIcon name="location" size={14} /> {profile.city}</div>
-          )}
-          <div className="up-meta-item">
-            {profile.gender === 1 ? <AppIcon name="mars" size={14} /> : profile.gender === 2 ? <AppIcon name="venus" size={14} /> : null}
-            {profile.gender === 1 ? '男' : profile.gender === 2 ? '女' : '未设置'}
+          <div className="up-meta">
+            {profile.school && <span className="up-meta-item"><AppIcon name="grad" size={15} />{profile.school}</span>}
+            {profile.city && <span className="up-meta-item"><AppIcon name="location" size={15} />{profile.city}</span>}
+            <span className="up-meta-item">
+              {profile.gender === 1 ? <AppIcon name="mars" size={15} /> : profile.gender === 2 ? <AppIcon name="venus" size={15} /> : <AppIcon name="user" size={15} />}
+              {profile.gender === 1 ? '男' : profile.gender === 2 ? '女' : '未设置'}
+            </span>
+          </div>
+
+          <div className="up-stats">
+            <div><b>{profile.followingCount || 0}</b><span>关注</span></div>
+            <div><b>{profile.followerCount || 0}</b><span>粉丝</span></div>
+            <div><b>{profile.postCount || 0}</b><span>动态</span></div>
           </div>
         </div>
-        <div className="up-stats" style={{ display: 'flex', gap: 24, marginTop: 12, color: '#666', fontSize: 14 }}>
-          <span><b style={{ color: '#333' }}>{profile.followingCount || 0}</b> 关注</span>
-          <span><b style={{ color: '#333' }}>{profile.followerCount || 0}</b> 粉丝</span>
-          <span><b style={{ color: '#333' }}>{profile.postCount || 0}</b> 动态</span>
-        </div>
-      </div>
+      </section>
 
       {myId && userId !== myId && (
         <div className="up-actions">
           <button
+            className={`up-follow-btn ${profile.isFollowed ? 'is-followed' : ''}`}
             onClick={handleFollowToggle}
-            style={{
-              border: 'none', padding: '0 16px', height: 36, borderRadius: 18, fontSize: 14,
-              background: profile.isFollowed ? '#f0f0f0' : '#29241f', color: profile.isFollowed ? '#666' : '#fff',
-            }}
           >
             {profile.isFollowed ? '已关注' : '+ 关注'}
           </button>
@@ -215,21 +224,15 @@ export default function UserProfilePage() {
           <button
             className="up-block-btn"
             onClick={handleBlock}
-            style={{
-              border: 'none',
-              background: blocked ? '#f0f0f0' : '#f5222d',
-              color: blocked ? '#666' : '#fff',
-              padding: '0 16px', height: 36, borderRadius: 18, fontSize: 14,
-            }}
           >
-            {blocked ? '解除拉黑' : '拉黑'}
+            <AppIcon name="ban" size={14} />{blocked ? '解除拉黑' : '不再看到此用户'}
           </button>
         </div>
       )}
 
       {/* 情感简历 */}
-      <div className="up-resume-section">
-        <div className="up-resume-title">情感简历</div>
+      <section className="up-content-section">
+        <div className="up-section-head"><div><h2>情感简历</h2><p>了解 TA 的恋爱观与相处方式</p></div><AppIcon name="heart" size={19} /></div>
         {resumeLoading ? (
           <div className="up-resume-loading">加载中...</div>
         ) : resumeView?.infoShared && resumeView.resume ? (
@@ -243,15 +246,15 @@ export default function UserProfilePage() {
             </p>
           </div>
         )}
-      </div>
+      </section>
 
       {/* TA 的动态 */}
-      <div className="up-resume-section">
-        <div className="up-resume-title">TA 的动态</div>
+      <section className="up-content-section up-posts-section">
+        <div className="up-section-head"><div><h2>TA 的动态</h2><p>最近分享的校园生活</p></div><span>{profile.postCount || 0}</span></div>
         {loadingPosts ? (
           <div className="up-resume-loading">加载中...</div>
         ) : userPosts.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#999', padding: 24 }}>TA 还没有发布动态</div>
+          <div className="up-post-empty"><AppIcon name="message" size={25} /><p>TA 还没有发布动态</p></div>
         ) : (
           userPosts.map((p) => (
             <PostCard
@@ -263,7 +266,7 @@ export default function UserProfilePage() {
             />
           ))
         )}
-      </div>
+      </section>
 
       {showReport && (
         <ReportDialog
