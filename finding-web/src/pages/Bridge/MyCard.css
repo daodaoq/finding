@@ -15,14 +15,6 @@
   z-index: 100;
   border-bottom: 1px solid #f2dfe4;
 }
-.mycard-header .back-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 4px;
-  color: #333;
-}
 .mycard-header h2 {
   margin: 0;
   font-size: 17px;

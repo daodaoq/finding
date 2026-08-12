@@ -18,14 +18,6 @@
   margin: 0;
 }
 
-.back-btn {
-  background: none;
-  border: none;
-  font-size: 22px;
-  cursor: pointer;
-  color: #333;
-  padding: 0;
-}
 
 .notif-list {
   background: #fff;

@@ -183,14 +183,6 @@
   transform: scale(0.96);
 }
 
-.back-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 4px;
-  color: #333;
-}
 
 /* ── 加载更多 ── */
 .apply-loadmore {

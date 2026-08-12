@@ -16,9 +16,6 @@
 .subpage-back {
   background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; color: #333;
 }
-.back-btn {
-  background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; color: #333;
-}
 
 .subpage-tabs {
   display: flex;

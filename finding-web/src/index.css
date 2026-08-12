@@ -44,6 +44,23 @@ button {
   font-family: inherit;
 }
 
+/* 统一返回按钮:清除浏览器默认外观(背景/边框/阴影),全局一处定义,各页不再各自写。
+   个别页面需要不同字号/颜色的,在页面级覆盖 font-size/color 即可。 */
+.back-btn {
+  background: none;
+  border: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 20px;
+  line-height: 1;
+  color: #333;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 :root {
   /* 基础色板 */
   --paper: #fff;
