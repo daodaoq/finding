@@ -32,7 +32,7 @@ const SORT_OPTIONS = [
 const GUEST_MAX_POSTS = 5;
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState('hot');
+  const [activeTab, setActiveTab] = useState('latest');
   const [sortBy, setSortBy] = useState('recommended');
   // 搭子 Tab 相关状态
   const [mateCategory, setMateCategory] = useState('');
