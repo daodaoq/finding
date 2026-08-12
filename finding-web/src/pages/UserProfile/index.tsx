@@ -14,6 +14,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useInfoShareStore } from '../../store/infoShareStore';
 import ResumeView from '../../components/ResumeView';
 import ReportDialog from '../../components/ReportDialog';
+import Modal from '../../components/Modal';
 import AppIcon from '../../components/AppIcon';
 import type { ResumeView as ResumeViewType } from '../../types/resume';
 import { getErrorMessage } from '../../utils/appError';
@@ -33,6 +34,10 @@ export default function UserProfilePage() {
   const [stranger, setStranger] = useState<{ hasConversation: boolean; sent: boolean; received: boolean }>({ hasConversation: true, sent: false, received: false });
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  // 打招呼弹窗
+  const [greetingOpen, setGreetingOpen] = useState(false);
+  const [greetingText, setGreetingText] = useState('你好，认识一下');
+  const [sendingGreeting, setSendingGreeting] = useState(false);
   const navigate = useNavigate();
   const myId = useAuthStore((s) => s.user?.id);
   const shareVersion = useInfoShareStore((s) => s.version);
@@ -136,17 +141,25 @@ export default function UserProfilePage() {
     navigate(`/messages/chat?userId=${userId}&name=${name}&avatar=${avatar}`);
   };
 
+  /** 打开打招呼弹窗(替代原生 window.prompt) */
+  const handleStranger = () => {
+    setGreetingText('你好，认识一下');
+    setGreetingOpen(true);
+  };
+
   /** 发送陌生人打招呼消息(对方确认后即可正常聊天) */
-  const handleStranger = async () => {
-    const content = window.prompt('打个招呼吧（对方确认后即可聊天）', '你好，认识一下');
-    if (content === null) return;
-    if (!content.trim()) { showToast('消息不能为空'); return; }
+  const confirmGreeting = async () => {
+    if (!greetingText.trim()) { showToast('消息不能为空'); return; }
+    setSendingGreeting(true);
     try {
-      await chatApi.sendStrangerMessage(userId, content.trim());
+      await chatApi.sendStrangerMessage(userId, greetingText.trim());
+      setGreetingOpen(false);
       setStranger((prev) => ({ ...prev, sent: true }));
       showToast('已发送打招呼消息，等待对方确认');
     } catch (e) {
       showToast(getErrorMessage(e, '发送失败'));
+    } finally {
+      setSendingGreeting(false);
     }
   };
 
@@ -276,6 +289,25 @@ export default function UserProfilePage() {
           onClose={() => setShowReport(false)}
         />
       )}
+
+      {/* 打招呼弹窗 */}
+      <Modal visible={greetingOpen} title="打个招呼" onClose={() => !sendingGreeting && setGreetingOpen(false)}>
+        <p className="up-greeting-hint">发送后对方确认即可开始聊天</p>
+        <textarea
+          className="up-greeting-input"
+          value={greetingText}
+          maxLength={200}
+          placeholder="打个招呼吧…"
+          autoFocus
+          onChange={(e) => setGreetingText(e.target.value)}
+        />
+        <div className="up-greeting-actions">
+          <button className="up-greeting-cancel" disabled={sendingGreeting} onClick={() => setGreetingOpen(false)}>取消</button>
+          <button className="up-greeting-send" disabled={sendingGreeting} onClick={confirmGreeting}>
+            {sendingGreeting ? '发送中…' : '发送'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -253,6 +253,7 @@ public class UserServiceImpl implements UserService {
         vo.setId(user.getId());
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
+        vo.setProfileBackground(user.getProfileBackground());
         vo.setGender(user.getGender());
         vo.setSchool(user.getSchool());
         vo.setSignature(user.getSignature());
