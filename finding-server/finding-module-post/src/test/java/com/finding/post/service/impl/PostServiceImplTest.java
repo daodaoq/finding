@@ -1,13 +1,16 @@
 package com.finding.post.service.impl;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.common.word.ReviewResult;
 import com.finding.common.word.SensitiveWordFilter;
 import com.finding.message.service.MessageService;
 import com.finding.post.dto.PostCreateDTO;
+import com.finding.post.dto.PostQueryDTO;
 import com.finding.post.entity.Post;
 import com.finding.post.entity.PostComment;
 import com.finding.post.mapper.PostCommentLikeMapper;
@@ -35,6 +38,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -287,6 +291,49 @@ class PostServiceImplTest {
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.toggleCommentLike(1L, 1L, 10L));
         assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    // ── 热门「值得推荐」:综合热度排序,不再依赖 is_hot 标记 ──
+
+    @Test
+    void listPosts_recommended_usesHeatScore_noIsHotFilter() {
+        PostQueryDTO query = new PostQueryDTO();
+        query.setTab("hot");
+        query.setSortBy("recommended");
+        query.setPage(1);
+        query.setSize(10);
+        when(postMapper.selectPage(any(), any())).thenReturn(new Page<>(1, 10));
+
+        service.listPosts(query, null);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Wrapper<Post>> cap = ArgumentCaptor.forClass(Wrapper.class);
+        verify(postMapper).selectPage(any(), cap.capture());
+        String sql = cap.getValue().getTargetSql();
+        assertTrue(sql.contains("like_count * 0.6 + view_count * 0.3 + comment_count * 0.1"),
+                "值得推荐应按综合热度表达式排序");
+        assertTrue(sql.contains("created_at DESC"), "同热度时按发布时间兜底");
+        assertFalse(sql.contains("is_hot"), "值得推荐不应再依赖 is_hot 标记");
+    }
+
+    @Test
+    void listPosts_recommended_allPostsIncluded() {
+        PostQueryDTO query = new PostQueryDTO();
+        query.setTab("hot");
+        query.setSortBy("recommended");
+        query.setPage(1);
+        query.setSize(10);
+        when(postMapper.selectPage(any(), any())).thenReturn(new Page<>(1, 10));
+
+        service.listPosts(query, null);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Wrapper<Post>> cap = ArgumentCaptor.forClass(Wrapper.class);
+        verify(postMapper).selectPage(any(), cap.capture());
+        String sql = cap.getValue().getTargetSql();
+        // 仅保留基础可见性过滤(status=1 已发布 + review_status=0 审核通过),无 is_hot 条件
+        assertTrue(sql.contains("status ="), "仍保留已发布过滤");
+        assertTrue(sql.contains("review_status ="), "仍保留审核通过过滤");
     }
 
     private PostCreateDTO dto(String content) {

@@ -76,15 +76,14 @@ public class PostServiceImpl implements PostService {
                 // 热门子排序: views(浏览量最高), likes(点赞率最高), recommended(值得推荐)
                 String sortBy = query.getSortBy();
                 if ("views".equals(sortBy)) {
-                    wrapper.orderByDesc(Post::getViewCount);
+                    wrapper.orderByDesc(Post::getViewCount).orderByDesc(Post::getCreatedAt);
                 } else if ("likes".equals(sortBy)) {
-                    wrapper.orderByDesc(Post::getLikeCount);
+                    wrapper.orderByDesc(Post::getLikeCount).orderByDesc(Post::getCreatedAt);
                 } else {
-                    // recommended: 综合热度 = 点赞 * 0.6 + 浏览量 * 0.3 + 评论 * 0.1
-                    wrapper.eq(Post::getIsHot, 1)
-                           .orderByDesc(Post::getLikeCount);
+                    // 值得推荐:综合热度 = 点赞×0.6 + 浏览量×0.3 + 评论×0.1,所有帖子参与,不依赖 is_hot 标记。
+                    // 表达式无法用 Lambda 列引用,用 last 注入完整排序(含 created_at 兜底)。
+                    wrapper.last("ORDER BY (like_count * 0.6 + view_count * 0.3 + comment_count * 0.1) DESC, created_at DESC");
                 }
-                wrapper.orderByDesc(Post::getCreatedAt);
             }
             case "latest" -> wrapper.orderByDesc(Post::getCreatedAt);
             case "following" -> {
