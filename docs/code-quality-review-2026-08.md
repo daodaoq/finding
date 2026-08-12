@@ -111,7 +111,7 @@
 - 消费端按业务唯一键实现幂等，重复消息必须安全返回。
 - 以集成测试覆盖数据库提交、broker 暂时不可用、重复投递、消费者崩溃恢复。
 
-### P2-1：开发辅助代码与配置分层
+### P2-1：开发辅助代码与配置分层 ✅ 已完成
 
 `finding-app/src/test/java/.../GenHash.java` 使用 `System.out.println`。建议将一次性工具迁移至 `tools/` 并写明用途，测试目录只保留可自动执行的测试。
 
@@ -209,15 +209,17 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 
 建议使用 URL 协议、标签和属性白名单，并对脚本标签、事件属性、`javascript:` URL、SVG payload 写自动化测试。
 
-### P2-2：样式令牌与格式需要治理
+### P2-2：样式令牌与格式需要治理 ✅ 已完成
 
 部分 CSS 压缩为单行，颜色、阴影、圆角仍散落在组件中。这会增加后续统一主题和排查视觉回归的成本。
 
 建议先自动格式化 CSS；扩展 `--surface-muted`、`--text-secondary`、`--border-subtle`、`--shadow-card`、`--love-soft` 等设计令牌，组件只使用令牌。
 
-### P2-3：补齐前端质量工具
+### P2-3：补齐前端质量工具 🕒 部分完成
 
 用户端 `package.json` 只有 dev / build / preview。建议加入 ESLint、react-hooks 规则、Prettier、Vitest 与 Playwright，并在 CI 执行 `lint`、`build`、单元测试和关键路径冒烟测试。
+
+**完成情况（2026-08-12）**：已加入 Prettier（含 CSS 格式化）、Vitest（sanitize 单测）、Playwright（8 例冒烟，真机全绿）。**未做**：ESLint + react-hooks 规则、CI 流水线（需接入现有 CI 后补）。
 
 ---
 
@@ -267,11 +269,13 @@ token 被 `api/request.ts`、`authStore.ts`、`Login.tsx`、`LoginModal.tsx`、`
 - 将“清 token + 提示 + 跳转”收敛为一个 logout handler。
 - 在 React Router 内用 `navigate` / `Navigate` 处理跳转，降低整页刷新和重复错误提示。
 
-### P2-4：管理端也缺少 lint、测试和 E2E 脚本
+### P2-4：管理端也缺少 lint、测试和 E2E 脚本 🕒 部分完成
 
 `finding-admin/package.json` 仅提供 dev/build/preview。建议加入 lint、类型检查、组件测试；优先增加“登录拦截、审核操作、删除/封禁确认、公告发布、敏感词规则”端到端测试。
 
-### P2-5：全局主题与用户端设计令牌需解耦
+**完成情况（2026-08-12）**：已通过用户端 Playwright 冒烟覆盖管理端“登录拦截 / 管理员登录 / 用户表格加载”三条路径。**未做**：admin 自身的 lint/组件测试脚本、其余审核操作 E2E。
+
+### P2-5：全局主题与用户端设计令牌需解耦 🕒 未做
 
 管理端使用 Ant Design 的 `colorPrimary: '#ff6b81'`，用户端当前为纯白黑灰与局部淡粉的主题。两者应各自定义主题 token，不应依赖复制粘贴的颜色值；后台以信息密度和状态颜色清晰为优先。
 
