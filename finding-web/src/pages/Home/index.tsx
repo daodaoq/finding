@@ -16,8 +16,8 @@ import AppIcon from '../../components/AppIcon';
 import './index.css';
 
 const HOME_TABS = [
-  { key: 'hot', label: '热门' },
   { key: 'latest', label: '最新' },
+  { key: 'hot', label: '热门' },
   { key: 'following', label: '关注' },
   { key: 'mate', label: '搭子' },
 ] as const;
