@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bridgeApi } from '../../api/bridge';
 import { useAuthStore } from '../../store/authStore';
@@ -8,60 +8,21 @@ import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import AppIcon from '../../components/AppIcon';
 import MatchOverlay from './components/MatchOverlay';
+import { useApplyList, APPLY_STATUS_TABS } from '../../hooks/useApplyList';
+import { formatRelativeTime } from '../../utils/format';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
 
-const PAGE_SIZE = 20;
-
-/** 全部 + 各状态(0待通过/1已通过/2已拒绝/3已撤回/4已过期) */
-const STATUS_TABS = [
-  { key: 'all', label: '全部' },
-  { key: '0', label: '待通过' },
-  { key: '1', label: '已通过' },
-  { key: '2', label: '已拒绝' },
-  { key: '3', label: '已撤回' },
-  { key: '4', label: '已过期' },
-] as const;
-
 export default function ReceiveApplyList() {
-  const [applies, setApplies] = useState<ChatApply[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [filter, setFilter] = useState('all');
   const [rejectTarget, setRejectTarget] = useState<ChatApply | null>(null);
   // 匹配成功弹层:通过申请后展示
   const [matched, setMatched] = useState<ChatApply | null>(null);
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
-
-  const loadApplies = async (targetPage: number, statusKey: string, append = false) => {
-    if (append) setLoadingMore(true);
-    else setLoading(true);
-    try {
-      const status = statusKey === 'all' ? undefined : Number(statusKey);
-      const res = await bridgeApi.receivedApplies(targetPage, PAGE_SIZE, status);
-      const data = res.data.data;
-      setApplies((prev) => (append ? [...prev, ...data.records] : data.records));
-      setHasMore(data.hasMore);
-      setPage(data.page);
-    } catch (e) {
-      showToast((e as Error)?.message || '加载申请列表失败');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    loadApplies(1, filter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
-
-  const handleTabChange = (key: string) => {
-    if (key !== filter) setFilter(key);
-  };
+  const {
+    applies, setApplies, loading, loadingMore, page, hasMore, filter,
+    handleTabChange, loadPage,
+  } = useApplyList(bridgeApi.receivedApplies);
 
   const handleApprove = async (apply: ChatApply) => {
     try {
@@ -76,7 +37,7 @@ export default function ReceiveApplyList() {
     } catch (e) {
       // 对方账号异常/已被处理等具体原因透出服务端文案,并刷新列表
       showToast((e as Error)?.message || '操作失败');
-      loadApplies(1, filter);
+      loadPage(1);
     }
   };
 
@@ -94,19 +55,8 @@ export default function ReceiveApplyList() {
     } catch (e) {
       showToast((e as Error)?.message || '操作失败');
       setRejectTarget(null);
-      loadApplies(1, filter);
+      loadPage(1);
     }
-  };
-
-  const formatTime = (dateStr: string): string => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    return d.toLocaleDateString('zh-CN');
   };
 
   return (
@@ -118,7 +68,7 @@ export default function ReceiveApplyList() {
 
       {/* 状态筛选 Tab(服务端筛选) */}
       <div className="subpage-tabs">
-        {STATUS_TABS.map((tab) => (
+        {APPLY_STATUS_TABS.map((tab) => (
           <button
             key={tab.key}
             className={`subpage-tab ${filter === tab.key ? 'active' : ''}`}
@@ -144,7 +94,7 @@ export default function ReceiveApplyList() {
             </div>
             <div className="apply-info">
               <span className="apply-name">{apply.fromUserNickname || '用户'}</span>
-              <span className="apply-time">{formatTime(apply.applyTime)}</span>
+              <span className="apply-time">{formatRelativeTime(apply.applyTime)}</span>
               {apply.remark && <span className="apply-remark">{apply.remark}</span>}
             </div>
 
@@ -173,7 +123,7 @@ export default function ReceiveApplyList() {
         {!loading && applies.length > 0 && (
           <div className="apply-loadmore">
             {hasMore ? (
-              <button disabled={loadingMore} onClick={() => loadApplies(page + 1, filter, true)}>
+              <button disabled={loadingMore} onClick={() => loadPage(page + 1, true)}>
                 {loadingMore ? '加载中...' : '加载更多'}
               </button>
             ) : (
