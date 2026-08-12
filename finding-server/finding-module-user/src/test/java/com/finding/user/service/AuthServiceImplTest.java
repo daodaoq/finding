@@ -6,6 +6,7 @@ import com.finding.common.RedisUtils;
 import com.finding.common.ResultCode;
 import com.finding.common.event.AccountDeletedEvent;
 import com.finding.common.word.SensitiveWordFilter;
+import com.finding.user.dto.RegisterDTO;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
@@ -22,16 +23,18 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** 账号注销单测 —— 密码校验 / 匿名化 / 状态停用 / 事件联动。 */
+/** 账号注销/注册防批量/滑块拼图 单测。 */
 class AuthServiceImplTest {
 
     @Mock private UserMapper userMapper;
@@ -103,5 +106,70 @@ class AuthServiceImplTest {
         UserVO vo = service.getCurrentUser(1L);
 
         assertEquals(1, vo.getTargetType());
+    }
+
+    // ── 注册:滑块拼图验证 + 防批量注册限流 ──
+
+    private RegisterDTO regDto() {
+        RegisterDTO d = new RegisterDTO();
+        d.setPhone("13800000000");
+        d.setCaptchaKey("key1");
+        d.setCaptchaX(120);   // 与目标 X 一致
+        d.setCaptchaTime(2000L);
+        d.setPassword("12345678");
+        d.setNickname("小明");
+        return d;
+    }
+
+    @Test
+    void register_puzzleVerified_succeeds() {
+        when(redisUtils.get("captcha:key1")).thenReturn("120"); // 目标 X=120
+        when(userMapper.selectCount(any())).thenReturn(0L);
+        when(passwordEncoder.encode(any())).thenReturn("$2a$10$hash");
+        when(userMapper.insert(any())).thenReturn(1);
+        when(redisUtils.increment(anyString(), anyLong())).thenReturn(1L);
+
+        assertDoesNotThrow(() -> service.register(regDto(), "1.2.3.4", "dev-1"));
+        verify(userMapper).insert(any());
+    }
+
+    @Test
+    void register_puzzleWrongX_rejected() {
+        RegisterDTO dto = regDto();
+        dto.setCaptchaX(200); // 目标 120,差 80 > 容差 5
+        when(redisUtils.get("captcha:key1")).thenReturn("120");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.register(dto, "1.2.3.4", "dev-1"));
+        assertEquals(ResultCode.SMS_CODE_ERROR.getCode(), ex.getCode());
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    void register_puzzleTooFast_rejected() {
+        RegisterDTO dto = regDto();
+        dto.setCaptchaTime(100L); // 拖动耗时过短,判定为脚本
+        when(redisUtils.get("captcha:key1")).thenReturn("120");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.register(dto, "1.2.3.4", "dev-1"));
+        assertEquals(ResultCode.SMS_CODE_ERROR.getCode(), ex.getCode());
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    void register_rateLimited_device_rejected() {
+        when(redisUtils.get("register:device:dev-1")).thenReturn(3); // 已达设备上限
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.register(regDto(), "1.2.3.4", "dev-1"));
+        assertEquals(ResultCode.TOO_FREQUENT.getCode(), ex.getCode());
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    void register_rateLimited_ip_rejected() {
+        when(redisUtils.get("register:ip:1.2.3.4")).thenReturn("10"); // 已达 IP 上限
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.register(regDto(), "1.2.3.4", "dev-1"));
+        assertEquals(ResultCode.TOO_FREQUENT.getCode(), ex.getCode());
+        verify(userMapper, never()).insert(any());
     }
 }

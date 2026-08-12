@@ -59,6 +59,9 @@ minio:
 
 # 文件上传限制
 finding:
+  register:
+    ip-limit: 10     # 防批量注册:同 IP 每小时最多注册次数
+    device-limit: 3  # 防批量注册:同设备指纹每小时最多注册次数
   upload:
     max-size: 5242880   # 5MB(图片)
     max-video-size: 52428800  # 50MB(视频,chat 发视频)

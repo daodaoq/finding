@@ -12,13 +12,13 @@ public interface AuthService {
     /** Login by password or SMS code. Returns access+refresh tokens. */
     Map<String, String> login(LoginDTO dto);
 
-    /** Register a new account with phone + SMS code. */
-    void register(RegisterDTO dto);
+    /** 注册新账号:滑块拼图验证 + 按 IP/设备指纹防批量注册限流。 */
+    void register(RegisterDTO dto, String ip, String deviceId);
 
     /** Send SMS verification code. */
     void sendCode(String phone, String type);
 
-    /** 生成图片验证码,返回 captchaKey + captchaImage(base64 PNG)。 */
+    /** 生成滑块拼图验证码,返回 captchaKey + bgImage + pieceImage + y(base64 PNG)。 */
     Map<String, String> generateCaptcha();
 
     /** Refresh access token using refresh token. */

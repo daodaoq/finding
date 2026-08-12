@@ -10,6 +10,7 @@ import com.finding.user.entity.UserVerification;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.AuthService;
 import com.finding.user.vo.UserVO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -29,8 +30,10 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public Result<Void> register(@Valid @RequestBody RegisterDTO dto) {
-        authService.register(dto);
+    public Result<Void> register(@Valid @RequestBody RegisterDTO dto,
+                                 @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
+                                 HttpServletRequest request) {
+        authService.register(dto, clientIp(request), deviceId);
         return Result.ok();
     }
 
@@ -108,5 +111,14 @@ public class AuthController {
     @GetMapping("/account")
     public Result<Map<String, String>> account() {
         return Result.ok(authService.getAccount(JwtInterceptor.getCurrentUserId()));
+    }
+
+    /** 取客户端 IP:X-Forwarded-For 取首个,否则用 remoteAddr(nginx 会注入真实 IP) */
+    private String clientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

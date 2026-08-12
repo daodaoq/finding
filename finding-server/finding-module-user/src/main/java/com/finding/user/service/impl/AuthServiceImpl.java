@@ -19,10 +19,11 @@ import com.finding.user.service.UserPostStatsQuery;
 import com.finding.common.RedisUtils;
 import com.finding.common.util.XssUtil;
 import com.finding.common.word.SensitiveWordFilter;
-import com.finding.user.util.CaptchaGenerator;
+import com.finding.user.util.PuzzleCaptchaGenerator;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -63,6 +64,19 @@ public class AuthServiceImpl implements AuthService {
     private static final String CAPTCHA_PREFIX = "captcha:";
     private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String REFRESH_PREFIX = "token:refresh:";
+
+    /** 滑块拼图容差(px) */
+    private static final int PUZZLE_TOLERANCE = 5;
+    /** 拖动耗时下限(ms),低于视为脚本 */
+    private static final long PUZZLE_MIN_TIME_MS = 300;
+
+    /** 防批量注册:同设备每小时最多注册次数 */
+    @Value("${finding.register.device-limit:3}")
+    private int registerDeviceLimit = 3;
+
+    /** 防批量注册:同 IP 每小时最多注册次数 */
+    @Value("${finding.register.ip-limit:10}")
+    private int registerIpLimit = 10;
 
     @Override
     public Map<String, String> login(LoginDTO dto) {
@@ -122,9 +136,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void register(RegisterDTO dto) {
-        // 图片验证码校验(替代短信验证码)
-        verifyCaptcha(dto.getCaptchaKey(), dto.getCaptchaCode());
+    public void register(RegisterDTO dto, String ip, String deviceId) {
+        // 防批量注册:已达上限直接拒绝(仅在注册成功后计数)
+        checkRegisterFlood(ip, deviceId);
+        // 滑块拼图验证(一次性,校验后删除)
+        verifyPuzzleCaptcha(dto.getCaptchaKey(), dto.getCaptchaX(), dto.getCaptchaTime());
 
         if (userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone())) > 0) {
@@ -146,7 +162,46 @@ public class AuthServiceImpl implements AuthService {
         sensitiveWordFilter.assertClean(dto.getNickname(), dto.getSchool());
         userMapper.insert(user);
 
+        // 注册成功后再计数,失败尝试不计(避免卡死正常用户)
+        recordRegister(ip, deviceId);
         log.info("新用户注册: id={}, phone={}", user.getId(), dto.getPhone());
+    }
+
+    /** 防批量注册:同设备/同 IP 每小时注册次数上限(只读检查,不计数) */
+    private void checkRegisterFlood(String ip, String deviceId) {
+        if (StringUtils.hasText(deviceId) && registerCount("register:device:" + deviceId) >= registerDeviceLimit) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT, "注册过于频繁，请稍后再试");
+        }
+        if (StringUtils.hasText(ip) && registerCount("register:ip:" + ip) >= registerIpLimit) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT, "注册过于频繁，请稍后再试");
+        }
+    }
+
+    /** 注册成功后计数(带过期) */
+    private void recordRegister(String ip, String deviceId) {
+        if (StringUtils.hasText(deviceId)) {
+            String key = "register:device:" + deviceId;
+            long c = redisUtils.increment(key, 1);
+            if (c == 1) redisUtils.expire(key, 1, TimeUnit.HOURS);
+        }
+        if (StringUtils.hasText(ip)) {
+            String key = "register:ip:" + ip;
+            long c = redisUtils.increment(key, 1);
+            if (c == 1) redisUtils.expire(key, 1, TimeUnit.HOURS);
+        }
+    }
+
+    /** 读取注册计数(容错:任何序列化形态/异常都按 0 处理) */
+    private long registerCount(String key) {
+        Object v = redisUtils.get(key);
+        if (v instanceof Number n) return n.longValue();
+        if (v != null) {
+            try {
+                return Long.parseLong(v.toString());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -165,19 +220,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public Map<String, String> generateCaptcha() {
-        String key = UUID.randomUUID().toString().replace("-", "");
-        String code = CaptchaGenerator.randomCode(4);
-        redisUtils.set(CAPTCHA_PREFIX + key, code, 5, TimeUnit.MINUTES);
-
         try {
-            String image = CaptchaGenerator.drawImage(code);
+            PuzzleCaptchaGenerator.Result r = PuzzleCaptchaGenerator.generate();
+            String key = UUID.randomUUID().toString().replace("-", "");
+            // 存目标 X(字符串存储,避免序列化类型歧义),5 分钟过期
+            redisUtils.set(CAPTCHA_PREFIX + key, String.valueOf(r.targetX()), 5, TimeUnit.MINUTES);
+
             Map<String, String> result = new HashMap<>();
             result.put("captchaKey", key);
-            result.put("captchaImage", image);
+            result.put("bgImage", r.bgImage());
+            result.put("pieceImage", r.pieceImage());
+            result.put("y", String.valueOf(r.targetY()));
             return result;
         } catch (Exception e) {
-            redisUtils.delete(CAPTCHA_PREFIX + key);
-            log.error("生成图片验证码失败", e);
+            log.error("生成滑块拼图验证码失败", e);
             throw new BusinessException(ResultCode.INTERNAL_ERROR, "验证码生成失败，请重试");
         }
     }
@@ -409,17 +465,26 @@ public class AuthServiceImpl implements AuthService {
                 : "该账号已被封禁";
     }
 
-    /** 校验图片验证码(一次性,校验后删除) */
-    private void verifyCaptcha(String key, String code) {
-        if (!StringUtils.hasText(key) || !StringUtils.hasText(code)) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "请输入图片验证码");
+    /** 校验滑块拼图验证码(一次性,校验后删除):x 容差 + 拖动耗时下限 */
+    private void verifyPuzzleCaptcha(String key, Integer x, Long timeMs) {
+        if (!StringUtils.hasText(key) || x == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "请完成滑块验证");
         }
         String stored = redisUtils.get(CAPTCHA_PREFIX + key);
         if (stored == null) {
             throw new BusinessException(ResultCode.SMS_CODE_EXPIRED, "验证码已过期，请刷新");
         }
-        if (!stored.equalsIgnoreCase(code)) {
-            throw new BusinessException(ResultCode.SMS_CODE_ERROR, "验证码错误");
+        int targetX;
+        try {
+            targetX = Integer.parseInt(stored);
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ResultCode.SMS_CODE_EXPIRED, "验证码已过期，请刷新");
+        }
+        // 行为校验:拖动耗时过短(<300ms)判定为脚本,直接作废
+        boolean tooFast = timeMs != null && timeMs < PUZZLE_MIN_TIME_MS;
+        if (tooFast || Math.abs(x - targetX) > PUZZLE_TOLERANCE) {
+            redisUtils.delete(CAPTCHA_PREFIX + key);
+            throw new BusinessException(ResultCode.SMS_CODE_ERROR, "验证未通过，请重试");
         }
         redisUtils.delete(CAPTCHA_PREFIX + key);
     }

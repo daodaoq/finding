@@ -1,6 +1,7 @@
 import request from './request';
 import type { ApiResponse } from '../types/common';
 import type { LoginParams, RegisterParams, User } from '../types/user';
+import { getDeviceId } from '../utils/device';
 
 /** 我的认证记录(仅本人可见) */
 export interface MyVerification {
@@ -23,11 +24,11 @@ export const authApi = {
     request.post<ApiResponse<{ accessToken: string; refreshToken: string }>>('/auth/login', data),
 
   register: (data: RegisterParams) =>
-    request.post<ApiResponse<null>>('/auth/register', data),
+    request.post<ApiResponse<null>>('/auth/register', data, { headers: { 'X-Device-Id': getDeviceId() } }),
 
-  /** 获取图片验证码 */
+  /** 获取滑块拼图验证码(注册用) */
   getCaptcha: () =>
-    request.get<ApiResponse<{ captchaKey: string; captchaImage: string }>>('/auth/captcha'),
+    request.get<ApiResponse<{ captchaKey: string; bgImage: string; pieceImage: string; y: string }>>('/auth/captcha'),
 
   getMe: () =>
     request.get<ApiResponse<User>>('/auth/me'),
