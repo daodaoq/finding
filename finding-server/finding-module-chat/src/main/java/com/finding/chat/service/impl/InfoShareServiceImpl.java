@@ -6,9 +6,11 @@ import com.finding.chat.constant.ChatApplyStatus;
 import com.finding.chat.constant.InfoShareStatus;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
+import com.finding.chat.entity.RoomFriend;
 import com.finding.chat.event.InfoSharePushEvent;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.InfoShareMapper;
+import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.service.InfoShareService;
 import com.finding.chat.vo.InfoShareStatusVO;
 import com.finding.common.BusinessException;
@@ -40,6 +42,7 @@ public class InfoShareServiceImpl implements InfoShareService {
     private final InMemoryRateLimiter rateLimiter;
     private final ApplicationEventPublisher eventPublisher;
     private final ChatApplyMapper chatApplyMapper;
+    private final RoomFriendMapper roomFriendMapper;
 
     @Override
     @Transactional
@@ -64,12 +67,15 @@ public class InfoShareServiceImpl implements InfoShareService {
             }
             throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE);
         }
-        // 业务规则:必须先建立聊天关系(任一方向有已通过的聊天申请)才能互换资料
+        // 业务规则:必须先建立聊天关系才能互换资料。
+        // 聊天关系可经由两条路径建立:① 鹊桥心动申请任一方向通过;② 打招呼被对方接受后已创建会话(room_friend)。
+        // 只判断 chat_apply 会漏掉"已经聊上但没走过心动申请"的用户,因此任一条件满足即可。
         Long approvedCount = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
                 .eq(ChatApply::getStatus, ChatApplyStatus.APPROVED.getCode())
                 .and(w -> w.and(x -> x.eq(ChatApply::getFromUserId, fromUserId).eq(ChatApply::getToUserId, toUserId))
                         .or().and(x -> x.eq(ChatApply::getFromUserId, toUserId).eq(ChatApply::getToUserId, fromUserId))));
-        if (approvedCount == null || approvedCount == 0) {
+        boolean hasChatRelation = (approvedCount != null && approvedCount > 0) || hasConversation(fromUserId, toUserId);
+        if (!hasChatRelation) {
             throw new BusinessException(ResultCode.INFO_SHARE_NEED_CHAT);
         }
 
@@ -185,6 +191,15 @@ public class InfoShareServiceImpl implements InfoShareService {
             vo.setStatus(share.getFromUserId().equals(userId) ? "pendingSent" : "pendingReceived");
         }
         return vo;
+    }
+
+    /** 是否已建立单聊会话(room_friend 按 room_key 唯一,uid1 < uid2) */
+    private boolean hasConversation(Long a, Long b) {
+        long uid1 = Math.min(a, b);
+        long uid2 = Math.max(a, b);
+        Long count = roomFriendMapper.selectCount(new LambdaQueryWrapper<RoomFriend>()
+                .eq(RoomFriend::getRoomKey, uid1 + "_" + uid2));
+        return count != null && count > 0;
     }
 
 }

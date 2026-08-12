@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
+import com.finding.chat.entity.RoomFriend;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.InfoShareMapper;
+import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.framework.util.InMemoryRateLimiter;
@@ -48,6 +50,7 @@ class InfoShareServiceImplTest {
     @Mock private InMemoryRateLimiter rateLimiter;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private ChatApplyMapper chatApplyMapper;
+    @Mock private RoomFriendMapper roomFriendMapper;
 
     @InjectMocks
     private InfoShareServiceImpl service;
@@ -57,6 +60,7 @@ class InfoShareServiceImplTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), InfoShare.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), ChatApply.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), RoomFriend.class);
     }
 
     private User activeUser() {
@@ -130,10 +134,28 @@ class InfoShareServiceImplTest {
         when(userMapper.selectById(2L)).thenReturn(activeUser());
         when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
         when(chatApplyMapper.selectCount(any())).thenReturn(0L); // 无已通过的聊天申请
+        when(roomFriendMapper.selectCount(any())).thenReturn(0L); // 也无私聊会话
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.requestShare(1L, 2L));
         assertEquals(ResultCode.INFO_SHARE_NEED_CHAT.getCode(), ex.getCode());
         verify(infoShareMapper, never()).insert(any());
+    }
+
+    /** 回归:已通过"打招呼"建立会话、但没走过心动申请的用户,应允许互换信息 */
+    @Test
+    void requestShare_withConversationButNoApply_succeeds() {
+        when(rateLimiter.tryAcquire(anyString(), anyInt(), anyLong())).thenReturn(true);
+        when(userMapper.selectById(2L)).thenReturn(activeUser());
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(chatApplyMapper.selectCount(any())).thenReturn(0L); // 无心动申请
+        when(roomFriendMapper.selectCount(any())).thenReturn(1L); // 但已有会话(打招呼已接受)
+        when(infoShareMapper.selectOne(any())).thenReturn(null);
+        when(infoShareMapper.insert(any())).thenReturn(1);
+        when(userMapper.selectById(1L)).thenReturn(activeUser());
+
+        assertDoesNotThrow(() -> service.requestShare(1L, 2L));
+        verify(infoShareMapper).insert(any());
+        verify(messageService).notify(any(), any(), any(), any(), any());
     }
 
     // ── handleShare: 条件更新防并发 ──
