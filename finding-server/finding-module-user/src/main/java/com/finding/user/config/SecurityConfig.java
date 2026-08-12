@@ -88,7 +88,8 @@ public class SecurityConfig {
                     "/api/v1/home/announcements",
                     "/api/v1/search",
                     "/api/v1/users/{id}",
-                    "/api/v1/users/search"
+                    "/api/v1/users/search",
+                    "/api/v1/love-guides"          // 恋爱干货公开列表(GET);投稿 POST 仍要求登录
                 ).permitAll()
 
                 // Swagger / Knife4j
