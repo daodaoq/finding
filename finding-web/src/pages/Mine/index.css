@@ -124,8 +124,8 @@
   white-space: nowrap;
 }
 .mine-school {
-  display: block;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
   max-width: 100%;
   margin-top: 4px;
   border: 0;
@@ -133,9 +133,23 @@
   background: none;
   color: #76808f;
   font-size: 12px;
+  cursor: pointer;
+}
+.mine-school-name {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
+  min-width: 0;
+}
+.mine-school-verify {
+  flex-shrink: 0;
+  margin-left: 6px;
+  border-radius: 10px;
+  padding: 1px 6px;
+  background: #fdf0e6;
+  color: #b46a2c;
+  font-size: 10px;
+  white-space: nowrap;
 }
 .mine-profile-info p {
   display: -webkit-box;
