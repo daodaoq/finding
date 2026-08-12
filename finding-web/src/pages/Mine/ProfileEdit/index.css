@@ -79,13 +79,63 @@
   color: #999;
 }
 
-.pe-cover-section { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; padding: 14px 16px; background: #fff; }
-.pe-cover-label { width: 72px; flex: none; color: #333; font-size: 14px; }
-.pe-cover-preview { position: relative; display: flex; align-items: center; justify-content: center; width: 126px; height: 54px; overflow: hidden; border: 1px dashed #cfd4dc; border-radius: 7px; background: #f2f5f7; background-position: center; background-size: cover; color: #667080; font-size: 12px; cursor: pointer; }
-.pe-cover-preview::before { position: absolute; inset: 0; background: rgba(0,0,0,.16); content: ''; }
-.pe-cover-preview:not(.has-image)::before { display: none; }
-.pe-cover-preview span { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; }.pe-cover-preview.has-image span { color: #fff; }
-.pe-cover-clear { border: 0; background: none; color: var(--primary); font-size: 12px; cursor: pointer; }
+.pe-cover-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 14px 16px;
+  background: #fff;
+}
+.pe-cover-label {
+  width: 72px;
+  flex: none;
+  color: #333;
+  font-size: 14px;
+}
+.pe-cover-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 126px;
+  height: 54px;
+  overflow: hidden;
+  border: 1px dashed #cfd4dc;
+  border-radius: 7px;
+  background: #f2f5f7;
+  background-position: center;
+  background-size: cover;
+  color: #667080;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pe-cover-preview::before {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.16);
+  content: "";
+}
+.pe-cover-preview:not(.has-image)::before {
+  display: none;
+}
+.pe-cover-preview span {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pe-cover-preview.has-image span {
+  color: #fff;
+}
+.pe-cover-clear {
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-size: 12px;
+  cursor: pointer;
+}
 
 /* ── 表单区 ── */
 .pe-form {
@@ -123,7 +173,9 @@
 /* 定位按钮 */
 .pe-locate-btn {
   flex-shrink: 0;
-  display: inline-flex; align-items: center; gap: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   border: 1px solid #29241f;
   background: #fff;
   color: #29241f;
@@ -132,8 +184,12 @@
   border-radius: 14px;
   cursor: pointer;
 }
-.pe-locate-btn:active { background: #f5f5f5; }
-.pe-locate-btn:disabled { opacity: 0.6; }
+.pe-locate-btn:active {
+  background: #f5f5f5;
+}
+.pe-locate-btn:disabled {
+  opacity: 0.6;
+}
 
 /* 性别选择 */
 .pe-gender-group {

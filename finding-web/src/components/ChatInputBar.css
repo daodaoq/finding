@@ -3,42 +3,52 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
+  background: var(--paper);
+  border-top: 1px solid var(--surface-muted);
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 .input-action-btn {
-  width: 36px; height: 36px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 1px solid #eee;
-  background: #fff;
+  border: 1px solid var(--border-subtle);
+  background: var(--paper);
   font-size: 20px;
-  color: #999;
+  color: var(--text-faint);
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .chat-input {
   flex: 1;
   height: 36px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-subtle);
   border-radius: 18px;
   padding: 0 16px;
   font-size: 15px;
   outline: none;
-  background: #f5f5f5;
+  background: var(--primary-soft);
 }
-.chat-input:focus { border-color: #29241f; background: #fff; }
+.chat-input:focus {
+  border-color: var(--ink);
+  background: var(--paper);
+}
 .input-send-btn {
   padding: 8px 16px;
   border-radius: 18px;
   border: none;
-  background: #29241f;
-  color: #fff;
+  background: var(--ink);
+  color: var(--paper);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
-.input-send-btn:disabled { background: #eee; color: #ccc; cursor: not-allowed; }
+.input-send-btn:disabled {
+  background: var(--border-subtle);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
 
 /* 操作面板 */
 .chat-input-area {
@@ -52,12 +62,13 @@
 .input-panel {
   position: absolute;
   bottom: 60px;
-  left: 0; right: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  background: #fff;
+  background: var(--paper);
   border-radius: 12px 12px 0 0;
   padding: 16px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   display: flex;
   gap: 16px;
 }
@@ -71,19 +82,27 @@
   border-radius: 8px;
   transition: background 0.2s;
 }
-.panel-item:active { background: #f5f5f5; }
-.panel-icon { font-size: 32px; }
-.panel-label { font-size: 12px; color: #666; }
+.panel-item:active {
+  background: var(--primary-soft);
+}
+.panel-icon {
+  font-size: 32px;
+}
+.panel-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
 
 /* @成员面板 */
 .mention-panel {
   position: absolute;
   bottom: 64px;
-  left: 12px; right: 12px;
+  left: 12px;
+  right: 12px;
   z-index: 100;
-  background: #fff;
+  background: var(--paper);
   border-radius: 12px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   padding: 8px 0;
   max-height: 40vh;
   overflow-y: auto;
@@ -91,10 +110,12 @@
 .mention-item {
   padding: 10px 16px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-strong);
   cursor: pointer;
 }
-.mention-item:active { background: #f5f5f5; }
+.mention-item:active {
+  background: var(--primary-soft);
+}
 
 /* 回复/引用条 */
 .chat-reply-bar {
@@ -102,14 +123,48 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: #f5f5f5;
-  border-top: 1px solid #eee;
+  background: var(--primary-soft);
+  border-top: 1px solid var(--border-subtle);
 }
-.chat-reply-info { flex: 1; min-width: 0; }
-.chat-reply-name { font-size: 12px; color: #888; margin-right: 6px; }
-.chat-reply-content { font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-.chat-reply-cancel { border: none; background: none; color: #999; font-size: 14px; cursor: pointer; }
+.chat-reply-info {
+  flex: 1;
+  min-width: 0;
+}
+.chat-reply-name {
+  font-size: 12px;
+  color: #888;
+  margin-right: 6px;
+}
+.chat-reply-content {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+.chat-reply-cancel {
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 14px;
+  cursor: pointer;
+}
 /* 图片上传进度 */
-.chat-upload-progress { position: relative; height: 3px; background: #eee; }
-.chat-upload-bar { height: 100%; background: #29241f; transition: width .2s; }
-.chat-upload-text { position: absolute; right: 8px; top: 6px; font-size: 11px; color: #999; }
+.chat-upload-progress {
+  position: relative;
+  height: 3px;
+  background: var(--border-subtle);
+}
+.chat-upload-bar {
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.2s;
+}
+.chat-upload-text {
+  position: absolute;
+  right: 8px;
+  top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+}

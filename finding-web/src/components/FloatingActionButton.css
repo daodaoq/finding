@@ -5,8 +5,8 @@
   z-index: 900;
   width: 52px; height: 52px;
   border-radius: 50%;
-  background: #29241f;
-  color: #fff;
+  background: var(--ink);
+  color: var(--paper);
   font-size: 28px;
   border: none;
   box-shadow: 0 4px 12px rgba(255,107,129,0.4);

@@ -5,9 +5,9 @@
 
 /* 分类网格 */
 .square-categories {
-  background: #fff;
+  background: var(--paper);
   padding: 4px 12px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--surface-muted);
 }
 
 .category-grid {
@@ -22,7 +22,7 @@
   justify-content: center;
   gap: 5px;
   padding: 11px 8px;
-  background: #fff;
+  background: var(--paper);
   border: 1.5px solid transparent;
   border-radius: 12px;
   cursor: pointer;
@@ -30,12 +30,12 @@
 }
 
 .category-cell.active {
-  background: #f5f5f5;
-  border-color: #29241f;
+  background: var(--primary-soft);
+  border-color: var(--ink);
 }
 
 .category-cell-icon { display: inline-flex; flex-shrink: 0; color: var(--muted); }
-.category-cell-name { font-size: 13px; color: #444; font-weight: 500; }
+.category-cell-name { font-size: 13px; color: var(--accent); font-weight: 500; }
 .category-cell.active .category-cell-name { color: var(--primary); font-weight: 600; }
 
 /* 排序栏 */
@@ -44,37 +44,37 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--paper);
+  border-bottom: 1px solid var(--surface-muted);
 }
 .sort-label {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-strong);
 }
 .sort-options { display: flex; gap: 6px; }
 .sort-chip {
   padding: 4px 12px;
   border-radius: 12px;
-  border: 1px solid #eee;
-  background: #fff;
+  border: 1px solid var(--border-subtle);
+  background: var(--paper);
   font-size: 12px;
-  color: #999;
+  color: var(--text-faint);
   cursor: pointer;
 }
 .sort-chip.active {
-  background: #f5f5f5;
-  color: #29241f;
-  border-color: #29241f;
+  background: var(--primary-soft);
+  color: var(--ink);
+  border-color: var(--ink);
 }
 
 /* 搭子列表 */
-.square-mate-list { background: #fff; }
+.square-mate-list { background: var(--paper); }
 
 /* 通用分页尾部 */
 .no-more {
   text-align: center;
   padding: 20px;
-  color: #ccc;
+  color: var(--text-disabled);
   font-size: 13px;
 }

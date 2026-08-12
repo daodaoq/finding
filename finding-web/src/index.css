@@ -45,17 +45,41 @@ button {
 }
 
 :root {
+  /* 基础色板 */
   --paper: #fff;
   --surface: #fff;
+  --surface-muted: #f0f0f0;
   --ink: #29241f;
-  --muted: #777;
-  --line: #e5e5e5;
   --primary: #29241f;
   --primary-soft: #f5f5f5;
-  --success: #486b5a;
   --accent: #444444;
+
+  /* 文本层级 */
+  --text-primary: #29241f;
+  --text-strong: #333;
+  --text-secondary: #666;
+  --muted: #777;
+  --text-faint: #999;
+  --text-placeholder: #bbb;
+  --text-disabled: #ccc;
+
+  /* 边框与分割线 */
+  --line: #e5e5e5;
+  --border-subtle: #eee;
+  --border-weak: #ddd;
+
+  /* 语义色 */
+  --success: #486b5a;
+  --danger: #ff4757;
+  --love-soft: #fffafb;
+  --love-tint: #f4e6e9;
+
+  /* 圆角与阴影 */
+  --radius-sm: 5px;
   --radius: 7px;
+  --radius-lg: 12px;
   --shadow: 0 2px 12px rgba(0, 0, 0, .08);
+  --shadow-card: 0 1px 8px rgba(0, 0, 0, .06);
 }
 
 img {

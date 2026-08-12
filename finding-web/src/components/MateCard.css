@@ -1,8 +1,177 @@
-.mate-card { display: flex; gap: 11px; padding: 13px 16px; border-bottom: 1px solid #ededed; background: #fff; cursor: pointer; }.mate-card:active { background: #fafafa; }.mate-card-cover { position: relative; width: 106px; height: 106px; flex: none; overflow: hidden; border-radius: 6px; background: #ebebeb; }.mate-card-cover img { width: 100%; height: 100%; object-fit: cover; }.mate-card-state { position: absolute; top: 5px; left: 5px; border-radius: 3px; padding: 2px 5px; background: rgba(45,105,77,.9); color: #fff; font-size: 10px; line-height: 1.2; }.mate-card-state.is-ended { background: rgba(39,36,31,.78); }.mate-card-content { display: flex; min-width: 0; flex: 1; flex-direction: column; }.mate-card-title-row { display: flex; align-items: flex-start; gap: 8px; }.mate-card-title-row h3 { display: -webkit-box; overflow: hidden; flex: 1; margin: 0; color: #29241f; font-size: 15px; font-weight: 700; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }.mate-card-price { flex: none; color: #555555; font-size: 14px; font-weight: 700; line-height: 1.35; }.mate-card-tags { display: flex; gap: 5px; margin-top: 5px; overflow: hidden; }.mate-card-tags span { overflow: hidden; max-width: 94px; border-radius: 3px; padding: 1px 5px; background: #f5f5f5; color: #29241f; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.mate-card-tags span + span { background: #f0f0f1; color: #6e6b68; }.mate-card-description { overflow: hidden; margin: 5px 0 0; color: #77716a; font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }.mate-card-meta { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; color: #8b8782; font-size: 10px; }.mate-card-meta span,.mate-card-people { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }.mate-card-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.mate-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 5px; }.mate-card-people { color: #77716a; font-size: 10px; }.mate-card-people em { overflow: hidden; margin-left: 3px; color: #aaa5a0; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }.mate-join-btn { border: 1px solid #29241f; border-radius: 5px; padding: 3px 9px; background: #fff; color: #29241f; font-size: 11px; font-weight: 600; cursor: pointer; }.mate-card-note { color: #6d8878; font-size: 11px; white-space: nowrap; }
-.mate-card-state.is-ended { background: rgba(79,54,64,.78); }
-.mate-card-title-row h3 { color: var(--ink); }
-.mate-card-tags span { color: var(--primary); }
-.mate-card-description,.mate-card-people { color: var(--muted); }
-.mate-card-meta { color: #777777; }
-.mate-card-people em { color: #888888; }
-.mate-join-btn { border-color: var(--primary); color: var(--primary); }
+.mate-card {
+  display: flex;
+  gap: 11px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #ededed;
+  background: var(--paper);
+  cursor: pointer;
+}
+.mate-card:active {
+  background: #fafafa;
+}
+.mate-card-cover {
+  position: relative;
+  width: 106px;
+  height: 106px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #ebebeb;
+}
+.mate-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mate-card-state {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  border-radius: 3px;
+  padding: 2px 5px;
+  background: rgba(45, 105, 77, 0.9);
+  color: var(--paper);
+  font-size: 10px;
+  line-height: 1.2;
+}
+.mate-card-state.is-ended {
+  background: rgba(39, 36, 31, 0.78);
+}
+.mate-card-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.mate-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.mate-card-title-row h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  flex: 1;
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.mate-card-price {
+  flex: none;
+  color: #555555;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.mate-card-tags {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+.mate-card-tags span {
+  overflow: hidden;
+  max-width: 94px;
+  border-radius: 3px;
+  padding: 1px 5px;
+  background: var(--primary-soft);
+  color: var(--ink);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mate-card-tags span + span {
+  background: #f0f0f1;
+  color: #6e6b68;
+}
+.mate-card-description {
+  overflow: hidden;
+  margin: 5px 0 0;
+  color: #77716a;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mate-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  color: #8b8782;
+  font-size: 10px;
+}
+.mate-card-meta span,
+.mate-card-people {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.mate-card-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mate-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 5px;
+}
+.mate-card-people {
+  color: #77716a;
+  font-size: 10px;
+}
+.mate-card-people em {
+  overflow: hidden;
+  margin-left: 3px;
+  color: #aaa5a0;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mate-join-btn {
+  border: 1px solid var(--ink);
+  border-radius: 5px;
+  padding: 3px 9px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mate-card-note {
+  color: #6d8878;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mate-card-state.is-ended {
+  background: rgba(79, 54, 64, 0.78);
+}
+.mate-card-title-row h3 {
+  color: var(--ink);
+}
+.mate-card-tags span {
+  color: var(--primary);
+}
+.mate-card-description,
+.mate-card-people {
+  color: var(--muted);
+}
+.mate-card-meta {
+  color: var(--muted);
+}
+.mate-card-people em {
+  color: #888888;
+}
+.mate-join-btn {
+  border-color: var(--primary);
+  color: var(--primary);
+}

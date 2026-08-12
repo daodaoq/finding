@@ -8,7 +8,7 @@
   font-size: 16px !important;
   text-align: center;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--surface-muted);
   margin-bottom: 0;
 }
 
@@ -36,11 +36,11 @@
 .ann-item-title {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-strong);
 }
 .ann-item-time {
   font-size: 11px;
-  color: #bbb;
+  color: var(--text-placeholder);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -58,14 +58,14 @@
 .ann-item-body h4 {
   font-size: 15px;
   margin: 8px 0 4px;
-  color: #333;
+  color: var(--text-strong);
 }
 .ann-item-body p { margin: 4px 0; }
 .ann-item-body ul,
 .ann-item-body ol { padding-left: 18px; margin: 4px 0; }
 .ann-item-body li { margin: 2px 0; }
-.ann-item-body strong { color: #333; }
-.ann-item-body a { color: #29241f; text-decoration: underline; }
+.ann-item-body strong { color: var(--text-strong); }
+.ann-item-body a { color: var(--ink); text-decoration: underline; }
 .ann-item-body blockquote {
   border-left: 3px solid #ededed;
   margin: 6px 0;
@@ -75,14 +75,14 @@
   border-radius: 0 6px 6px 0;
 }
 .ann-item-body code {
-  background: #f5f5f5;
+  background: var(--primary-soft);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 12px;
   font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
 }
 .ann-item-body pre {
-  background: #f5f5f5;
+  background: var(--primary-soft);
   padding: 10px;
   border-radius: 8px;
   overflow-x: auto;
@@ -96,7 +96,7 @@
 }
 .ann-item-body th,
 .ann-item-body td {
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--line);
   padding: 4px 8px;
   font-size: 12px;
 }
