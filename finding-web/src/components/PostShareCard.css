@@ -1,0 +1,118 @@
+/* 分享卡片快照样式:固定 420px 宽,html-to-image 截图用。 */
+.psc-card {
+  width: 420px;
+  box-sizing: border-box;
+  padding: 24px;
+  background: #fffdf9;
+  border-radius: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  color: #29241f;
+}
+.psc-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.psc-brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #29241f;
+}
+.psc-brand-name::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #ff6b81;
+  vertical-align: 1px;
+}
+.psc-school {
+  font-size: 12px;
+  color: #9e9791;
+}
+.psc-cover {
+  display: block;
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-bottom: 16px;
+  background: #f3f0ec;
+}
+.psc-content {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.7;
+  color: #29241f;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.psc-divider {
+  height: 1px;
+  background: #f0ece8;
+  margin: 18px 0;
+}
+.psc-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.psc-avatar {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f0ece8;
+  font-size: 17px;
+  font-weight: 600;
+  color: #625a54;
+}
+.psc-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.psc-author-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.psc-nickname {
+  font-size: 14px;
+  font-weight: 600;
+  color: #29241f;
+}
+.psc-time {
+  font-size: 12px;
+  color: #9e9791;
+}
+.psc-stats {
+  display: flex;
+  gap: 18px;
+  margin-top: 16px;
+}
+.psc-stat {
+  font-size: 12px;
+  color: #827b75;
+}
+.psc-foot {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px dashed #e8e2dc;
+  text-align: center;
+  font-size: 12px;
+  color: #b3aca5;
+  letter-spacing: 0.3px;
+}
