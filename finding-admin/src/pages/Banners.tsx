@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch } from 'antd';
+import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch, Upload, theme } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import request from '../api/request';
 
 interface BannerRecord {
@@ -9,10 +11,12 @@ interface BannerRecord {
 }
 
 export default function Banners() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<BannerRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<BannerRecord | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ title: '', imageUrl: '', linkUrl: '', sortOrder: 0, isActive: 1 });
 
   const fetchData = () => {
@@ -60,6 +64,29 @@ export default function Banners() {
     } catch { message.error('操作失败'); }
   };
 
+  /** 图片上传:POST /upload/image 拿 URL 后写入表单 */
+  const handleUpload = async (options: UploadRequestOption<File>) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', options.file);
+      const res = await request.post('/upload/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.data;
+      if (url) {
+        setForm((prev) => ({ ...prev, imageUrl: url }));
+        message.success('图片上传成功');
+      }
+      options.onSuccess?.(url);
+    } catch (e) {
+      message.error('图片上传失败');
+      options.onError?.(e instanceof Error ? e : new Error('上传失败'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const columns: ColumnsType<BannerRecord> = [
     { title: '序号', width: 60, render: (_, __, i) => i + 1 },
     { title: '标题', dataIndex: 'title' },
@@ -99,8 +126,15 @@ export default function Banners() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input placeholder="标题" value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <Input placeholder="图片URL" value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+          {/* 图片上传(替代手动填 URL) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 160, height: 64, borderRadius: 6, overflow: 'hidden', background: token.colorFillQuaternary, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px dashed ${token.colorBorderSecondary}` }}>
+              {form.imageUrl ? <img src={form.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>未上传</span>}
+            </div>
+            <Upload showUploadList={false} customRequest={handleUpload}>
+              <Button icon={<UploadOutlined />} loading={uploading}>上传图片</Button>
+            </Upload>
+          </div>
           <Input placeholder="跳转链接（可选）" value={form.linkUrl}
             onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
