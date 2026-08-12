@@ -15,6 +15,7 @@
 7. [配置 HTTPS](#7-配置-https可选)
 8. [常用运维命令](#8-常用运维命令)
 9. [故障排查](#9-故障排查)
+10. [自动部署（Gitee WebHook / CI/CD）](#10-自动部署gitee-webhook--cicd)
 
 ---
 
@@ -155,15 +156,19 @@ tar -xzf finding-deploy.tar.gz
 
 ### 方式 B：Git 拉取
 
-如果代码已经推送到 GitHub：
+如果代码已经推送到 Git 仓库（GitHub 或 Gitee）：
 
 ```bash
 ssh root@你的服务器IP
 cd /root
-git clone https://github.com/daodaoq/finding.git
+git clone https://github.com/daodaoq/finding.git     # 或 Gitee 地址
+# Gitee 示例：git clone git@gitee.com:daodaoq/finding.git
 cd finding
 # 把 deploy/init-data-full.sql 额外上传（Git 不追踪数据库数据）
 ```
+
+> 注意：采用「10. 自动部署」时，服务器就是用这个 clone 出的仓库来 `git pull`，
+> 所以**推荐直接把服务器仓库切到 Gitee**，与 CI/CD 同源。
 
 ### 方式 C：使用 FTP 工具
 
@@ -694,3 +699,91 @@ netstat -tlnp | grep -E "80|3306|6379|5672|9000"
 | `/api/*` | 反代 → `localhost:8080` | Spring Boot |
 | `/ws` | WebSocket → `localhost:8080` | Spring Boot |
 | `/uploads/*` | 反代 → `localhost:8080` | Spring Boot |
+
+---
+
+## 10. 自动部署（Gitee WebHook / CI/CD）
+
+> 目标：代码推送到 Gitee 的 `master` 分支后，服务器自动拉取、构建并重新部署。
+> 涉及文件：`deploy/webhook_server.py`（接收端）、`deploy/auto-deploy.sh`（拉取+部署）、
+> `deploy/finding-webhook.service`（systemd 服务）、`deploy/.env`（密钥）。
+
+### 10.1 架构与流程
+
+```
+你本地 git push origin master
+          │
+          ▼
+Gitee 仓库 ──(WebHook POST)──▶ webhook_server.py  :8090
+                                     │ ① 校验密码(token)
+                                     │ ② 只放行 Push 事件 + master 分支
+                                     ▼
+                               auto-deploy.sh  （后台执行，立即返回 200）
+                                     │ ③ git pull --ff-only
+                                     ▼
+                                  deploy.sh（构建前后端 + 起容器 + 重启后端 + 重载 nginx）
+```
+
+### 10.2 服务器一次性准备
+
+1. **克隆仓库到服务器**（用 Gitee 地址，与 CI/CD 同源）
+   ```bash
+   mkdir -p /opt && cd /opt && git clone git@gitee.com:daodaoq/finding.git
+   ```
+   - 私有仓库需先把服务器 SSH 公钥加到 Gitee：
+     ```bash
+     cat ~/.ssh/id_ed25519.pub   # 复制 → Gitee 个人设置 → SSH 公钥（无则先 ssh-keygen -t ed25519）
+     ```
+2. **配置部署密码**（`.env` 已被 gitignore，不会进仓库）
+   ```bash
+   cd /opt/finding/deploy
+   cp .env.example .env          # 已部署过则跳过
+   # 编辑 .env，设置（与第 3 步 Gitee 里填的完全一致）：
+   #   GITEE_WEBHOOK_SECRET=$(openssl rand -hex 16)
+   ```
+3. **挂 swap（推荐，构建期内存尖峰保护；你机器 3.6G 空闲建议挂 2G）**
+   ```bash
+   fallocate -l 2G /swapfile && chmod 600 /swapfile
+   mkswap /swapfile && swapon /swapfile
+   echo '/swapfile none swap sw 0 0' >> /etc/fstab
+   ```
+
+### 10.3 Gitee 仓库配置 WebHook
+
+1. 仓库 → **管理 → WebHooks**
+2. 填写：
+   - **URL**：`http://你的服务器IP:8090/gitee-webhook`（端口与 `.env` 的 `WEBHOOK_PORT` 一致；防火墙放行 8090）
+   - **密码**：与 `.env` 的 `GITEE_WEBHOOK_SECRET` 完全一致
+   - **事件**：勾选「Push」
+3. 添加后点「**测试**」：服务器 `tail -f /opt/finding/deploy/deploy.log` 应看到触发记录。
+
+### 10.4 启动接收端（systemd，开机自启）
+
+```bash
+# 先把服务单元里的 /opt/finding 改成你的实际路径
+sudo cp /opt/finding/deploy/finding-webhook.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now finding-webhook
+sudo systemctl status finding-webhook
+```
+
+### 10.5 验证与常用命令
+
+- **推一次代码**：`git push origin master` → `tail -f /opt/finding/deploy/deploy.log` 看到构建流程即成功。
+- **手动触发**（排查用）：`cd /opt/finding/deploy && ./auto-deploy.sh`
+- **接收端日志**：`sudo journalctl -u finding-webhook -f` 或 `tail -f /opt/finding/deploy/webhook_server.log`
+- **停止**：`sudo systemctl stop finding-webhook`
+
+### 10.6 安全与排障
+
+| 现象 | 说明 / 排查 |
+|------|------------|
+| 推了代码但没部署 | 看 `webhook_server.log`：签名失败(401)？分支不匹配？事件不对？ |
+| 构建失败 | `deploy.sh` 用 `set -e`，`deploy.log` 尾部有具体报错；回滚 = `git revert` 后重推或手动 `./deploy.sh` |
+| 部署中重复触发 | `auto-deploy.sh` 用 flock 单实例锁，进行中的部署会被跳过 |
+| WebHook 测试 401 | `.env` 的 `GITEE_WEBHOOK_SECRET` 与 Gitee 里填的密码不一致 |
+| 服务器 Agent 排查起点 | `tail -f deploy.log` → `journalctl -u finding-webhook -f` → `docker compose ps` → `docker logs finding-backend` |
+
+> 提示：当前流程是「服务器本地构建」（`npm ci` + `vite build` + `mvn package`），
+> 构建期内存会有 1–2G 瞬时尖峰，所以建议挂 swap。若要更规范，可改用 Gitee Go 云端构建
+> 只把 jar/dist 产物推到服务器（生产机不装构建工具），后续可按需演进。
