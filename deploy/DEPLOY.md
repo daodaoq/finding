@@ -69,7 +69,7 @@
 
 ### 2.1 导出数据库
 
-双击运行 `deploy\export-db.bat`，或手动执行：
+手动执行（Windows）：
 
 ```cmd
 cd D:\FullStack\finding\deploy
@@ -78,9 +78,7 @@ mysqldump -uroot -p123456 -hlocalhost -P3306 ^
   --complete-insert --routines --triggers finding > init-data-full.sql
 ```
 
-会生成两个文件：
-- `init-structure.sql` — 仅表结构
-- `init-data-full.sql` — 完整数据（**用这个**）
+生成 `init-data-full.sql` — 完整数据（**部署时用它**）
 
 ### 2.2 确认文件清单
 

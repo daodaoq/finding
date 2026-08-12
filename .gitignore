@@ -42,3 +42,7 @@ dist/
 .claude/history.jsonl
 .claude/.last-*
 *.tsbuildinfo
+
+# Python (webhook 接收端)
+__pycache__/
+*.pyc
