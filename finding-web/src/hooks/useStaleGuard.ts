@@ -15,7 +15,10 @@ export class StaleRequestError extends Error {
  */
 export function isStaleError(e: unknown): boolean {
   if (e instanceof StaleRequestError) return true;
-  if (e && typeof e === 'object' && (e as { code?: string }).code === 'ERR_CANCELED') return true;
+  if (e && typeof e === 'object') {
+    const err = e as { code?: string; name?: string };
+    if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') return true;
+  }
   return false;
 }
 

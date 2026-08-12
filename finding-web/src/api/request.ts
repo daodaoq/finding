@@ -49,6 +49,11 @@ request.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
+    // 请求被 AbortController 取消(useStaleGuard 竞态保护):原样透传,保留
+    // ERR_CANCELED 标识,使 isStaleError 能识别为"可忽略",而非当作真实失败。
+    if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError') {
+      return Promise.reject(error);
+    }
     const status = error.response?.status;
     const config = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     if (status === 401 && config && !config._retry) {
