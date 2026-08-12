@@ -133,7 +133,7 @@ export default function AdminLayout() {
             justifyContent: 'center',
             fontWeight: 700,
             fontSize: collapsed ? 18 : 22,
-            color: '#ff6b81',
+            color: token.colorPrimary,
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
             letterSpacing: 2,
           }}
@@ -155,7 +155,7 @@ export default function AdminLayout() {
       <Layout>
         <Header
           style={{
-            background: '#fff',
+            background: token.colorBgContainer,
             padding: '0 24px',
             display: 'flex',
             alignItems: 'center',
@@ -205,7 +205,7 @@ export default function AdminLayout() {
           style={{
             margin: 20,
             padding: 24,
-            background: '#fff',
+            background: token.colorBgContainer,
             borderRadius: 8,
             minHeight: 280,
             overflow: 'auto',

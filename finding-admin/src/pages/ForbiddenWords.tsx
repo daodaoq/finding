@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch, Radio } from 'antd';
+import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch, Radio, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -8,6 +8,7 @@ interface ForbiddenWordRecord {
 }
 
 export default function ForbiddenWords() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<ForbiddenWordRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -143,7 +144,7 @@ export default function ForbiddenWords() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span>启用:</span>
             <Switch checked={form.status === 1} onChange={(v) => setForm({ ...form, status: v ? 1 : 0 })} />
-            <span style={{ fontSize: 12, color: '#bbb', marginLeft: 8 }}>
+            <span style={{ fontSize: 12, color: token.colorTextPlaceholder, marginLeft: 8 }}>
               禁用的词不会拦截用户内容
             </span>
           </div>

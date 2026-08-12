@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Input, Space, Tag, Popconfirm, message, Tabs } from 'antd';
+import { Table, Input, Space, Tag, Popconfirm, message, Tabs, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 import type { AdminUserRecord, AdminGroupRecord } from '../types/admin';
@@ -17,6 +17,7 @@ interface GroupMsg {
 const recalledTag = (r: boolean) => (r ? <Tag color="orange">已撤回</Tag> : null);
 
 export default function ChatAudit() {
+  const { token } = theme.useToken();
   const [tab, setTab] = useState('private');
 
   // ── 用户列表(私聊审查) ──
@@ -208,7 +209,7 @@ export default function ChatAudit() {
                 rowClassName="cursor-pointer"
                 onRow={(r) => ({
                   onClick: () => selectUser(r),
-                  style: { cursor: 'pointer', background: r.id === selectedUserId ? '#fff1f3' : undefined },
+                  style: { cursor: 'pointer', background: r.id === selectedUserId ? token.colorPrimaryBg : undefined },
                 })}
                 pagination={{
                   current: userListPage, total: userListTotal, pageSize: 10, size: 'small',
@@ -216,7 +217,7 @@ export default function ChatAudit() {
                   showTotal: (t) => `共 ${t} 人`,
                 }}
               />
-              <p style={{ color: '#999', margin: '12px 0 4px', fontSize: 13 }}>
+              <p style={{ color: token.colorTextTertiary, margin: '12px 0 4px', fontSize: 13 }}>
                 👆 点击上方某个用户，查看 TA 的私聊（可再选「只看和谁的对话」）
               </p>
               {/* 私聊消息 */}
@@ -274,7 +275,7 @@ export default function ChatAudit() {
                 loading={groupListLoading}
                 onRow={(r) => ({
                   onClick: () => selectGroup(r),
-                  style: { cursor: 'pointer', background: r.id === selectedGroup?.id ? '#fff1f3' : undefined },
+                  style: { cursor: 'pointer', background: r.id === selectedGroup?.id ? token.colorPrimaryBg : undefined },
                 })}
                 pagination={{
                   current: groupListPage, total: groupListTotal, pageSize: 10, size: 'small',
@@ -282,7 +283,7 @@ export default function ChatAudit() {
                   showTotal: (t) => `共 ${t} 个群`,
                 }}
               />
-              <p style={{ color: '#999', margin: '12px 0 4px', fontSize: 13 }}>👆 点击上方某个群，查看群内全部消息</p>
+              <p style={{ color: token.colorTextTertiary, margin: '12px 0 4px', fontSize: 13 }}>👆 点击上方某个群，查看群内全部消息</p>
               {selectedGroup && (
                 <p style={{ fontWeight: 600, marginBottom: 8 }}>群「{selectedGroup.name}」的消息（撤回保留原文）</p>
               )}

@@ -36,9 +36,28 @@ function RouterNavigator() {
   return null;
 }
 
+/**
+ * 管理端主题 token —— 与用户端设计令牌解耦,独立维护。
+ * 后台以信息密度与状态色清晰为优先:语义色(成功/警告/错误/信息)显式声明,
+ * 组件一律通过 theme.useToken() 消费,不再复制粘贴色值。
+ */
+const adminTheme = {
+  token: {
+    colorPrimary: '#ff6b81', // 品牌色(管理端独有,改动仅影响后台)
+    colorSuccess: '#52c41a', // 状态绿:通过/正常
+    colorWarning: '#faad14', // 状态橙:待处理/警告
+    colorError: '#ff4d4f',   // 状态红:拒绝/封禁
+    colorInfo: '#1677ff',    // 信息蓝:链接/提示
+    borderRadius: 6,         // 小圆角,提升信息密度
+  },
+  components: {
+    Table: { headerBg: '#fafafa' },
+  },
+};
+
 export default function App() {
   return (
-    <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#ff6b81' } }}>
+    <ConfigProvider locale={zhCN} theme={adminTheme}>
       <BrowserRouter basename="/admin">
         <RouterNavigator />
         <Routes>

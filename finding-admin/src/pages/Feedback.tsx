@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, message } from 'antd';
+import { Table, Button, Space, Tag, Popconfirm, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -13,6 +13,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export default function Feedback() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<FeedbackRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -49,7 +50,7 @@ export default function Feedback() {
     {
       title: '操作', render: (_, r) => (
         <Popconfirm title={r.status === 1 ? '重新打开该工单？' : '标记为已处理？'} onConfirm={() => toggleStatus(r)}>
-          <a style={{ color: r.status === 1 ? '#999' : '#52c41a' }}>
+          <a style={{ color: r.status === 1 ? token.colorTextTertiary : token.colorSuccess }}>
             {r.status === 1 ? '重新打开' : '标记已处理'}
           </a>
         </Popconfirm>

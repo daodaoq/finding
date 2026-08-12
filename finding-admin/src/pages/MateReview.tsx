@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Modal, Input, message } from 'antd';
+import { Table, Space, Modal, Input, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -12,6 +12,7 @@ interface ReviewItem {
 }
 
 export default function MateReview() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -63,8 +64,8 @@ export default function MateReview() {
       title: '操作', width: 140,
       render: (_, record) => (
         <Space>
-          <a style={{ color: '#52c41a' }} onClick={() => approve(record.id)}>通过</a>
-          <a style={{ color: '#f5222d' }} onClick={() => setRejectTarget(record)}>拒绝</a>
+          <a style={{ color: token.colorSuccess }} onClick={() => approve(record.id)}>通过</a>
+          <a style={{ color: token.colorError }} onClick={() => setRejectTarget(record)}>拒绝</a>
         </Space>
       ),
     },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Radio, Popconfirm, message, Modal, Input } from 'antd';
+import { Table, Button, Space, Tag, Radio, Popconfirm, message, Modal, Input, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
@@ -11,6 +11,7 @@ interface AnnouncementRecord {
 }
 
 export default function Announcements() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<AnnouncementRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -150,7 +151,7 @@ export default function Announcements() {
             preview="live"
           />
         </div>
-        <div style={{ fontSize: 12, color: '#bbb' }}>
+        <div style={{ fontSize: 12, color: token.colorTextPlaceholder }}>
           💡 标准 Markdown 编辑器：顶部工具栏可加粗/斜体/标题/列表/引用/代码/表格/图片等，支持实时预览。用户端会渲染为富文本。
         </div>
       </Modal>

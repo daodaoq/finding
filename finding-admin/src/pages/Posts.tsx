@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Input, Popconfirm, Select, Modal, message } from 'antd';
+import { Table, Button, Space, Tag, Input, Popconfirm, Select, Modal, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -16,6 +16,7 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 };
 
 export default function Posts() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<PostRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -93,7 +94,7 @@ export default function Posts() {
       title: '审核', dataIndex: 'reviewStatus', width: 110, render: (v: number | undefined, record) => {
         const rv = v ?? 0;
         const tag = rv === 0 ? <Tag>已发布</Tag> : rv === 1 ? <Tag color="warning">待审</Tag> : <Tag color="error">已拒绝</Tag>;
-        return <span>{tag}{rv === 2 && record.reviewReason ? <span style={{ fontSize: 11, color: '#999' }} title={record.reviewReason}>原因</span> : null}</span>;
+        return <span>{tag}{rv === 2 && record.reviewReason ? <span style={{ fontSize: 11, color: token.colorTextTertiary }} title={record.reviewReason}>原因</span> : null}</span>;
       },
     },
     { title: '发布时间', dataIndex: 'createdAt', render: (v: string) => v?.replace('T', ' ') },

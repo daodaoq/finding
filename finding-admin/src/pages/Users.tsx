@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Input, Space, Tag, Popconfirm, Modal, Select, Upload, message } from 'antd';
+import { Table, Button, Input, Space, Tag, Popconfirm, Modal, Select, Upload, message, theme } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
@@ -15,6 +15,7 @@ const emptyForm: AdminUserForm = {
 };
 
 export default function Users() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<AdminUserRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -252,7 +253,7 @@ export default function Users() {
               {form.avatar ? (
                 <img src={form.avatar} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover' }} />
               ) : (
-                <div style={{ width: 64, height: 64, borderRadius: 8, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb' }}>头像</div>
+                <div style={{ width: 64, height: 64, borderRadius: 8, background: token.colorFillSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: token.colorTextPlaceholder }}>头像</div>
               )}
             </div>
             <Upload

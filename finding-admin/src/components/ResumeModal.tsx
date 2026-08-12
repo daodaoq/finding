@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Descriptions, Empty, Image, Spin, Tag } from 'antd';
+import { Modal, Descriptions, Empty, Image, Spin, Tag, theme } from 'antd';
 import request from '../api/request';
 import type { ResumeFieldValue } from '../types/admin';
 
@@ -127,6 +127,7 @@ const BLOCKS: { title: string; fields: { key: keyof ResumeData; label: string; r
 ];
 
 export default function ResumeModal({ userId, open, onClose }: { userId: number | null; open: boolean; onClose: () => void }) {
+  const { token } = theme.useToken();
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -171,7 +172,7 @@ export default function ResumeModal({ userId, open, onClose }: { userId: number 
               if (!hasAny) return null;
               return (
                 <div key={block.title}>
-                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#ff6b81' }}>{block.title}</div>
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: token.colorPrimary }}>{block.title}</div>
                   <Descriptions
                     size="small"
                     column={2}
@@ -194,7 +195,7 @@ export default function ResumeModal({ userId, open, onClose }: { userId: number 
             })}
             {(resume.photoAlbum ?? []).length > 0 && (
               <div>
-                <div style={{ fontWeight: 600, marginBottom: 8, color: '#ff6b81' }}>生活相册</div>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: token.colorPrimary }}>生活相册</div>
                 <Image.PreviewGroup>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {resume.photoAlbum!.map((url, i) => (

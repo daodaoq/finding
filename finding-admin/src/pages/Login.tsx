@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Card, Form, Input, Button, message } from 'antd';
+import { Card, Form, Input, Button, message, theme } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { adminTokenStorage } from '../utils/adminTokenStorage';
 
 export default function Login() {
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,11 +47,12 @@ export default function Login() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: 'linear-gradient(135deg, #ff6b81, #ff9a76)',
+      justifyContent: 'center', background: `linear-gradient(135deg, ${token.colorPrimary}, #ff9a76)`,
     }}>
+      {/* 渐变第二色 #ff9a76 为品牌色浅色装饰变量,仅登录页装饰用 */}
       <Card
         style={{ width: 400 }}
-        title={<div style={{ textAlign: 'center', fontSize: 20, color: '#ff6b81' }}>Finding 后台管理</div>}
+        title={<div style={{ textAlign: 'center', fontSize: 20, color: token.colorPrimary }}>Finding 后台管理</div>}
       >
         <Form onFinish={onFinish} size="large">
           <Form.Item name="username" rules={[{ required: true, message: '请输入管理员账号' }]}>
@@ -65,7 +67,7 @@ export default function Login() {
             </Button>
           </Form.Item>
         </Form>
-        <div style={{ textAlign: 'center', color: '#999', fontSize: 12 }}>
+        <div style={{ textAlign: 'center', color: token.colorTextTertiary, fontSize: 12 }}>
           仅限管理员账号登录
         </div>
       </Card>

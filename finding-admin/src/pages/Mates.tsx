@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Tag, Tabs, Popconfirm, Input, Modal, Select, message } from 'antd';
+import { Table, Space, Tag, Tabs, Popconfirm, Input, Modal, Select, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -24,6 +24,7 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 };
 
 export default function Mates() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<MateRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -126,7 +127,7 @@ export default function Mates() {
           <a onClick={() => openEdit(record)}>编辑</a>
           {record.status === 1 && (
             <Popconfirm title="确定下架该邀约？" onConfirm={() => takeDown(record.id)}>
-              <a style={{ color: '#fa8c16' }}>下架</a>
+              <a style={{ color: token.colorWarning }}>下架</a>
             </Popconfirm>
           )}
           <Popconfirm title="确定删除该邀约？（将同时清理报名记录）" onConfirm={() => handleDelete(record.id)}>

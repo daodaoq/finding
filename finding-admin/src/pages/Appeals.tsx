@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Tag, Modal, Input, message } from 'antd';
+import { Table, Space, Tag, Modal, Input, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -17,6 +17,7 @@ interface AppealRecord {
 }
 
 export default function Appeals() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<AppealRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -67,8 +68,8 @@ export default function Appeals() {
           <a onClick={() => setDetailTarget(record)}>查看</a>
           {record.status === 0 && (
             <>
-              <a style={{ color: '#52c41a' }} onClick={() => handleAppeal(record.id, true)}>通过</a>
-              <a style={{ color: '#f5222d' }} onClick={() => setRejectTarget(record)}>驳回</a>
+              <a style={{ color: token.colorSuccess }} onClick={() => handleAppeal(record.id, true)}>通过</a>
+              <a style={{ color: token.colorError }} onClick={() => setRejectTarget(record)}>驳回</a>
             </>
           )}
         </Space>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Modal, Image, message, Input, Tabs } from 'antd';
+import { Table, Button, Space, Tag, Modal, Image, message, Input, Tabs, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -27,6 +27,7 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 const FALLBACK_IMG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNjY2MiIGZvbnQtc2l6ZT0iMTYiPuWbvueJh+WKoOi9veWksei0pTwvdGV4dD48L3N2Zz4=';
 
 export default function Verification() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<VerifyRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -188,7 +189,7 @@ export default function Verification() {
               </div>
             )}
             {materials.reviewComment && (
-              <p style={{ marginTop: 12, color: '#ff4d4f' }}>
+              <p style={{ marginTop: 12, color: token.colorError }}>
                 <b>拒绝原因：</b>{materials.reviewComment}
               </p>
             )}

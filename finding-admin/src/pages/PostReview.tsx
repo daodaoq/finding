@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Tag, Modal, Input, Button, Popconfirm, message } from 'antd';
+import { Table, Space, Tag, Modal, Input, Button, Popconfirm, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -13,6 +13,7 @@ interface ReviewItem {
 }
 
 export default function PostReview() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -93,8 +94,8 @@ export default function PostReview() {
       render: (_, record) => (
         <Space>
           <a onClick={() => setDetailTarget(record)}>查看</a>
-          <a style={{ color: '#52c41a' }} onClick={() => approve(record.id)}>通过</a>
-          <a style={{ color: '#f5222d' }} onClick={() => setRejectTarget(record)}>拒绝</a>
+          <a style={{ color: token.colorSuccess }} onClick={() => approve(record.id)}>通过</a>
+          <a style={{ color: token.colorError }} onClick={() => setRejectTarget(record)}>拒绝</a>
         </Space>
       ),
     },
@@ -181,7 +182,7 @@ export default function PostReview() {
       >
         {detailTarget && (
           <div>
-            <div style={{ marginBottom: 8, color: '#999', fontSize: 13 }}>
+            <div style={{ marginBottom: 8, color: token.colorTextTertiary, fontSize: 13 }}>
               {detailTarget.userNickname} · {detailTarget.createdAt?.replace('T', ' ')}
             </div>
             <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 14, lineHeight: 1.7 }}>

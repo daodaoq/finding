@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Space, Tag, Tabs, Avatar, Modal, Input, InputNumber, message } from 'antd';
+import { Table, Space, Tag, Tabs, Avatar, Modal, Input, InputNumber, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
 
@@ -43,6 +43,7 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 };
 
 export default function Reports() {
+  const { token } = theme.useToken();
   const [data, setData] = useState<ReportRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -152,7 +153,7 @@ export default function Reports() {
           {record.status === 0 && (
             <>
               <a onClick={() => openHandle(record, 1)}>处理</a>
-              <a style={{ color: '#888' }} onClick={() => openHandle(record, 2)}>驳回</a>
+              <a style={{ color: token.colorTextTertiary }} onClick={() => openHandle(record, 2)}>驳回</a>
             </>
           )}
           <a style={{ color: 'red' }} onClick={() => openBan(record)}>封禁</a>
@@ -211,7 +212,7 @@ export default function Reports() {
           value={banReason}
           onChange={(e) => setBanReason(e.target.value)}
         />
-        <p style={{ marginTop: 12, fontSize: 12, color: '#999' }}>
+        <p style={{ marginTop: 12, fontSize: 12, color: token.colorTextTertiary }}>
           0 表示永久封禁；按天封禁到期后账号自动解封。封禁立即生效，已登录也会被强制失效。
         </p>
       </Modal>
@@ -266,7 +267,7 @@ export default function Reports() {
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>证据附件：</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {detailTarget.evidence.split(',').filter(Boolean).map((url, i) => (
-                    <img key={i} src={url} alt="证据" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
+                    <img key={i} src={url} alt="证据" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: `1px solid ${token.colorBorderSecondary}` }} />
                   ))}
                 </div>
               </div>
@@ -275,8 +276,8 @@ export default function Reports() {
             <div style={{ marginTop: 8 }}>
               <div style={{ fontWeight: 600, marginBottom: 6 }}>被投诉内容：</div>
               <div style={{
-                background: '#f8f8f8', borderRadius: 8, padding: '10px 12px',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 13, lineHeight: 1.7, color: '#444',
+                background: token.colorFillQuaternary, borderRadius: 8, padding: '10px 12px',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 13, lineHeight: 1.7, color: token.colorTextSecondary,
               }}>
                 {detailTarget.contentSnapshot || '（旧投诉无内容快照）'}
               </div>
@@ -284,7 +285,7 @@ export default function Reports() {
 
             {/* 处理记录 */}
             {detailTarget.status !== 0 && (
-              <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid #f0f0f0', fontSize: 13, color: '#555' }}>
+              <div style={{ marginTop: 8, paddingTop: 10, borderTop: `1px solid ${token.colorFillSecondary}`, fontSize: 13, color: token.colorTextSecondary }}>
                 <div><b>处理结果：</b>{detailTarget.status === 1 ? '已处理' : '已驳回'}</div>
                 {detailTarget.handleNote && <div><b>处理意见：</b>{detailTarget.handleNote}</div>}
                 <div><b>处理时间：</b>{detailTarget.handleTime?.replace('T', ' ')}</div>

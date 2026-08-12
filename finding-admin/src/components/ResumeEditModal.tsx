@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Input, InputNumber, Select, Button, message } from 'antd';
+import { Modal, Input, InputNumber, Select, Button, message, theme } from 'antd';
 import request from '../api/request';
 import type { ResumeFieldValue, ResumeForm } from '../types/admin';
 
@@ -90,6 +90,7 @@ const BLOCKS: { title: string; fields: Field[] }[] = [
 export default function ResumeEditModal({
   userId, open, onClose,
 }: { userId: number | null; open: boolean; onClose: () => void }) {
+  const { token } = theme.useToken();
   const [form, setForm] = useState<ResumeForm>({});
   const [photoText, setPhotoText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -196,16 +197,16 @@ export default function ResumeEditModal({
       width={680}
     >
       {loading ? (
-        <div style={{ textAlign: 'center', color: '#999', padding: 30 }}>加载中...</div>
+        <div style={{ textAlign: 'center', color: token.colorTextTertiary, padding: 30 }}>加载中...</div>
       ) : (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 8 }}>
           {BLOCKS.map((b) => (
             <div key={b.title} style={{ marginBottom: 18 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8, color: '#ff6b81' }}>{b.title}</div>
+              <div style={{ fontWeight: 600, marginBottom: 8, color: token.colorPrimary }}>{b.title}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
                 {b.fields.map((f) => (
                   <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 12, color: '#888' }}>{f.label}</span>
+                    <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{f.label}</span>
                     {renderField(f)}
                   </div>
                 ))}
@@ -213,14 +214,14 @@ export default function ResumeEditModal({
             </div>
           ))}
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8, color: '#ff6b81' }}>生活相册</div>
+            <div style={{ fontWeight: 600, marginBottom: 8, color: token.colorPrimary }}>生活相册</div>
             <Input.TextArea
               rows={3}
               placeholder="每行一个图片 URL（可留空）"
               value={photoText}
               onChange={(e) => setPhotoText(e.target.value)}
             />
-            <div style={{ marginTop: 4, fontSize: 12, color: '#bbb' }}>每行一个图片链接</div>
+            <div style={{ marginTop: 4, fontSize: 12, color: token.colorTextPlaceholder }}>每行一个图片链接</div>
           </div>
           <Button type="link" onClick={() => setForm({})}>清空全部字段</Button>
         </div>
