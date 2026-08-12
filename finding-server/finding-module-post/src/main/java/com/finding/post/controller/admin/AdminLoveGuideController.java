@@ -23,7 +23,8 @@ public class AdminLoveGuideController {
     private final LoveGuideMapper mapper; private final MessageService messageService; private final OperationAuditService audit;
     @GetMapping("/review")
     public Result<PageVO<LoveGuide>> queue(@RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int size) {
-        Page<LoveGuide> r = mapper.selectPage(new Page<>(page, size), new LambdaQueryWrapper<LoveGuide>().eq(LoveGuide::getReviewStatus, 0).orderByAsc(LoveGuide::getCreatedAt));
+        // 展示全部投稿(待审核/已通过/已拒绝),按提交时间倒序,便于管理端查看历史
+        Page<LoveGuide> r = mapper.selectPage(new Page<>(page, size), new LambdaQueryWrapper<LoveGuide>().orderByDesc(LoveGuide::getCreatedAt));
         return Result.ok(PageVO.of(r.getRecords(), r.getTotal(), page, size));
     }
     @PutMapping("/{id}/review")
