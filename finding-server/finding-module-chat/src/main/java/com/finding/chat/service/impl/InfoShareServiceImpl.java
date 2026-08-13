@@ -168,15 +168,6 @@ public class InfoShareServiceImpl implements InfoShareService {
 
     @Override
     public InfoShareStatusVO getShareStatus(Long userId, Long otherUserId) {
-        // 找出两者之间最近一条互换记录(任一方向)
-        InfoShare share = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
-                .and(w -> w
-                        .eq(InfoShare::getFromUserId, userId).eq(InfoShare::getToUserId, otherUserId)
-                        .or()
-                        .eq(InfoShare::getFromUserId, otherUserId).eq(InfoShare::getToUserId, userId))
-                .orderByDesc(InfoShare::getCreatedAt)
-                .last("LIMIT 1"));
-
         InfoShareStatusVO vo = new InfoShareStatusVO();
         vo.setOtherUserId(otherUserId);
         User other = userMapper.selectById(otherUserId);
@@ -185,14 +176,36 @@ public class InfoShareServiceImpl implements InfoShareService {
             vo.setOtherAvatar(other.getAvatar());
         }
 
+        // 任一方向已 approved 即视为已互换(不能用"最近一条"判定,否则较新的 rejected 会覆盖已通过的互换)
+        InfoShare approved = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
+                .and(w -> w
+                        .eq(InfoShare::getFromUserId, userId).eq(InfoShare::getToUserId, otherUserId)
+                        .or()
+                        .eq(InfoShare::getFromUserId, otherUserId).eq(InfoShare::getToUserId, userId))
+                .eq(InfoShare::getStatus, InfoShareStatus.APPROVED.getCode())
+                .orderByDesc(InfoShare::getCreatedAt)
+                .last("LIMIT 1"));
+        if (approved != null) {
+            vo.setShareId(approved.getId());
+            vo.setStatus("approved");
+            return vo;
+        }
+
+        // 无 approved:按最近一条 pending/rejected 显示(任一方向)
+        InfoShare share = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
+                .and(w -> w
+                        .eq(InfoShare::getFromUserId, userId).eq(InfoShare::getToUserId, otherUserId)
+                        .or()
+                        .eq(InfoShare::getFromUserId, otherUserId).eq(InfoShare::getToUserId, userId))
+                .orderByDesc(InfoShare::getCreatedAt)
+                .last("LIMIT 1"));
+
         if (share == null) {
             vo.setStatus("none");
             return vo;
         }
         vo.setShareId(share.getId());
-        if (share.getStatus() == InfoShareStatus.APPROVED.getCode()) {
-            vo.setStatus("approved");
-        } else if (share.getStatus() == InfoShareStatus.REJECTED.getCode()) {
+        if (share.getStatus() == InfoShareStatus.REJECTED.getCode()) {
             vo.setStatus("rejected");
         } else {
             // pending: 区分发送/接收方向

@@ -1,6 +1,7 @@
 package com.finding.chat.adapter;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.finding.chat.constant.InfoShareStatus;
 import com.finding.chat.entity.InfoShare;
 import com.finding.chat.mapper.InfoShareMapper;
 import com.finding.user.service.InfoShareQuery;
@@ -19,6 +20,15 @@ public class InfoShareAdapter implements InfoShareQuery {
 
     @Override
     public int getShareStatus(Long uidA, Long uidB) {
+        // 任一方向已 approved 即视为已互换;不能用"最近一条"判定,否则较新的 rejected 会覆盖已通过的互换授权
+        Long approved = infoShareMapper.selectCount(new LambdaQueryWrapper<InfoShare>()
+                .and(w -> w
+                        .eq(InfoShare::getFromUserId, uidA).eq(InfoShare::getToUserId, uidB)
+                        .or()
+                        .eq(InfoShare::getFromUserId, uidB).eq(InfoShare::getToUserId, uidA))
+                .eq(InfoShare::getStatus, InfoShareStatus.APPROVED.getCode()));
+        if (approved != null && approved > 0) return STATUS_APPROVED;
+
         InfoShare share = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
                 .and(w -> w
                         .eq(InfoShare::getFromUserId, uidA).eq(InfoShare::getToUserId, uidB)
@@ -29,7 +39,6 @@ public class InfoShareAdapter implements InfoShareQuery {
         if (share == null) return STATUS_NONE;
         return switch (share.getStatus()) {
             case 0 -> STATUS_PENDING;
-            case 1 -> STATUS_APPROVED;
             case 2 -> STATUS_REJECTED;
             default -> STATUS_NONE;
         };
