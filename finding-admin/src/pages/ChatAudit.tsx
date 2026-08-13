@@ -63,7 +63,7 @@ export default function ChatAudit() {
     setUserListLoading(true);
     request.get('/admin/users', { params: { page: p, size: 10, keyword: kw || userKeyword } })
       .then((res) => { setUserList(res.data.data.records); setUserListTotal(res.data.data.total); setUserListPage(p); })
-      .catch(() => {})
+      .catch(() => { message.error('加载失败'); })
       .finally(() => setUserListLoading(false));
   };
 
@@ -94,7 +94,7 @@ export default function ChatAudit() {
     setLoading(true);
     request.get('/admin/messages/chat', { params: { userId, otherUserId: other ?? undefined, page: p, size: 20 } })
       .then((res) => { setData(res.data.data.records); setTotal(res.data.data.total); setPage(p); })
-      .catch(() => {})
+      .catch(() => { message.error('加载失败'); })
       .finally(() => setLoading(false));
   };
 
@@ -111,7 +111,7 @@ export default function ChatAudit() {
     setGroupListLoading(true);
     request.get('/admin/groups', { params: { page: p, size: 10, keyword: kw || groupKeyword } })
       .then((res) => { setGroupList(res.data.data.records); setGroupListTotal(res.data.data.total); setGroupListPage(p); })
-      .catch(() => {})
+      .catch(() => { message.error('加载失败'); })
       .finally(() => setGroupListLoading(false));
   };
 
@@ -125,7 +125,7 @@ export default function ChatAudit() {
     setGLoading(true);
     request.get('/admin/messages/group', { params: { groupId, page: p, size: 20 } })
       .then((res) => { setGData(res.data.data.records); setGTotal(res.data.data.total); setGPage(p); })
-      .catch(() => {})
+      .catch(() => { message.error('加载失败'); })
       .finally(() => setGLoading(false));
   };
 

@@ -28,7 +28,7 @@ export default function Announcements() {
         setTotal(res.data.data.total);
         setPage(p);
       })
-      .catch(() => {})
+      .catch(() => { message.error('加载公告失败'); })
       .finally(() => setLoading(false));
   };
 

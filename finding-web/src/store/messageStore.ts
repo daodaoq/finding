@@ -28,6 +28,9 @@ export const useMessageStore = create<MessageState>((set) => ({
       const priv = (convRes.data.data || []).reduce((s, c) => s + (c.unreadCount || 0), 0);
       const grp = (groupRes.data.data || []).reduce((s, g) => s + (g.unreadCount || 0), 0);
       set({ unreadCount: notif + priv + grp });
-    } catch { /* 忽略 */ }
+    } catch (e) {
+      // 角标刷新失败不打断使用,但保留可观测日志,避免静默吞异常
+      console.warn('[messageStore] 刷新未读角标失败', e);
+    }
   },
 }));
