@@ -134,6 +134,7 @@ public class GroupChatService {
     public GroupChatVO getGroupDetail(Long groupId, Long userId) {
         GroupChat group = groupMapper.selectById(groupId);
         if (group == null) throw new BusinessException(ResultCode.PARAM_ERROR, "群聊不存在");
+        requireMember(groupId, userId);
         GroupChatVO vo = toVO(group, userId);
 
         // 加载成员列表
@@ -158,6 +159,7 @@ public class GroupChatService {
 
     /** 发送群消息 */
     public GroupMessageVO sendMessage(Long groupId, Long fromUserId, String content, String messageType) {
+        requireMember(groupId, fromUserId);
         messageType = messageType != null ? messageType : "text";
         // 消息类型边界校验 + 媒体消息仅允许本站上传源(与私聊一致)
         if (!"text".equals(messageType) && !"image".equals(messageType) && !"video".equals(messageType)) {
@@ -215,7 +217,8 @@ public class GroupChatService {
     }
 
     /** 群消息历史 */
-    public PageVO<GroupMessageVO> getMessageHistory(Long groupId, int page, int size) {
+    public PageVO<GroupMessageVO> getMessageHistory(Long groupId, Long userId, int page, int size) {
+        requireMember(groupId, userId);
         Page<GroupMessage> pg = new Page<>(page, size);
         Page<GroupMessage> result = messageMapper.selectPage(pg,
                 new LambdaQueryWrapper<GroupMessage>()
@@ -289,6 +292,7 @@ public class GroupChatService {
     public void addMembers(Long operatorId, Long groupId, List<Long> userIds) {
         GroupChat group = groupMapper.selectById(groupId);
         if (group == null) throw new BusinessException(ResultCode.PARAM_ERROR, "群聊不存在");
+        requireMember(groupId, operatorId);
         for (Long uid : userIds) {
             if (memberMapper.selectCount(new LambdaQueryWrapper<GroupChatMember>()
                     .eq(GroupChatMember::getGroupId, groupId)
@@ -383,6 +387,16 @@ public class GroupChatService {
     }
 
     // ── private ──
+
+    /** 校验用户是否为群成员,非成员抛 FORBIDDEN(防止越权读/写任意群) */
+    private void requireMember(Long groupId, Long userId) {
+        Long count = memberMapper.selectCount(new LambdaQueryWrapper<GroupChatMember>()
+                .eq(GroupChatMember::getGroupId, groupId)
+                .eq(GroupChatMember::getUserId, userId));
+        if (count == null || count == 0) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "你不是该群成员");
+        }
+    }
 
     private void addMember(Long groupId, Long userId, int role) {
         GroupChatMember m = new GroupChatMember();

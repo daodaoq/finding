@@ -95,7 +95,7 @@ public class GroupChatController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int size) {
-        return Result.ok(groupChatService.getMessageHistory(id, page, size));
+        return Result.ok(groupChatService.getMessageHistory(id, JwtInterceptor.getCurrentUserId(), page, size));
     }
 
     /** 撤回群消息(发送者本人,2分钟内) */
