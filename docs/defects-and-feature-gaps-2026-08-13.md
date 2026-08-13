@@ -83,12 +83,12 @@
 ### 前端
 
 - [x] **WS 撤回跨会话串扰** —— `useChatSocket.ts:26-29` + `GroupChat/index.tsx:38-41`：撤回事件只按 `messageId` 匹配，忽略 `action`/`conversationId`。私聊表与群消息表 ID 各自自增必然重叠 → 群聊撤回会错标私聊消息。
-- [ ] **未读角标双重计数竞态** —— `Messages/index.tsx:49-55` 本地 `+1` 与 `MainLayout.tsx:93` 的 `refreshUnread()` 同时改角标，语义错位。
+- [x] **未读角标双重计数竞态** —— `Messages/index.tsx:49-55` 本地 `+1` 与 `MainLayout.tsx:93` 的 `refreshUnread()` 同时改角标，语义错位。
 - [x] **切换会话时旧请求提前关 loading** —— `useChatSession.ts:59-61`：`finally` 不检查 `isCurrent()`，快速切换用户时闪现空消息列表。
 
 ### 安全（P1）
 
-- [ ] **防批量注册可绕过** —— `AuthServiceImpl.java:166-187`：仅按客户端可控的 `X-Forwarded-For` + `X-Device-Id` 计数。
+- [ ] **防批量注册可绕过** —— `AuthServiceImpl.java:166-187`：仅按客户端可控的 `X-Forwarded-For` + `X-Device-Id` 计数。**已修** IP 伪造(`clientIp` 改为优先 nginx 注入的 `X-Real-IP`);**待修** 设备指纹 `X-Device-Id` 仍客户端可控(需服务端生成 HMAC 指纹)。
 - [ ] **中间件默认弱口令 + 端口全网暴露** —— `deploy/docker-compose.yml`：MySQL/Redis/MinIO/RabbitMQ 默认口令 `Finding@2026`/`admin` 且 `0.0.0.0` 绑定。
 
 ---
