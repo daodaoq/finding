@@ -22,11 +22,16 @@
 |---|---|
 | `JWT_ACCESS_SECRET` | 访问令牌签名密钥，生成：`openssl rand -base64 64` |
 | `JWT_REFRESH_SECRET` | 刷新令牌签名密钥，生成：`openssl rand -base64 64` |
+| `MYSQL_ROOT_PASSWORD` / `MYSQL_PASSWORD` | MySQL 口令（docker-compose 与后端共用） |
+| `REDIS_PASSWORD` | Redis 口令 |
+| `RABBITMQ_PASSWORD` / `RABBITMQ_USER` | RabbitMQ 口令/用户 |
+| `MINIO_SECRET_KEY` / `MINIO_ACCESS_KEY` | MinIO 密钥/用户 |
 
-- 这两个变量名**已出现在 `deploy/.env.example` 中**，但那里给的是占位符（`your-...-please-change-this`），**不能直接用于生产**，否则仍是公开已知密钥。
-- 生产 `.env` 会被 `deploy.sh`（第 78 行 `set -a; source .env`）注入到 `java -jar` 进程环境，必须在 `.env` 里填真实随机值。
+- 中间件口令已从 `docker-compose.yml` 与 `application-prod.yml` 移除硬编码弱口令默认值（`Finding@2026`/`admin`），改为**强制环境变量注入**：未设置时 `docker compose up` 与后端启动都会 **fail-fast**（`required variable ... is missing` / `Could not resolve placeholder`），属预期保护。
+- 中间件端口已由 `0.0.0.0` 全网暴露改为**仅绑定 `127.0.0.1`**（MySQL/Redis/RabbitMQ/MinIO 均只监听本机，后端经 `localhost` 访问）；对外仅保留 Nginx 的 `80/443`。若需跨主机访问中间件，请显式调整端口映射。
+- 以上变量名已出现在 `deploy/.env.example` 中（占位符 `change-me-...`），**必须替换为真实随机值**后再复制为 `.env`。
+- 生产 `.env` 会被 `deploy.sh`（第 78 行 `set -a; source .env`）注入到 `java -jar` 进程环境，必须在 `.env` 里填真实值。
 - 开发环境（`dev` profile）已在 `application-dev.yml` 提供 dev-only 默认值，本地运行不受影响。
-- 若部署时忘记设置，后端日志会报 `Could not resolve placeholder 'JWT_ACCESS_SECRET'`（或密钥过短），这是预期内的 fail-fast 保护，不是代码 bug。
 
 ---
 
@@ -88,8 +93,8 @@
 
 ### 安全（P1）
 
-- [ ] **防批量注册可绕过** —— `AuthServiceImpl.java:166-187`：仅按客户端可控的 `X-Forwarded-For` + `X-Device-Id` 计数。**已修** IP 伪造(`clientIp` 改为优先 nginx 注入的 `X-Real-IP`);**待修** 设备指纹 `X-Device-Id` 仍客户端可控(需服务端生成 HMAC 指纹)。
-- [ ] **中间件默认弱口令 + 端口全网暴露** —— `deploy/docker-compose.yml`：MySQL/Redis/MinIO/RabbitMQ 默认口令 `Finding@2026`/`admin` 且 `0.0.0.0` 绑定。
+- [x] **防批量注册可绕过** —— IP 伪造已修(`clientIp` 优先 nginx `X-Real-IP`);设备指纹已改服务端 SHA-256(IP|UA) 派生,不再信任客户端 `X-Device-Id`。
+- [x] **中间件默认弱口令 + 端口全网暴露** —— 口令改强制环境变量注入(fail-fast)+ 端口绑定 `127.0.0.1`;后端 `application-prod.yml` 密码去默认值。
 
 ---
 
