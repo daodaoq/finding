@@ -10,6 +10,7 @@ import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.post.dto.PostCreateDTO;
 import com.finding.post.dto.PostQueryDTO;
+import com.finding.post.constant.PostCategory;
 
 
 import com.finding.post.service.PostService;
@@ -27,9 +28,12 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,21 +79,29 @@ public class PostServiceImpl implements PostService {
                 .eq(Post::getStatus, 1)
                 .eq(Post::getReviewStatus, 0);
 
+        // 分类/标签过滤(置顶优先排序在各 tab 内统一前置)
+        if (StringUtils.hasText(query.getCategory())) {
+            wrapper.eq(Post::getCategory, query.getCategory());
+        }
+        if (StringUtils.hasText(query.getTag())) {
+            wrapper.like(Post::getTags, query.getTag());
+        }
+
         switch (query.getTab()) {
             case "hot" -> {
                 // 热门子排序: views(浏览量最高), likes(点赞率最高), recommended(值得推荐)
                 String sortBy = query.getSortBy();
                 if ("views".equals(sortBy)) {
-                    wrapper.orderByDesc(Post::getViewCount).orderByDesc(Post::getCreatedAt);
+                    wrapper.orderByDesc(Post::getIsTop).orderByDesc(Post::getViewCount).orderByDesc(Post::getCreatedAt);
                 } else if ("likes".equals(sortBy)) {
-                    wrapper.orderByDesc(Post::getLikeCount).orderByDesc(Post::getCreatedAt);
+                    wrapper.orderByDesc(Post::getIsTop).orderByDesc(Post::getLikeCount).orderByDesc(Post::getCreatedAt);
                 } else {
                     // 值得推荐:综合热度 = 点赞×0.6 + 浏览量×0.3 + 评论×0.1,所有帖子参与,不依赖 is_hot 标记。
-                    // 表达式无法用 Lambda 列引用,用 last 注入完整排序(含 created_at 兜底)。
-                    wrapper.last("ORDER BY (like_count * 0.6 + view_count * 0.3 + comment_count * 0.1) DESC, created_at DESC");
+                    // 表达式无法用 Lambda 列引用,用 last 注入完整排序(置顶优先 + 综合热度 + created_at 兜底)。
+                    wrapper.last("ORDER BY is_top DESC, (like_count * 0.6 + view_count * 0.3 + comment_count * 0.1) DESC, created_at DESC");
                 }
             }
-            case "latest" -> wrapper.orderByDesc(Post::getCreatedAt);
+            case "latest" -> wrapper.orderByDesc(Post::getIsTop).orderByDesc(Post::getCreatedAt);
             case "following" -> {
                 if (currentUserId == null) {
                     return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
@@ -102,9 +114,9 @@ public class PostServiceImpl implements PostService {
                     return PageVO.of(List.of(), 0L, query.getPage(), query.getSize());
                 }
                 wrapper.in(Post::getUserId, followedIds);
-                wrapper.orderByDesc(Post::getCreatedAt);
+                wrapper.orderByDesc(Post::getIsTop).orderByDesc(Post::getCreatedAt);
             }
-            default -> wrapper.orderByDesc(Post::getCreatedAt);
+            default -> wrapper.orderByDesc(Post::getIsTop).orderByDesc(Post::getCreatedAt);
         }
 
         Page<Post> page = new Page<>(query.getPage(), query.getSize());
@@ -186,6 +198,8 @@ public class PostServiceImpl implements PostService {
         post.setImages(toJsonImages(dto.getImages()));
         post.setLocation(dto.getLocation());
         post.setCity(dto.getCity());
+        post.setCategory(normalizeCategory(dto.getCategory()));
+        post.setTags(toTagsString(cleanTags(dto.getTags())));
         post.setLatitude(dto.getLatitude());
         post.setLongitude(dto.getLongitude());
         post.setStatus(1);
@@ -209,6 +223,8 @@ public class PostServiceImpl implements PostService {
         post.setImages(toJsonImages(dto.getImages()));
         post.setLocation(dto.getLocation());
         post.setCity(dto.getCity());
+        post.setCategory(normalizeCategory(dto.getCategory()));
+        post.setTags(toTagsString(cleanTags(dto.getTags())));
         if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
         if (dto.getLongitude() != null) post.setLongitude(dto.getLongitude());
         // 编辑后重新审核:拦截词拒绝;送审词回到待审;干净则发布并清除拒绝原因
@@ -494,6 +510,49 @@ public class PostServiceImpl implements PostService {
         return PageVO.of(records, result.getTotal(), page, size);
     }
 
+    /** 分类校验:空→null;非法 code → 报错 */
+    private String normalizeCategory(String category) {
+        if (!StringUtils.hasText(category)) return null;
+        if (!PostCategory.SUPPORTED.contains(category)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的帖子分类");
+        }
+        return category;
+    }
+
+    /** 标签清洗:XSS 清洗 + 去空 + 去重 + 违禁词拦截 + 数量/长度上限 */
+    private List<String> cleanTags(List<String> tags) {
+        if (tags == null) return List.of();
+        List<String> cleaned = new ArrayList<>();
+        for (String t : tags) {
+            if (!StringUtils.hasText(t)) continue;
+            String tag = XssUtil.clean(t.trim());
+            if (!StringUtils.hasText(tag)) continue;
+            if (tag.length() > 15) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "单个标签最多 15 字");
+            }
+            sensitiveWordFilter.assertClean(tag);
+            cleaned.add(tag);
+        }
+        // 去重(保持顺序)
+        List<String> distinct = new ArrayList<>(new LinkedHashSet<>(cleaned));
+        if (distinct.size() > 5) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "最多 5 个标签");
+        }
+        return distinct;
+    }
+
+    /** 标签列表 → 逗号分隔字符串存储 */
+    private String toTagsString(List<String> tags) {
+        if (tags == null || tags.isEmpty()) return null;
+        return String.join(",", tags);
+    }
+
+    /** 逗号分隔字符串 → 标签列表(兼容空/旧数据) */
+    private List<String> parseTags(String tags) {
+        if (tags == null || tags.isBlank()) return List.of();
+        return List.of(tags.split(","));
+    }
+
     /** 图片后端约束:数量≤9、URL长度、仅允许本地上传代理地址 */
     private void validateImages(List<String> images) {
         if (images == null) return;
@@ -553,6 +612,9 @@ public class PostServiceImpl implements PostService {
         vo.setImages(parseImages(post.getImages()));
         vo.setLocation(post.getLocation());
         vo.setCity(post.getCity());
+        vo.setCategory(post.getCategory());
+        vo.setCategoryDesc(PostCategory.descOf(post.getCategory()));
+        vo.setTags(parseTags(post.getTags()));
         vo.setLatitude(post.getLatitude());
         vo.setLongitude(post.getLongitude());
         vo.setViewCount(post.getViewCount());

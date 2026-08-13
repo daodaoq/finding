@@ -17,6 +17,13 @@ public class PostCreateDTO {
     private List<String> images;
     private String location;
     private String city;
+
+    /** 分类 code(PostCategory),可选 */
+    private String category;
+
+    /** 标签(最多 5 个,每个 ≤15 字),可选 */
+    private List<String> tags;
+
     private BigDecimal latitude;
     private BigDecimal longitude;
 }

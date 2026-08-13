@@ -16,6 +16,12 @@ public class PostVO {
     private List<String> images;
     private String location;
     private String city;
+    /** 分类 code */
+    private String category;
+    /** 分类中文描述 */
+    private String categoryDesc;
+    /** 标签列表 */
+    private List<String> tags;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private Integer viewCount;

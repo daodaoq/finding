@@ -15,4 +15,10 @@ public class PostQueryDTO extends PageQueryDTO {
     private String sortBy;
 
     private String city;
+
+    /** 分类过滤(PostCategory.code) */
+    private String category;
+
+    /** 标签过滤(模糊匹配) */
+    private String tag;
 }
