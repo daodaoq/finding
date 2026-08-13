@@ -13,8 +13,10 @@ import com.finding.post.dto.PostCreateDTO;
 import com.finding.post.dto.PostQueryDTO;
 import com.finding.post.entity.Post;
 import com.finding.post.entity.PostComment;
+import com.finding.post.entity.PostFavorite;
 import com.finding.post.mapper.PostCommentLikeMapper;
 import com.finding.post.mapper.PostCommentMapper;
+import com.finding.post.mapper.PostFavoriteMapper;
 import com.finding.post.mapper.PostLikeMapper;
 import com.finding.post.mapper.PostMapper;
 import com.finding.post.vo.PostVO;
@@ -42,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -55,6 +58,7 @@ class PostServiceImplTest {
 
     @Mock private PostMapper postMapper;
     @Mock private PostLikeMapper likeMapper;
+    @Mock private PostFavoriteMapper favoriteMapper;
     @Mock private PostCommentLikeMapper commentLikeMapper;
     @Mock private PostCommentMapper commentMapper;
     @Mock private UserMapper userMapper;
@@ -423,6 +427,115 @@ class PostServiceImplTest {
         verify(postMapper).selectPage(any(), cap.capture());
         String sql = cap.getValue().getTargetSql();
         assertTrue(sql.contains("is_top"), "最新列表应置顶优先排序");
+    }
+
+    // ── 收藏 / 可见性 / @提及 ──
+
+    @Test
+    void createPost_visibilityDefaultsToPublic() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        when(userService.getUserProfile(any(), any())).thenReturn(new com.finding.user.vo.UserVO());
+
+        service.createPost(1L, dto("内容"));
+
+        ArgumentCaptor<Post> cap = ArgumentCaptor.forClass(Post.class);
+        verify(postMapper).insert(cap.capture());
+        assertEquals(0, cap.getValue().getVisibility());
+    }
+
+    @Test
+    void createPost_invalidVisibility_normalizedToPublic() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        when(userService.getUserProfile(any(), any())).thenReturn(new com.finding.user.vo.UserVO());
+        PostCreateDTO dto = dto("内容");
+        dto.setVisibility(9);
+
+        service.createPost(1L, dto);
+
+        ArgumentCaptor<Post> cap = ArgumentCaptor.forClass(Post.class);
+        verify(postMapper).insert(cap.capture());
+        assertEquals(0, cap.getValue().getVisibility());
+    }
+
+    @Test
+    void createPost_mention_notifiesUniqueNickname() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        when(userService.getUserProfile(any(), any())).thenReturn(new com.finding.user.vo.UserVO());
+        when(likeMapper.selectCount(any())).thenReturn(0L);
+        when(favoriteMapper.selectCount(any())).thenReturn(0L);
+        User mentioned = new User();
+        mentioned.setId(9L);
+        mentioned.setNickname("小王");
+        when(userMapper.selectList(any())).thenReturn(List.of(mentioned));
+
+        service.createPost(1L, dto("你好 @小王 在吗"));
+
+        verify(messageService).notify(eq(1L), eq(9L), eq("mention"), any(), any());
+    }
+
+    @Test
+    void toggleFavorite_insertsWhenAbsent() {
+        Post post = post(1L, 2L, 0);
+        when(postMapper.selectById(1L)).thenReturn(post);
+        when(favoriteMapper.selectOne(any())).thenReturn(null);
+
+        service.toggleFavorite(5L, 1L);
+
+        verify(favoriteMapper).insert(any(PostFavorite.class));
+    }
+
+    @Test
+    void toggleFavorite_deletesWhenPresent() {
+        Post post = post(1L, 2L, 0);
+        when(postMapper.selectById(1L)).thenReturn(post);
+        PostFavorite existing = new PostFavorite();
+        existing.setId(7L);
+        when(favoriteMapper.selectOne(any())).thenReturn(existing);
+
+        service.toggleFavorite(5L, 1L);
+
+        verify(favoriteMapper).deleteById(7L);
+    }
+
+    @Test
+    void getPostDetail_privatePost_strangerNotFound() {
+        Post post = post(1L, 2L, 0);
+        post.setVisibility(2);
+        when(postMapper.selectById(1L)).thenReturn(post);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.getPostDetail(1L, 9L));
+        assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void getPostDetail_friendsOnlyPost_strangerNotFound() {
+        Post post = post(1L, 2L, 0);
+        post.setVisibility(1);
+        when(postMapper.selectById(1L)).thenReturn(post);
+        when(followMapper.selectCount(any())).thenReturn(0L); // 非好友
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.getPostDetail(1L, 9L));
+        assertEquals(ResultCode.POST_NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void listPosts_guest_onlyPublicVisibility() {
+        PostQueryDTO query = new PostQueryDTO();
+        query.setTab("latest");
+        query.setPage(1);
+        query.setSize(10);
+        when(postMapper.selectPage(any(), any())).thenReturn(new Page<>(1, 10));
+
+        service.listPosts(query, null);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Wrapper<Post>> cap = ArgumentCaptor.forClass(Wrapper.class);
+        verify(postMapper).selectPage(any(), cap.capture());
+        String sql = cap.getValue().getTargetSql();
+        assertTrue(sql.contains("visibility"), "游客应仅看到公开动态");
     }
 
     private PostCreateDTO dto(String content) {
