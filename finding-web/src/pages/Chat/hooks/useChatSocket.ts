@@ -46,6 +46,11 @@ export function useChatSocket({ targetUserId, user, setMessages, refreshFromServ
     }
   });
 
+  // 卸载时清理「正在输入」定时器,避免卸载后仍 setState
+  useEffect(() => () => {
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+  }, []);
+
   // 断线补偿:WS 重连成功后补拉当前会话
   useWsReconnect(refreshFromServer);
   // 应用切回前台时刷新

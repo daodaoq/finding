@@ -34,6 +34,12 @@ export default function PostDetailPage() {
     targetType: string; targetId: number; roomId?: number; title: string;
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const replyFocusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 卸载时清理回复聚焦定时器
+  useEffect(() => () => {
+    if (replyFocusTimer.current) clearTimeout(replyFocusTimer.current);
+  }, []);
 
   // 删除自己的动态
   const handleDelete = async () => {
@@ -124,7 +130,8 @@ export default function PostDetailPage() {
     setReplyTo({ id: comment.id, name: comment.nickname });
     setInputText('');
     // 延迟聚焦，确保 DOM 更新后再聚焦
-    setTimeout(() => {
+    if (replyFocusTimer.current) clearTimeout(replyFocusTimer.current);
+    replyFocusTimer.current = setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);

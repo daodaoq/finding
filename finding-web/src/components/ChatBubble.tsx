@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatClockTime } from '../utils/format';
 import { showToast } from './Toast';
@@ -60,6 +60,11 @@ export default function ChatBubble({
   const clearPress = () => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
+
+  // 卸载时清理长按定时器,避免消息滚动回收后仍弹出菜单
+  useEffect(() => () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
 
   const recalled = message.isRecalled === 1;
 
