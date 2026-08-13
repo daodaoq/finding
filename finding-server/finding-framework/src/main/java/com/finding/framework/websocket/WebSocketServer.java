@@ -174,6 +174,15 @@ public class WebSocketServer extends TextWebSocketHandler {
     // ── 工具方法 ──
 
     private String extractToken(WebSocketSession session) {
+        // 优先从 Sec-WebSocket-Protocol 子协议读取 token(避免 token 出现在 URL/代理访问日志)
+        org.springframework.http.HttpHeaders headers = session.getHandshakeHeaders();
+        if (headers != null) {
+            java.util.List<String> protocols = headers.get("Sec-WebSocket-Protocol");
+            if (protocols != null && !protocols.isEmpty()) {
+                return protocols.get(0);
+            }
+        }
+        // 兼容旧客户端:URL query 传 token
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
         if (query != null) {
             for (String param : query.split("&")) {

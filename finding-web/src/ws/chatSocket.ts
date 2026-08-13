@@ -92,8 +92,9 @@ class ChatSocket {
   private open() {
     const token = tokenStorage.getAccess();
     if (!token) return;
-    const url = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`;
-    const ws = new WebSocket(url);
+    // token 通过 Sec-WebSocket-Protocol 子协议携带(而非 URL query),避免泄露到访问日志/浏览器历史
+    const url = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat`;
+    const ws = new WebSocket(url, [token]);
     this.ws = ws;
 
     ws.onopen = () => {
