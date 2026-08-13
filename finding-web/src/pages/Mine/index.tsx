@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api/auth';
+import { userApi } from '../../api/user';
 import { showToast } from '../../components/Toast';
 import AppIcon, { type AppIconName } from '../../components/AppIcon';
 import { APP_CONFIG } from '../../utils/config';
@@ -32,10 +33,12 @@ export default function MinePage() {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const [profile, setProfile] = useState<User | null>(user);
+  const [completeness, setCompleteness] = useState<{ score: number; total: number; missing: string[] } | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) return;
     authApi.getMe().then((res) => { setProfile(res.data.data); setUser(res.data.data); }).catch(() => showToast('加载个人信息失败'));
+    userApi.getCompleteness().then((res) => setCompleteness(res.data.data)).catch(() => {});
   }, [isLoggedIn, setUser]);
 
   const open = (to: string) => isLoggedIn ? navigate(to) : showToast('请先登录');
@@ -53,6 +56,12 @@ export default function MinePage() {
       <div className="mine-stat-row"><button onClick={() => open('/mine/mates?tab=following')}><b>{displayUser?.followingCount ?? 0}</b><span>关注</span></button><button onClick={() => open('/mine/mates?tab=followers')}><b>{displayUser?.followerCount ?? 0}</b><span>粉丝</span></button><button onClick={() => open('/mine/mates?tab=mutual')}><b>{displayUser?.mutualCount ?? 0}</b><span>好友</span></button></div>
     </section>
     <section className="mine-quick-card">{QUICK_ITEMS.map((item) => <button key={item.key} onClick={() => open(item.to)}><span><AppIcon name={item.icon} size={21} /></span><small>{item.label}</small></button>)}</section>
+    {completeness && completeness.score < 10 && (
+      <button className="mine-completeness-banner" onClick={() => open('/mine/profile')}>
+        <span>资料完整度 {completeness.score}/{completeness.total} · 还缺：{completeness.missing.join('、')}</span>
+        <span className="mine-completeness-go">去完善 <AppIcon name="right" size={14} /></span>
+      </button>
+    )}
     <button className="mine-resume-card" onClick={() => open('/mine/resume')}><span className="mine-resume-icon"><AppIcon name="book" size={22} /></span><span className="mine-resume-copy"><b>情感简历</b><small>填写或查看我的情感简历</small></span><span className="mine-resume-action">查看 <AppIcon name="right" size={17} /></span></button>
     <section className="mine-menu-card">{MENU_ITEMS.map((item) => <button key={item.key} className="mine-menu-item" onClick={() => open(item.to)}><span className="mine-menu-icon"><AppIcon name={item.icon} size={21} /></span><span className="mine-menu-copy"><b>{item.label}</b><small>{item.desc}</small></span><AppIcon name="right" size={19} className="mine-menu-arrow" /></button>)}</section>
     <button className="mine-logout-btn" onClick={() => { logout(); navigate('/login'); }}>退出登录</button><p className="mine-version">Finding {APP_CONFIG.VERSION} · {APP_CONFIG.SCHOOL_NAME}</p>

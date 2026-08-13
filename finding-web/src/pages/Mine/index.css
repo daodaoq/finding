@@ -350,3 +350,26 @@
   font-size: 11px;
   text-align: center;
 }
+
+.mine-completeness-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 8px);
+  margin: 12px 4px 0;
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: linear-gradient(90deg, #fff7f0, #fff0f3);
+  color: #e07a4f;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.mine-completeness-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-weight: 600;
+}

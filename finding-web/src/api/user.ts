@@ -2,9 +2,20 @@ import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
 import type { User } from '../types/user';
 
+export interface ProfileCompleteness {
+  score: number;
+  filled: number;
+  total: number;
+  missing: string[];
+}
+
 export const userApi = {
   getProfile: (id: number, signal?: AbortSignal) =>
     request.get<ApiResponse<User>>(`/users/${id}`, { signal }),
+
+  /** 我的资料完整度(含缺失项) */
+  getCompleteness: () =>
+    request.get<ApiResponse<ProfileCompleteness>>(`/users/me/completeness`),
 
   follow: (id: number) =>
     request.post<ApiResponse<null>>(`/users/${id}/follow`),

@@ -113,6 +113,7 @@ class MatchServiceImplTest {
         assertTrue(matched);
         verify(userMatchMapper).insert(any());
         verify(messageService, times(2)).notify(anyLong(), anyLong(), eq("match"), any(), any());
+        verify(messageService, times(2)).notify(anyLong(), anyLong(), eq("safety_reminder"), any(), any());
     }
 
     @Test

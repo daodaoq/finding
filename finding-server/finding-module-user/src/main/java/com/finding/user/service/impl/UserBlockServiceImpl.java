@@ -6,7 +6,9 @@ import com.finding.common.ResultCode;
 import com.finding.common.event.UserBlockedEvent;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserBlock;
+import com.finding.user.entity.UserFollow;
 import com.finding.user.mapper.UserBlockMapper;
+import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.service.UserBlockService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class UserBlockServiceImpl implements UserBlockService {
 
     private final UserBlockMapper userBlockMapper;
     private final UserMapper userMapper;
+    private final UserFollowMapper userFollowMapper;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -42,7 +45,13 @@ public class UserBlockServiceImpl implements UserBlockService {
         block.setUserId(userId);
         block.setBlockedUserId(targetUserId);
         userBlockMapper.insert(block);
-        // 拉黑联动:通知各业务模块(如取消双方待处理聊天申请)
+        // 清理残留关系:双向关注(互关)一并解除
+        userFollowMapper.delete(new LambdaQueryWrapper<UserFollow>()
+                .and(w -> w.and(x -> x.eq(UserFollow::getFollowerId, userId)
+                                        .eq(UserFollow::getFolloweeId, targetUserId))
+                        .or().and(x -> x.eq(UserFollow::getFollowerId, targetUserId)
+                                        .eq(UserFollow::getFolloweeId, userId))));
+        // 拉黑联动:通知各业务模块(如取消双方待处理聊天申请、清理心动/配对)
         eventPublisher.publishEvent(new UserBlockedEvent(userId, targetUserId));
     }
 

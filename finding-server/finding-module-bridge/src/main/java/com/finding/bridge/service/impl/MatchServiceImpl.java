@@ -38,6 +38,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MatchServiceImpl implements MatchService {
 
+    /** 配对成功后推送的见面安全提醒 */
+    private static final String SAFETY_REMINDER =
+            "温馨提示：与线上认识的朋友线下见面时，请选择公共场所，并提前告知亲友你的行踪，注意人身与财产安全。";
+
     private final UserLikeMapper userLikeMapper;
     private final UserMatchMapper userMatchMapper;
     private final UserMapper userMapper;
@@ -172,6 +176,9 @@ public class MatchServiceImpl implements MatchService {
         String nb = ub != null ? ub.getNickname() : "对方";
         messageService.notify(a, b, "match", "你和 " + na + " 互相喜欢，配对成功！", null);
         messageService.notify(b, a, "match", "你和 " + nb + " 互相喜欢，配对成功！", null);
+        // 见面安全提醒
+        messageService.notify(a, b, "safety_reminder", SAFETY_REMINDER, null);
+        messageService.notify(b, a, "safety_reminder", SAFETY_REMINDER, null);
     }
 
     /** candidates 中哪些人喜欢 me */

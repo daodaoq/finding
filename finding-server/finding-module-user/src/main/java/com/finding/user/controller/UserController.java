@@ -6,9 +6,11 @@ import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.UserService;
 import com.finding.user.service.UserResumeService;
 import com.finding.user.service.UserBlockService;
+import com.finding.user.service.ProfileCompletenessService;
 import com.finding.common.PageVO;
 import com.finding.user.vo.UserVO;
 import com.finding.user.vo.ResumeViewVO;
+import com.finding.user.vo.ProfileCompletenessVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,13 @@ public class UserController {
     private final UserService userService;
     private final UserResumeService userResumeService;
     private final UserBlockService userBlockService;
+    private final ProfileCompletenessService profileCompletenessService;
+
+    /** 我的资料完整度(含缺失项,用于「还缺 xxx」引导) */
+    @GetMapping("/me/completeness")
+    public Result<ProfileCompletenessVO> myCompleteness() {
+        return Result.ok(profileCompletenessService.completeness(JwtInterceptor.getCurrentUserId()));
+    }
 
     @GetMapping("/{id}")
     public Result<UserVO> getUser(@PathVariable Long id) {
