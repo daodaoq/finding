@@ -12,13 +12,14 @@ services:
     container_name: finding-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Finding@2026}
+      # 无默认值:强制从 .env 注入,避免弱口令被静默使用
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 设置 MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: finding
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       # 初始化 SQL（首次启动自动建表）
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -31,7 +32,7 @@ services:
     networks:
       - finding-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-Finding@2026}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -44,18 +45,18 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --requirepass ${REDIS_PASSWORD:-Finding@2026}
+      --requirepass ${REDIS_PASSWORD:?请在 .env 设置 REDIS_PASSWORD}
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --tcp-keepalive 60
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - finding-net
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-Finding@2026}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -66,12 +67,12 @@ services:
     container_name: finding-rabbitmq
     restart: always
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-Finding@2026}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?请在 .env 设置 RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?请在 .env 设置 RABBITMQ_PASSWORD}
       TZ: Asia/Shanghai
     ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
+      - "127.0.0.1:5672:5672"   # AMQP
+      - "127.0.0.1:15672:15672" # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -89,12 +90,12 @@ services:
     restart: always
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-Finding@2026}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?请在 .env 设置 MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?请在 .env 设置 MINIO_SECRET_KEY}
       TZ: Asia/Shanghai
     ports:
-      - "9000:9000"   # API (S3 兼容)
-      - "9001:9001"   # Web Console
+      - "127.0.0.1:9000:9000"   # API (S3 兼容)
+      - "127.0.0.1:9001:9001"   # Web Console
     volumes:
       - minio_data:/data
     networks:
