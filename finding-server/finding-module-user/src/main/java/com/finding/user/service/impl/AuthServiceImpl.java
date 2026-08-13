@@ -62,7 +62,6 @@ public class AuthServiceImpl implements AuthService {
     private static final String SMS_CODE_PREFIX = "sms:code:";
     private static final String SMS_LIMIT_PREFIX = "sms:limit:";
     private static final String CAPTCHA_PREFIX = "captcha:";
-    private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String REFRESH_PREFIX = "token:refresh:";
     private static final String LOGIN_FAIL_PHONE_PREFIX = "login:fail:phone:";
     private static final String LOGIN_FAIL_IP_PREFIX = "login:fail:ip:";
@@ -317,7 +316,7 @@ public class AuthServiceImpl implements AuthService {
         Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
         long remainingMs = jwtTokenProvider.getAccessExpiration();
         if (remainingMs > 0) {
-            redisUtils.set(TOKEN_BLACKLIST_PREFIX + accessToken, "1", remainingMs, TimeUnit.MILLISECONDS);
+            redisUtils.set(JwtTokenProvider.TOKEN_BLACKLIST_PREFIX + accessToken, "1", remainingMs, TimeUnit.MILLISECONDS);
         }
         if (userId != null) {
             redisUtils.delete(REFRESH_PREFIX + userId);

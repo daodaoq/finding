@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider {
 
+    /** 登出黑名单 key 前缀:logout 写入,认证过滤器读取,实现登出后令牌即时失效 */
+    public static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
+
     private final SecretKey accessKey;
     private final SecretKey refreshKey;
     private final long accessExpiration;

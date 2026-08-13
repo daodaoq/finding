@@ -1,5 +1,6 @@
 package com.finding.user.config;
 
+import com.finding.common.RedisUtils;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.security.JwtTokenProvider;
@@ -35,13 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
+    private final RedisUtils redisUtils;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                      FilterChain filterChain) throws ServletException, IOException {
         String token = resolveToken(request);
 
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateAccessToken(token)) {
+        if (StringUtils.hasText(token) && !isBlacklisted(token) && jwtTokenProvider.validateAccessToken(token)) {
             Long userId = jwtTokenProvider.getUserIdFromToken(token);
             // 校验账号仍有效(封禁/冻结/注销即时失效);角色从数据库重载,不信任令牌内的 auth claim
             User user = userId != null ? loadActiveUser(userId) : null;
@@ -57,6 +59,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** 是否已被登出拉黑(Redis 中 token:blacklist:{token} 存在);Redis 异常时降级放行,由令牌过期时间兜底 */
+    private boolean isBlacklisted(String token) {
+        try {
+            return redisUtils.exists(JwtTokenProvider.TOKEN_BLACKLIST_PREFIX + token);
+        } catch (Exception e) {
+            log.debug("读取令牌黑名单失败,降级放行: {}", e.getMessage());
+            return false;
+        }
     }
 
     /** 加载状态正常的账号(封禁/冻结/注销返回 null) */
