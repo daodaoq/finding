@@ -100,12 +100,14 @@
   gap: 6px;
   margin: 0 0 12px;
 }
-.post-cat {
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--primary-soft);
+.post-category-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 10px;
   color: var(--accent);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 .post-tag {
   padding: 2px 8px;

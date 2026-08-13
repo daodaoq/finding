@@ -46,10 +46,15 @@ export default function PostCard({ post, onLike, onClick, canManage, onEdit, onD
       {canManage && <div className="post-manage" onClick={(event) => event.stopPropagation()}><button className="post-manage-btn" onClick={() => onEdit?.(post.id)}>编辑</button><button className="post-manage-btn danger" onClick={() => onDelete?.(post.id)}>删除</button></div>}
     </header>
     <div className="post-body">{renderContent(post.content)}</div>
-    {(post.categoryDesc || (post.tags && post.tags.length > 0)) && (
+    {post.categoryDesc && (
+      <div className="post-category-line">
+        <AppIcon name="book" size={14} />
+        <span>{post.categoryDesc}</span>
+      </div>
+    )}
+    {(post.tags && post.tags.length > 0) && (
       <div className="post-meta-tags">
-        {post.categoryDesc && <span className="post-cat">{post.categoryDesc}</span>}
-        {post.tags?.map((t) => <span key={t} className="post-tag">#{t}</span>)}
+        {post.tags.map((t) => <span key={t} className="post-tag">#{t}</span>)}
       </div>
     )}
     {post.images?.length ? <div className={`post-images images-${Math.min(post.images.length, 3)}`}>{post.images.slice(0, 3).map((url, index) => <img key={index} src={url} alt="" loading="lazy" />)}</div> : null}
