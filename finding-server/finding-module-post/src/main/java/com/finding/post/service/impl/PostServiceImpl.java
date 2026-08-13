@@ -29,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -108,19 +110,21 @@ public class PostServiceImpl implements PostService {
         Page<Post> page = new Page<>(query.getPage(), query.getSize());
         Page<Post> result = postMapper.selectPage(page, wrapper);
 
-        // 同步评论数(仅正常评论)
-        result.getRecords().forEach(p -> {
-            Long c = commentMapper.selectCount(
-                    new LambdaQueryWrapper<PostComment>()
-                            .eq(PostComment::getPostId, p.getId())
-                            .eq(PostComment::getStatus, 0));
-            if (!c.equals((long) p.getCommentCount())) {
-                p.setCommentCount(c.intValue());
-                postMapper.updateById(p);
+        // 批量统计评论数(单条 GROUP BY 替换逐条 selectCount 的 N+1);读路径仅修正展示值,不写库
+        List<Post> posts = result.getRecords();
+        if (!posts.isEmpty()) {
+            Map<Long, Integer> realCounts = new HashMap<>();
+            for (Map<String, Object> row : commentMapper.countByPosts(posts.stream().map(Post::getId).toList())) {
+                Object pid = row.get("postId");
+                Object cnt = row.get("cnt");
+                if (pid != null && cnt != null) {
+                    realCounts.put(((Number) pid).longValue(), ((Number) cnt).intValue());
+                }
             }
-        });
+            posts.forEach(p -> p.setCommentCount(realCounts.getOrDefault(p.getId(), 0)));
+        }
 
-        List<PostVO> records = result.getRecords().stream()
+        List<PostVO> records = posts.stream()
                 .map(p -> toVO(p, currentUserId))
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), query.getPage(), query.getSize());
