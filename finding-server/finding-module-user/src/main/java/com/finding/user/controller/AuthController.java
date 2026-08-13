@@ -15,6 +15,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.Map;
 
 @RestController
@@ -32,9 +35,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody RegisterDTO dto,
-                                 @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
                                  HttpServletRequest request) {
-        authService.register(dto, clientIp(request), deviceId);
+        // 设备指纹由服务端派生(IP+UA 哈希),不再信任客户端可控的 X-Device-Id
+        authService.register(dto, clientIp(request), deviceFingerprint(request));
         return Result.ok();
     }
 
@@ -113,6 +116,20 @@ public class AuthController {
     @GetMapping("/account")
     public Result<Map<String, String>> account() {
         return Result.ok(authService.getAccount(JwtInterceptor.getCurrentUserId()));
+    }
+
+    /** 服务端派生设备指纹:SHA-256(IP|UA),客户端无法通过伪造 X-Device-Id 绕过按设备限流 */
+    private String deviceFingerprint(HttpServletRequest request) {
+        String ip = clientIp(request);
+        String ua = request.getHeader("User-Agent");
+        String raw = ip + "|" + (ua != null ? ua : "");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (Exception e) {
+            // SHA-256 必然可用,此处仅兜底;退回 IP 仍优于客户端可控随机值
+            return "ip-" + ip;
+        }
     }
 
     /** 取客户端真实 IP:优先 nginx 注入的 X-Real-IP(proxy_set_header 覆盖客户端伪造值),否则 XFF 末位,最后 remoteAddr */
