@@ -22,8 +22,8 @@ export function useChatSocket({ targetUserId, user, setMessages, refreshFromServ
 
   // WebSocket 实时消息处理(连接由全局单例管理;回调经 ref 始终指向最新闭包)
   useWebSocket((wsMsg) => {
-    // 消息撤回:仅更新本地对应消息,不做删除
-    if (wsMsg.type === 'message_recalled' && wsMsg.messageId) {
+    // 消息撤回:仅更新本地对应消息,不做删除;只处理私聊撤回(action='private'),避免群聊撤回的 messageId 串扰
+    if (wsMsg.type === 'message_recalled' && wsMsg.action === 'private' && wsMsg.messageId) {
       setMessages((prev) => prev.map((m) =>
         m.id === wsMsg.messageId ? { ...m, isRecalled: 1, content: '该消息已撤回' } : m));
       return;
