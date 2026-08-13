@@ -1,4 +1,4 @@
-import { tokenStorage } from '../utils/tokenStorage';
+import { tokenStorage, decodeJwtPayload } from '../utils/tokenStorage';
 
 /**
  * 全局唯一 WebSocket 连接控制器 —— 单个标签页只保持一条 /ws/chat 连接。
@@ -142,8 +142,8 @@ class ChatSocket {
     const token = tokenStorage.getAccess();
     if (!token) return false;
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp * 1000 > Date.now();
+      const payload = decodeJwtPayload(token) as { exp?: number };
+      return (payload.exp ?? 0) * 1000 > Date.now();
     } catch {
       return false;
     }
