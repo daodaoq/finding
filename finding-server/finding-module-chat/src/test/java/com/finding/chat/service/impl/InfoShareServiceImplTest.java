@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
+import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.RoomFriend;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.InfoShareMapper;
+import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
@@ -51,6 +53,7 @@ class InfoShareServiceImplTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private ChatApplyMapper chatApplyMapper;
     @Mock private RoomFriendMapper roomFriendMapper;
+    @Mock private PrivateChatMapper privateChatMapper;
 
     @InjectMocks
     private InfoShareServiceImpl service;
@@ -61,6 +64,7 @@ class InfoShareServiceImplTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), InfoShare.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), ChatApply.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), RoomFriend.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), PrivateChat.class);
     }
 
     private User activeUser() {
@@ -149,6 +153,24 @@ class InfoShareServiceImplTest {
         when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
         when(chatApplyMapper.selectCount(any())).thenReturn(0L); // 无心动申请
         when(roomFriendMapper.selectCount(any())).thenReturn(1L); // 但已有会话(打招呼已接受)
+        when(infoShareMapper.selectOne(any())).thenReturn(null);
+        when(infoShareMapper.insert(any())).thenReturn(1);
+        when(userMapper.selectById(1L)).thenReturn(activeUser());
+
+        assertDoesNotThrow(() -> service.requestShare(1L, 2L));
+        verify(infoShareMapper).insert(any());
+        verify(messageService).notify(any(), any(), any(), any(), any());
+    }
+
+    /** 回归:无会话/无心动申请,但确有私信往来的用户,应允许互换信息(兜底) */
+    @Test
+    void requestShare_withPrivateMessages_succeeds() {
+        when(rateLimiter.tryAcquire(anyString(), anyInt(), anyLong())).thenReturn(true);
+        when(userMapper.selectById(2L)).thenReturn(activeUser());
+        when(relationshipService.canDiscover(1L, 2L)).thenReturn(true);
+        when(chatApplyMapper.selectCount(any())).thenReturn(0L);
+        when(roomFriendMapper.selectCount(any())).thenReturn(0L);
+        when(privateChatMapper.selectCount(any())).thenReturn(3L); // 有历史私信
         when(infoShareMapper.selectOne(any())).thenReturn(null);
         when(infoShareMapper.insert(any())).thenReturn(1);
         when(userMapper.selectById(1L)).thenReturn(activeUser());

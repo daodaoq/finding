@@ -6,10 +6,12 @@ import com.finding.chat.constant.ChatApplyStatus;
 import com.finding.chat.constant.InfoShareStatus;
 import com.finding.chat.entity.ChatApply;
 import com.finding.chat.entity.InfoShare;
+import com.finding.chat.entity.PrivateChat;
 import com.finding.chat.entity.RoomFriend;
 import com.finding.chat.event.InfoSharePushEvent;
 import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.InfoShareMapper;
+import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.chat.service.InfoShareService;
 import com.finding.chat.vo.InfoShareStatusVO;
@@ -43,6 +45,7 @@ public class InfoShareServiceImpl implements InfoShareService {
     private final ApplicationEventPublisher eventPublisher;
     private final ChatApplyMapper chatApplyMapper;
     private final RoomFriendMapper roomFriendMapper;
+    private final PrivateChatMapper privateChatMapper;
 
     @Override
     @Transactional
@@ -68,14 +71,19 @@ public class InfoShareServiceImpl implements InfoShareService {
             throw new BusinessException(ResultCode.USER_NOT_DISCOVERABLE);
         }
         // 业务规则:必须先建立聊天关系才能互换资料。
-        // 聊天关系可经由两条路径建立:① 鹊桥心动申请任一方向通过;② 打招呼被对方接受后已创建会话(room_friend)。
-        // 只判断 chat_apply 会漏掉"已经聊上但没走过心动申请"的用户,因此任一条件满足即可。
-        Long approvedCount = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
+        // 聊天关系可经由三条路径建立:① 鹊桥心动申请任一方向通过;② 已建立单聊会话(room_friend);③ 有实际私信往来(兜底)。
+        // ①②任一条缺失时③能覆盖"聊过天但无 room_friend/chat_apply"的历史/种子数据。
+        long approvedApply = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
                 .eq(ChatApply::getStatus, ChatApplyStatus.APPROVED.getCode())
                 .and(w -> w.and(x -> x.eq(ChatApply::getFromUserId, fromUserId).eq(ChatApply::getToUserId, toUserId))
                         .or().and(x -> x.eq(ChatApply::getFromUserId, toUserId).eq(ChatApply::getToUserId, fromUserId))));
-        boolean hasChatRelation = (approvedCount != null && approvedCount > 0) || hasConversation(fromUserId, toUserId);
+        long roomFriends = countRoomFriend(fromUserId, toUserId);
+        long privateMsgs = countPrivateChat(fromUserId, toUserId);
+        boolean hasChatRelation = approvedApply > 0 || roomFriends > 0 || privateMsgs > 0;
         if (!hasChatRelation) {
+            // 诊断日志:云端若仍被拒,从日志可看出三项计数哪个为 0,定位数据/部署问题
+            log.warn("互换信息被拒(未建立聊天关系): from={}, to={}, approvedApply={}, roomFriend={}, privateMsgs={}",
+                    fromUserId, toUserId, approvedApply, roomFriends, privateMsgs);
             throw new BusinessException(ResultCode.INFO_SHARE_NEED_CHAT);
         }
 
@@ -193,13 +201,21 @@ public class InfoShareServiceImpl implements InfoShareService {
         return vo;
     }
 
-    /** 是否已建立单聊会话(room_friend 按 room_key 唯一,uid1 < uid2) */
-    private boolean hasConversation(Long a, Long b) {
+    /** 单聊会话数(room_friend 按 room_key 唯一,uid1 < uid2) */
+    private long countRoomFriend(Long a, Long b) {
         long uid1 = Math.min(a, b);
         long uid2 = Math.max(a, b);
         Long count = roomFriendMapper.selectCount(new LambdaQueryWrapper<RoomFriend>()
                 .eq(RoomFriend::getRoomKey, uid1 + "_" + uid2));
-        return count != null && count > 0;
+        return count != null ? count : 0;
+    }
+
+    /** 双方实际私信条数(不依赖 room_friend,覆盖历史/种子数据里"聊过但没建会话记录"的情况) */
+    private long countPrivateChat(Long a, Long b) {
+        Long count = privateChatMapper.selectCount(new LambdaQueryWrapper<PrivateChat>()
+                .and(w -> w.and(x -> x.eq(PrivateChat::getFromUserId, a).eq(PrivateChat::getToUserId, b))
+                        .or().and(x -> x.eq(PrivateChat::getFromUserId, b).eq(PrivateChat::getToUserId, a))));
+        return count != null ? count : 0;
     }
 
 }
