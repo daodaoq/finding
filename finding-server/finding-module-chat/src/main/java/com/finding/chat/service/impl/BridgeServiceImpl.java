@@ -15,6 +15,7 @@ import com.finding.chat.entity.RecommendEvent;
 import com.finding.chat.entity.RecommendExclude;
 import com.finding.chat.entity.Room;
 import com.finding.chat.entity.UserCardConfig;
+import com.finding.chat.entity.UserLike;
 import com.finding.chat.entity.UserMatchPreference;
 import com.finding.chat.dto.UserCardConfigDTO;
 import com.finding.user.entity.User;
@@ -24,6 +25,7 @@ import com.finding.chat.mapper.ChatApplyMapper;
 import com.finding.chat.mapper.ContactMapper;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.UserCardConfigMapper;
+import com.finding.chat.mapper.UserLikeMapper;
 import com.finding.chat.mapper.RecommendEventMapper;
 import com.finding.chat.mapper.RecommendExcludeMapper;
 import com.finding.chat.mapper.RoomMapper;
@@ -84,6 +86,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final RecommendExcludeMapper excludeMapper;
     private final RecommendEventMapper eventMapper;
     private final UserCardConfigMapper cardConfigMapper;
+    private final UserLikeMapper userLikeMapper;
     private final MatchScoreWeights weights;
     private final UserWriteGuard userWriteGuard;
     private final RedisRateLimiter rateLimiter;
@@ -225,6 +228,13 @@ public class BridgeServiceImpl implements BridgeService {
                                 .in(ChatApply::getToUserId, pageIds))
                         .stream().map(ChatApply::getToUserId).collect(Collectors.toSet());
 
+        // 批量加载本页候选人中「我已心动」的集合,避免逐人 N+1 查询
+        Set<Long> likedIds = pageIds.isEmpty() ? Set.of()
+                : userLikeMapper.selectList(new LambdaQueryWrapper<UserLike>()
+                                .eq(UserLike::getLikerId, userId)
+                                .in(UserLike::getLikedId, pageIds))
+                        .stream().map(UserLike::getLikedId).collect(Collectors.toSet());
+
         // 批量加载本页候选人的卡片展示配置(按本人意愿裁剪字段)
         Map<Long, UserCardConfig> cardConfigs = pageIds.isEmpty() ? Map.of()
                 : cardConfigMapper.selectList(new LambdaQueryWrapper<UserCardConfig>()
@@ -232,7 +242,7 @@ public class BridgeServiceImpl implements BridgeService {
                         .stream().collect(Collectors.toMap(UserCardConfig::getUserId, c -> c));
 
         List<HomeFeedVO> records = paged.stream()
-                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds,
+                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds, likedIds,
                         cardConfigs.get(s.user.getId()), s.score.reasons))
                 .collect(Collectors.toList());
 
@@ -743,6 +753,7 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setTargetType(me.getTargetType());
         vo.setLastLoginAt(me.getLastLoginAt());
         vo.setIsLiked(false);
+        vo.setLiked(false);
         vo.setMatchReasons(List.of());
         // 预览即"别人看到的我的卡片":按我的配置裁剪字段
         applyCardConfig(vo, getCardConfig(userId));
@@ -921,7 +932,7 @@ public class BridgeServiceImpl implements BridgeService {
 
 
     private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId, Set<Long> appliedIds,
-                                UserCardConfig cardConfig, List<String> matchReasons) {
+                                Set<Long> likedIds, UserCardConfig cardConfig, List<String> matchReasons) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
@@ -947,6 +958,8 @@ public class BridgeServiceImpl implements BridgeService {
 
         // 是否已申请(由批量加载的 appliedIds 判断)
         vo.setIsLiked(appliedIds.contains(user.getId()));
+        // 是否已心动(由批量加载的 likedIds 判断)
+        vo.setLiked(likedIds.contains(user.getId()));
 
         // 按候选人卡片配置隐藏未开启的字段(在可见性投影之后叠加,只会更保守)
         applyCardConfig(vo, cardConfig);

@@ -22,7 +22,8 @@ public class HomeFeedVO {
     private LocalDateTime lastLoginAt;
 
     // Computed
-    private Boolean isLiked;
+    private Boolean isLiked;    // 是否已发送聊天申请
+    private Boolean liked;      // 是否已心动(双向 match 的喜欢)
     private Integer mutualFriends;
     /** 匹配理由,如「同校」「已认证」「兴趣相投」 */
     private List<String> matchReasons;
