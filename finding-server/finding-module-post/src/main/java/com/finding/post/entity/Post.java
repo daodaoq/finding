@@ -17,6 +17,8 @@ public class Post {
     private String images;          // JSON array of URLs
     private String location;
     private String city;
+    private String category;        // 分类(PostCategory.code)
+    private String tags;            // 逗号分隔标签
     private BigDecimal latitude;
     private BigDecimal longitude;
     private Integer viewCount;

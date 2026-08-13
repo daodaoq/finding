@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS `post` (
     `images` VARCHAR(2000) DEFAULT NULL COMMENT 'comma-separated image URLs',
     `location` VARCHAR(100) DEFAULT NULL,
     `city` VARCHAR(50) DEFAULT NULL,
+    `category` VARCHAR(30) DEFAULT NULL COMMENT '分类',
+    `tags` VARCHAR(255) DEFAULT NULL COMMENT '逗号分隔标签',
     `latitude` DECIMAL(10,7) DEFAULT NULL,
     `longitude` DECIMAL(10,7) DEFAULT NULL,
     `view_count` INT DEFAULT 0,
@@ -98,6 +100,7 @@ CREATE TABLE IF NOT EXISTS `post` (
     KEY `idx_created_at` (`created_at`),
     KEY `idx_hot` (`is_hot`, `like_count`, `created_at`),
     KEY `idx_city` (`city`, `created_at`),
+    KEY `idx_category` (`category`, `created_at`),
     KEY `idx_status` (`status`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
