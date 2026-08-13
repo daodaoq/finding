@@ -67,6 +67,46 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.post-nickname-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.post-badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #fff;
+}
+.post-badge-top {
+  background: #ff8f1f;
+}
+.post-badge-hot {
+  background: #e5484d;
+}
+.post-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.post-cat {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--primary-soft);
+  color: var(--accent);
+  font-size: 12px;
+}
+.post-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
 .post-time {
   color: var(--muted);
   font-size: 12px;

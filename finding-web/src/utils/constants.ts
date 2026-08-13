@@ -18,6 +18,18 @@ export const MATE_CATEGORIES = [
   { code: 'other', name: '其他', icon: 'inbox' },
 ] as const;
 
+/** 帖子分类(与后端 PostCategory 枚举对应) */
+export const POST_CATEGORIES = [
+  { code: 'study', name: '学习交流', icon: 'book' },
+  { code: 'life', name: '校园生活', icon: 'users' },
+  { code: 'confession', name: '表白墙', icon: 'heart' },
+  { code: 'lostfound', name: '失物招领', icon: 'search' },
+  { code: 'job', name: '求职招聘', icon: 'send' },
+  { code: 'food', name: '美食探店', icon: 'star' },
+  { code: 'sports', name: '运动健身', icon: 'message' },
+  { code: 'other', name: '其他', icon: 'inbox' },
+] as const;
+
 export const QUICK_ACTIONS = [
   { key: 'like', label: '喜欢', icon: 'heart' }, { key: 'letter', label: '来信', icon: 'send' }, { key: 'card', label: '我的卡片', icon: 'star' },
 ] as const;

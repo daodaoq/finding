@@ -4,7 +4,7 @@ import type { Post } from '../types/post';
 import type { Comment } from '../types/comment';
 
 export const postApi = {
-  list: (params: { tab?: string; page?: number; size?: number; city?: string }) =>
+  list: (params: { tab?: string; page?: number; size?: number; city?: string; category?: string; tag?: string }) =>
     request.get<ApiResponse<PageResult<Post>>>('/posts', { params }),
 
   myPosts: (page = 1, size = 20) =>
@@ -13,10 +13,10 @@ export const postApi = {
   detail: (id: number) =>
     request.get<ApiResponse<Post>>(`/posts/${id}`),
 
-  create: (data: { content: string; images?: string[]; location?: string; city?: string }) =>
+  create: (data: { content: string; images?: string[]; location?: string; city?: string; category?: string; tags?: string[] }) =>
     request.post<ApiResponse<Post>>('/posts', data),
 
-  update: (id: number, data: { content: string; images?: string[]; location?: string; city?: string }) =>
+  update: (id: number, data: { content: string; images?: string[]; location?: string; city?: string; category?: string; tags?: string[] }) =>
     request.put<ApiResponse<Post>>(`/posts/${id}`, data),
 
   myLikes: (page = 1, size = 20) =>

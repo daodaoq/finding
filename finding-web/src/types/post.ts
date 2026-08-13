@@ -5,6 +5,9 @@ export interface Post {
   images: string[];
   location: string;
   city: string;
+  category?: string;
+  categoryDesc?: string;
+  tags?: string[];
   latitude: number;
   longitude: number;
   viewCount: number;

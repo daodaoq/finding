@@ -6,6 +6,7 @@ import LoginModal from '../../components/LoginModal';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { showToast } from '../../components/Toast';
 import AppIcon from '../../components/AppIcon';
+import { POST_CATEGORIES } from '../../utils/constants';
 import './index.css';
 
 const MAX_IMAGES = 9;
@@ -15,6 +16,8 @@ export default function CreatePostPage() {
   const editId = Number(searchParams.get('id')) || 0; // >0 表示编辑模式
   const [content, setContent] = useState('');
   const [location, setLocation] = useState('');
+  const [category, setCategory] = useState('');
+  const [tagInput, setTagInput] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(!!editId);
@@ -30,6 +33,8 @@ export default function CreatePostPage() {
       .then((res) => {
         setContent(res.data.data.content);
         setLocation(res.data.data.location || '');
+        setCategory(res.data.data.category || '');
+        setTagInput((res.data.data.tags || []).join(','));
         setImages(res.data.data.images || []);
       })
       .catch(() => { navigate(-1); })
@@ -70,10 +75,16 @@ export default function CreatePostPage() {
       if (!content.trim()) { showToast('请输入内容'); return; }
       setSubmitting(true);
       try {
+        // 标签:按中英文逗号/空白切分,去空去重,最多 5 个
+        const tags = Array.from(new Set(
+          tagInput.split(/[,，\s]+/).map((t) => t.trim()).filter(Boolean),
+        )).slice(0, 5);
         const payload = {
           content: content.trim(),
           images: images.length ? images : undefined,
           location: location.trim() || undefined,
+          category: category || undefined,
+          tags: tags.length ? tags : undefined,
         };
         if (editId) {
           await postApi.update(editId, payload);
@@ -112,6 +123,36 @@ export default function CreatePostPage() {
           />
         )}
         <div className="cp-char-count">{content.length}/5000</div>
+
+        {/* 分类选择 */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          {POST_CATEGORIES.map((cat) => (
+            <button
+              key={cat.code}
+              type="button"
+              onClick={() => setCategory(category === cat.code ? '' : cat.code)}
+              style={{
+                padding: '6px 12px', borderRadius: 16, border: '1px solid #ddd', background: '#fff',
+                color: category === cat.code ? '#fff' : '#555', fontSize: 13, cursor: 'pointer',
+                ...(category === cat.code ? { background: '#7c4dff', borderColor: '#7c4dff' } : {}),
+              }}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* 标签输入 */}
+        <div className="cp-location-row" style={{ marginTop: 12 }}>
+          <AppIcon name="star" size={16} />
+          <input
+            className="cp-location-input"
+            type="text"
+            placeholder="添加标签，用逗号分隔（选填，最多5个）"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+          />
+        </div>
 
         {/* 图片上传区 */}
         <div className="cp-images" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>

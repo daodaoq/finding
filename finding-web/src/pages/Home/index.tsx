@@ -8,6 +8,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import LoginModal from '../../components/LoginModal';
 import { showToast } from '../../components/Toast';
 import { APP_CONFIG } from '../../utils/config';
+import { POST_CATEGORIES } from '../../utils/constants';
 import type { Post } from '../../types/post';
 import type { Mate } from '../../types/mate';
 import PostFeed from './components/PostFeed';
@@ -34,6 +35,7 @@ const GUEST_MAX_POSTS = 5;
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('latest');
   const [sortBy, setSortBy] = useState('recommended');
+  const [postCategory, setPostCategory] = useState('');
   // 搭子 Tab 相关状态
   const [mateCategory, setMateCategory] = useState('');
   const [mateSortBy, setMateSortBy] = useState('time');
@@ -45,20 +47,21 @@ export default function HomePage() {
 
   const isPostTab = activeTab !== 'mate';
 
-  // 帖子列表：切换 Tab / 排序时重置（搭子 Tab 下不请求）
-  const postList = useInfiniteList<Post, [string, string?]>({
-    fetcher: async (p, tab, sort) => {
+  // 帖子列表：切换 Tab / 排序 / 分类时重置（搭子 Tab 下不请求）
+  const postList = useInfiniteList<Post, [string, string?, string?]>({
+    fetcher: async (p, tab, sort, cat) => {
       if (tab === 'mate') return { records: [], hasMore: false };
       const res = await postApi.list({
         tab,
         page: p,
         size: 10,
         sortBy: tab === 'hot' ? sort : undefined,
+        category: cat || undefined,
       } as Record<string, unknown>);
       return res.data.data;
     },
-    args: [activeTab, isPostTab ? sortBy : undefined],
-    deps: [isPostTab ? activeTab : null, sortBy],
+    args: [activeTab, isPostTab ? sortBy : undefined, postCategory],
+    deps: [isPostTab ? activeTab : null, sortBy, postCategory],
     onError: () => showToast('加载失败'),
   });
 
@@ -134,6 +137,23 @@ export default function HomePage() {
       {/* 帖子 Tab */}
       {isPostTab && (
         <>
+          {/* 分类筛选 */}
+          <div style={{ display: 'flex', gap: 8, padding: '0 12px 8px', overflowX: 'auto' }}>
+            {POST_CATEGORIES.map((cat) => (
+              <button
+                key={cat.code}
+                onClick={() => setPostCategory(postCategory === cat.code ? '' : cat.code)}
+                style={{
+                  flex: '0 0 auto', padding: '5px 12px', borderRadius: 15, border: '1px solid #ddd',
+                  background: postCategory === cat.code ? '#7c4dff' : '#fff',
+                  color: postCategory === cat.code ? '#fff' : '#555', fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
           {/* 热门子排序 */}
           {activeTab === 'hot' && (
             <div className="home-sort-bar">
