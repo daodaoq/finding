@@ -1,6 +1,6 @@
 import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
-import type { BridgeRecommendUser, ChatApply, UserCardConfig } from '../types/bridge';
+import type { BridgeRecommendUser, ChatApply, MatchUser, UserCardConfig } from '../types/bridge';
 import type { InfoShareStatus } from '../types/resume';
 
 export interface UserMatchPreference {
@@ -80,4 +80,27 @@ export const bridgeApi = {
   /** 预览我的卡片(别人视角,按配置裁剪) */
   previewMyCard: () =>
     request.get<ApiResponse<BridgeRecommendUser>>('/bridge/card-config/preview'),
+};
+
+/** 双向心动配对 */
+export const matchApi = {
+  /** 心动 targetId;返回是否配对成功 */
+  like: (userId: number) =>
+    request.post<ApiResponse<{ matched: boolean }>>(`/match/like/${userId}`),
+
+  /** 取消心动(已配对则解除配对) */
+  unlike: (userId: number) =>
+    request.delete<ApiResponse<null>>(`/match/like/${userId}`),
+
+  /** 我喜欢的人 */
+  likesSent: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<MatchUser>>>('/match/likes/sent', { params: { page, size } }),
+
+  /** 喜欢我的人 */
+  likesReceived: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<MatchUser>>>('/match/likes/received', { params: { page, size } }),
+
+  /** 互相喜欢(配对)列表 */
+  matches: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<MatchUser>>>('/match/matches', { params: { page, size } }),
 };

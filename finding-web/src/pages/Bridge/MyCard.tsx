@@ -105,7 +105,7 @@ export default function MyCardPage() {
 
       {/* 别人视角预览 */}
       <div className="mycard-preview">
-        <SwipeCard user={previewUser} onLike={() => {}} onSkip={() => {}} disabled />
+        <SwipeCard user={previewUser} onLike={() => {}} onApply={() => {}} onSkip={() => {}} disabled />
       </div>
       {cfg.showMatchReasons === 1 && (
         <p className="mycard-note">* 匹配理由为示例，实际会按对方资料计算</p>

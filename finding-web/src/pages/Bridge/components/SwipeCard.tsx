@@ -18,11 +18,12 @@ const REASON_EXPLAIN: Record<string, string> = {
 interface Props {
   user: BridgeRecommendUser;
   onLike: () => void;
+  onApply: () => void;
   onSkip: () => void;
   disabled?: boolean;
 }
 
-export default function SwipeCard({ user, onLike, onSkip, disabled }: Props) {
+export default function SwipeCard({ user, onLike, onApply, onSkip, disabled }: Props) {
   const [showWhy, setShowWhy] = useState(false);
   const hasName = !!user.nickname;
   const hasMeta = !!(user.school || user.city || user.distanceKm != null);
@@ -111,7 +112,12 @@ export default function SwipeCard({ user, onLike, onSkip, disabled }: Props) {
         <button className="swipe-btn swipe-btn--skip" onClick={onSkip} disabled={disabled} aria-label="不感兴趣">
           <AppIcon name="x" size={28} />
         </button>
-        <button className="swipe-btn swipe-btn--like" onClick={onLike} disabled={disabled} aria-label="喜欢">
+        <button className="swipe-btn swipe-btn--apply" onClick={onApply} disabled={disabled} aria-label="打招呼">
+          <AppIcon name="send" size={26} />
+        </button>
+        <button
+          className={`swipe-btn swipe-btn--like ${user.liked ? 'liked' : ''}`}
+          onClick={onLike} disabled={disabled} aria-label="心动">
           <AppIcon name="heart" size={27} />
         </button>
       </div>

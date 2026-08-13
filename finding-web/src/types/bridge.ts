@@ -32,9 +32,25 @@ export interface BridgeRecommendUser {
   targetType?: number;
   lastLoginAt: string;
   isLiked: boolean;
+  /** 是否已心动(双向 match 的喜欢) */
+  liked?: boolean;
   mutualFriends: number;
   /** 匹配理由,如「同校」「已认证」「兴趣相投」 */
   matchReasons?: string[];
+}
+
+/** 心动/配对列表项 */
+export interface MatchUser {
+  userId: number;
+  nickname: string;
+  avatar: string;
+  gender: number;
+  school: string;
+  signature: string;
+  verified: number;
+  targetType: number;
+  time: string;
+  isMatched: boolean;
 }
 
 export interface ChatApply {

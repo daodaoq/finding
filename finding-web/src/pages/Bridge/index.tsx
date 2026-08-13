@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { bridgeApi } from '../../api/bridge';
+import { bridgeApi, matchApi } from '../../api/bridge';
 import { homeApi } from '../../api/home';
 import BannerCarousel from '../../components/BannerCarousel';
 import LoginModal from '../../components/LoginModal';
@@ -98,8 +98,25 @@ export default function BridgePage() {
     }
   };
 
-  /** 喜欢:发送聊天申请后换下一个 */
+  /** 心动(双向 match):互相心动即配对 */
   const handleLike = () => {
+    if (!candidate || acting) return;
+    requireLogin(() => {
+      setActing(true);
+      matchApi.like(candidate.userId)
+        .then((res) => {
+          showToast(res.data.data?.matched ? '匹配成功！去「互相喜欢」查看' : '已心动，等对方回应');
+          loadNext();
+        })
+        .catch((e: any) => {
+          showToast((e as Error)?.message || '操作失败');
+          setActing(false);
+        });
+    });
+  };
+
+  /** 打招呼:发送聊天申请(单向申请→审批) */
+  const handleApply = () => {
     if (!candidate || acting) return;
     requireLogin(() => {
       setActing(true);
@@ -139,6 +156,12 @@ export default function BridgePage() {
         break;
       case 'card':
         requireLogin(() => navigate('/bridge/my-card'));
+        break;
+      case 'matches':
+        requireLogin(() => navigate('/bridge/matches'));
+        break;
+      case 'liked-me':
+        requireLogin(() => navigate('/bridge/likes-received'));
         break;
     }
   };
@@ -238,6 +261,7 @@ export default function BridgePage() {
           <SwipeCard
             user={candidate}
             onLike={handleLike}
+            onApply={handleApply}
             onSkip={handleSkip}
             disabled={acting}
           />

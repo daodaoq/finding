@@ -186,6 +186,15 @@
   background: #f8cbd4;
   color: #8e4b5b;
 }
+.swipe-btn--like.liked {
+  background: #8e4b5b;
+  color: #fff;
+}
+.swipe-btn--apply {
+  background: #fff;
+  border: 1px solid #f2dfe4;
+  color: #c78b98;
+}
 .swipe-why-btn {
   display: block;
   width: 100%;

@@ -32,4 +32,5 @@ export const POST_CATEGORIES = [
 
 export const QUICK_ACTIONS = [
   { key: 'like', label: '喜欢', icon: 'heart' }, { key: 'letter', label: '来信', icon: 'send' }, { key: 'card', label: '我的卡片', icon: 'star' },
+  { key: 'matches', label: '互相喜欢', icon: 'sparkles' }, { key: 'liked-me', label: '谁喜欢我', icon: 'handshake' },
 ] as const;
