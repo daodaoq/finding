@@ -83,6 +83,7 @@ class BridgeServiceImplTest {
     @Mock private RecommendExcludeMapper excludeMapper;
     @Mock private RecommendEventMapper eventMapper;
     @Mock private com.finding.chat.mapper.UserCardConfigMapper cardConfigMapper;
+    @Mock private com.finding.chat.mapper.UserLikeMapper userLikeMapper;
     @Mock private MatchScoreWeights weights;
     @Mock private UserWriteGuard userWriteGuard;
     @Mock private RedisRateLimiter rateLimiter;
@@ -511,6 +512,7 @@ class BridgeServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(me);
         when(preferenceMapper.selectOne(any())).thenReturn(null);
         when(chatApplyMapper.selectList(any())).thenReturn(List.of());
+        when(userLikeMapper.selectList(any())).thenReturn(List.of());
         when(followMapper.selectList(any())).thenReturn(List.of());
         when(relationshipService.blockedUserIds(1L)).thenReturn(Set.of());
         when(excludeMapper.selectList(any())).thenReturn(List.of());
