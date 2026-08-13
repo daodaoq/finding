@@ -45,6 +45,7 @@ import org.springframework.dao.DuplicateKeyException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -87,6 +88,7 @@ class BridgeServiceImplTest {
     @Mock private MatchScoreWeights weights;
     @Mock private UserWriteGuard userWriteGuard;
     @Mock private RedisRateLimiter rateLimiter;
+    @Mock private com.finding.framework.websocket.OnlineStatusService onlineStatusService;
 
     @InjectMocks
     private BridgeServiceImpl service;
@@ -520,6 +522,7 @@ class BridgeServiceImplTest {
         when(userMapper.selectList(any())).thenReturn(candidates);
         when(cardConfigMapper.selectList(any())).thenReturn(List.of());
         when(relationshipService.canViewDetailedProfile(any(), any())).thenReturn(true);
+        when(onlineStatusService.isOnlineBatch(any())).thenReturn(Map.of());
     }
 
     @Test

@@ -20,6 +20,7 @@ public class HomeFeedVO {
     private Integer verified;    // 是否已实名认证 0/1
     private Integer targetType;  // 交友目标 0=未设置 1=找对象 2=交朋友
     private LocalDateTime lastLoginAt;
+    private Boolean online;      // 是否实时在线(Redis 心跳,受 showLastOnline 配置裁剪)
 
     // Computed
     private Boolean isLiked;    // 是否已发送聊天申请

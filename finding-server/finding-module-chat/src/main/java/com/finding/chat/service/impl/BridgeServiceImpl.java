@@ -39,6 +39,7 @@ import com.finding.chat.service.BridgeService;
 import com.finding.chat.service.ChatService;
 import com.finding.message.service.MessageService;
 import com.finding.framework.util.RedisRateLimiter;
+import com.finding.framework.websocket.OnlineStatusService;
 import com.finding.common.GeoUtils;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
@@ -90,6 +91,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final MatchScoreWeights weights;
     private final UserWriteGuard userWriteGuard;
     private final RedisRateLimiter rateLimiter;
+    private final OnlineStatusService onlineStatusService;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -235,6 +237,10 @@ public class BridgeServiceImpl implements BridgeService {
                                 .in(UserLike::getLikedId, pageIds))
                         .stream().map(UserLike::getLikedId).collect(Collectors.toSet());
 
+        // 批量查询本页候选人实时在线状态(Redis 心跳)
+        Map<Long, Boolean> onlineMap = pageIds.isEmpty() ? Map.of()
+                : onlineStatusService.isOnlineBatch(pageIds);
+
         // 批量加载本页候选人的卡片展示配置(按本人意愿裁剪字段)
         Map<Long, UserCardConfig> cardConfigs = pageIds.isEmpty() ? Map.of()
                 : cardConfigMapper.selectList(new LambdaQueryWrapper<UserCardConfig>()
@@ -242,7 +248,7 @@ public class BridgeServiceImpl implements BridgeService {
                         .stream().collect(Collectors.toMap(UserCardConfig::getUserId, c -> c));
 
         List<HomeFeedVO> records = paged.stream()
-                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds, likedIds,
+                .map(s -> toFeedVO(s.user, lat, lng, userId, appliedIds, likedIds, onlineMap,
                         cardConfigs.get(s.user.getId()), s.score.reasons))
                 .collect(Collectors.toList());
 
@@ -754,6 +760,7 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setLastLoginAt(me.getLastLoginAt());
         vo.setIsLiked(false);
         vo.setLiked(false);
+        vo.setOnline(false);
         vo.setMatchReasons(List.of());
         // 预览即"别人看到的我的卡片":按我的配置裁剪字段
         applyCardConfig(vo, getCardConfig(userId));
@@ -793,7 +800,7 @@ public class BridgeServiceImpl implements BridgeService {
         if (!on(cfg.getShowTargetType())) vo.setTargetType(null);
         if (!on(cfg.getShowSignature())) vo.setSignature(null);
         if (!on(cfg.getShowMatchReasons())) vo.setMatchReasons(null);
-        if (!on(cfg.getShowLastOnline())) vo.setLastLoginAt(null);
+        if (!on(cfg.getShowLastOnline())) { vo.setLastLoginAt(null); vo.setOnline(null); }
     }
 
     private boolean on(Integer v) {
@@ -932,7 +939,8 @@ public class BridgeServiceImpl implements BridgeService {
 
 
     private HomeFeedVO toFeedVO(User user, Double lat, Double lng, Long currentUserId, Set<Long> appliedIds,
-                                Set<Long> likedIds, UserCardConfig cardConfig, List<String> matchReasons) {
+                                Set<Long> likedIds, Map<Long, Boolean> onlineMap,
+                                UserCardConfig cardConfig, List<String> matchReasons) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
@@ -948,6 +956,7 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setVerified(user.getRealNameVerified() != null && user.getRealNameVerified() == 2 ? 1 : 0);
         vo.setTargetType(user.getTargetType());
         vo.setLastLoginAt(user.getLastLoginAt());
+        vo.setOnline(onlineMap != null ? onlineMap.getOrDefault(user.getId(), false) : false);
         vo.setMatchReasons(matchReasons);
 
         // Distance calculation
