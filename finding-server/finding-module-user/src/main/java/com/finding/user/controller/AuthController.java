@@ -115,11 +115,16 @@ public class AuthController {
         return Result.ok(authService.getAccount(JwtInterceptor.getCurrentUserId()));
     }
 
-    /** 取客户端 IP:X-Forwarded-For 取首个,否则用 remoteAddr(nginx 会注入真实 IP) */
+    /** 取客户端真实 IP:优先 nginx 注入的 X-Real-IP(proxy_set_header 覆盖客户端伪造值),否则 XFF 末位,最后 remoteAddr */
     private String clientIp(HttpServletRequest request) {
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+            String[] parts = xff.split(",");
+            return parts[parts.length - 1].trim();
         }
         return request.getRemoteAddr();
     }
