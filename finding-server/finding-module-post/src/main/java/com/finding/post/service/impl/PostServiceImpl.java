@@ -1,6 +1,7 @@
 package com.finding.post.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,6 +23,7 @@ import com.finding.common.word.SensitiveWordFilter;
 import com.finding.post.vo.PostVO;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -240,16 +242,27 @@ public class PostServiceImpl implements PostService {
                 .eq(PostLike::getUserId, userId));
 
         if (existing != null) {
-            likeMapper.deleteById(existing.getId());
-            post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
-            postMapper.updateById(post);
+            // 取消点赞:仅当确实删到记录才扣减计数,避免并发下重复扣减
+            int deleted = likeMapper.deleteById(existing.getId());
+            if (deleted > 0) {
+                postMapper.update(null, new LambdaUpdateWrapper<Post>()
+                        .eq(Post::getId, postId)
+                        .setSql("like_count = GREATEST(like_count - 1, 0)"));
+            }
         } else {
             PostLike like = new PostLike();
             like.setPostId(postId);
             like.setUserId(userId);
-            likeMapper.insert(like);
-            post.setLikeCount(post.getLikeCount() + 1);
-            postMapper.updateById(post);
+            try {
+                likeMapper.insert(like);
+            } catch (DuplicateKeyException e) {
+                // 并发双击:唯一约束兜底,视为已点赞
+                throw new BusinessException(ResultCode.ALREADY_LIKED);
+            }
+            // 原子 +1,避免并发点赞的计数丢失(读-改-写)
+            postMapper.update(null, new LambdaUpdateWrapper<Post>()
+                    .eq(Post::getId, postId)
+                    .setSql("like_count = like_count + 1"));
 
             // Create notification if not self-like
             if (!post.getUserId().equals(userId)) {
@@ -394,18 +407,27 @@ public class PostServiceImpl implements PostService {
                 .eq(PostCommentLike::getUserId, userId));
 
         if (existing != null) {
-            // 取消点赞
-            commentLikeMapper.deleteById(existing.getId());
-            comment.setLikeCount(Math.max(0, (comment.getLikeCount() != null ? comment.getLikeCount() : 0) - 1));
-            commentMapper.updateById(comment);
+            // 取消点赞:仅当确实删到记录才扣减计数,避免并发下重复扣减
+            int deleted = commentLikeMapper.deleteById(existing.getId());
+            if (deleted > 0) {
+                commentMapper.update(null, new LambdaUpdateWrapper<PostComment>()
+                        .eq(PostComment::getId, commentId)
+                        .setSql("like_count = GREATEST(like_count - 1, 0)"));
+            }
         } else {
             // 点赞
             PostCommentLike like = new PostCommentLike();
             like.setCommentId(commentId);
             like.setUserId(userId);
-            commentLikeMapper.insert(like);
-            comment.setLikeCount((comment.getLikeCount() != null ? comment.getLikeCount() : 0) + 1);
-            commentMapper.updateById(comment);
+            try {
+                commentLikeMapper.insert(like);
+            } catch (DuplicateKeyException e) {
+                // 并发双击:唯一约束兜底,视为已点赞
+                throw new BusinessException(ResultCode.ALREADY_LIKED);
+            }
+            commentMapper.update(null, new LambdaUpdateWrapper<PostComment>()
+                    .eq(PostComment::getId, commentId)
+                    .setSql("like_count = like_count + 1"));
 
             // 通知评论作者（非自己）
             if (!comment.getUserId().equals(userId)) {
