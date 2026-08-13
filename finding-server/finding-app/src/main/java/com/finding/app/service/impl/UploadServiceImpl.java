@@ -3,8 +3,13 @@ package com.finding.app.service.impl;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.framework.config.MinioConfig;
+import com.finding.common.moderation.ImageModeration;
+import com.finding.common.moderation.ImageModerationMapper;
+import com.finding.app.service.ImageModerationResult;
 import com.finding.app.service.ImageSafetyService;
+import com.finding.app.service.ModerationVerdict;
 import com.finding.app.service.UploadService;
+import com.finding.user.security.JwtInterceptor;
 import io.minio.*;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +32,7 @@ public class UploadServiceImpl implements UploadService {
     private final MinioClient minioClient;
     private final MinioConfig minioConfig;
     private final ImageSafetyService imageSafetyService;
+    private final ImageModerationMapper imageModerationMapper;
 
     @Value("${finding.upload.max-size:5242880}")
     private long maxSize;
@@ -66,6 +72,11 @@ public class UploadServiceImpl implements UploadService {
 
     @Override
     public String uploadImage(byte[] data, String originalFilename, String contentType) {
+        return uploadImage(data, originalFilename, contentType, "post");
+    }
+
+    @Override
+    public String uploadImage(byte[] data, String originalFilename, String contentType, String scene) {
         // 校验大小
         if (data.length > maxSize) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "文件大小超过限制(5MB)");
@@ -83,20 +94,21 @@ public class UploadServiceImpl implements UploadService {
         try {
             putObject(objectName, data, contentType);
 
-            // 图片内容安全:鉴黄(公网URL)+ OCR 提取文字过违禁词;违规则删除已上传对象并拒绝
-            try {
-                String publicUrl = org.springframework.util.StringUtils.hasText(publicBaseUrl)
-                        ? publicBaseUrl + "/api/v1/images/" + objectName
-                        : null;
-                imageSafetyService.check(data, publicUrl);
-            } catch (BusinessException be) {
+            // 图片内容安全:鉴黄(公网URL)+ OCR 提取文字过违禁词
+            String publicUrl = org.springframework.util.StringUtils.hasText(publicBaseUrl)
+                    ? publicBaseUrl + "/api/v1/images/" + objectName
+                    : null;
+            ImageModerationResult result = imageSafetyService.check(data, publicUrl);
+            String url = "/api/v1/images/" + objectName;
+            // 记录审核结果(通过/拦截/送审留痕);拦截则删除已上传对象并拒绝
+            saveModeration(JwtInterceptor.getCurrentUserId(), scene, url, result);
+            if (result.verdict() == ModerationVerdict.BLOCK) {
                 minioClient.removeObject(RemoveObjectArgs.builder()
                         .bucket(minioConfig.getBucket()).object(objectName).build());
-                throw be;
+                throw new BusinessException(ResultCode.CONTENT_BLOCKED, "图片内容违规，请更换图片");
             }
 
             // 返回后端代理 URL（浏览器不直接访问 MinIO，避免 403）
-            String url = "/api/v1/images/" + objectName;
             log.info("图片已上传至 MinIO: {} -> {}", originalFilename, url);
             return url;
         } catch (BusinessException be) {
@@ -104,6 +116,24 @@ public class UploadServiceImpl implements UploadService {
         } catch (Exception e) {
             log.error("上传 MinIO 失败", e);
             throw new BusinessException(ResultCode.INTERNAL_ERROR, "文件上传失败");
+        }
+    }
+
+    /** 记录图片审核结果:拦截/送审/通过均留痕,送审进入后台复核队列(status=0) */
+    private void saveModeration(Long userId, String scene, String url, ImageModerationResult result) {
+        try {
+            ImageModeration m = new ImageModeration();
+            m.setUserId(userId);
+            m.setImageUrl(url);
+            m.setScene(scene);
+            m.setRiskLevel(result.riskLevel());
+            m.setOcrText(result.ocrText());
+            m.setVerdict(result.verdict() == ModerationVerdict.BLOCK ? 1
+                    : result.verdict() == ModerationVerdict.REVIEW ? 2 : 0);
+            m.setStatus(result.verdict() == ModerationVerdict.REVIEW ? 0 : 1);
+            imageModerationMapper.insert(m);
+        } catch (Exception e) {
+            log.warn("图片审核记录失败 url={} verdict={}", url, result.verdict(), e);
         }
     }
 

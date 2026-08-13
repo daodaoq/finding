@@ -25,6 +25,16 @@ interface TrendData {
   activeUsers: number[];
 }
 
+interface QualityData {
+  genderRatio: { male: number; female: number; maleRate: number; femaleRate: number };
+  verificationRate: { approved: number; total: number; rate: number };
+  retention: { active7d: number; activeRate: number; retained7d: number; retentionRate: number };
+  moderationSla: {
+    pendingPosts: number; pendingAppeals: number; pendingVerifications: number; pendingReports: number;
+    oldestPendingPostHours: number; oldestPendingAppealHours: number; oldestPendingVerificationHours: number;
+  };
+}
+
 export default function Dashboard() {
   const { token } = theme.useToken();
   const [stats, setStats] = useState<DashboardStats>({
@@ -32,6 +42,7 @@ export default function Dashboard() {
     todayNewUsers: 0, totalMates: 0, pendingReports: 0, groupCount: 0,
   });
   const [trend, setTrend] = useState<TrendData | null>(null);
+  const [quality, setQuality] = useState<QualityData | null>(null);
 
   useEffect(() => {
     request.get('/admin/dashboard').then((res) => {
@@ -39,6 +50,9 @@ export default function Dashboard() {
     }).catch(() => {});
     request.get('/admin/dashboard/trend', { params: { days: 7 } }).then((res) => {
       if (res.data?.data) setTrend(res.data.data);
+    }).catch(() => {});
+    request.get('/admin/dashboard/quality').then((res) => {
+      if (res.data?.data) setQuality(res.data.data);
     }).catch(() => {});
   }, []);
 
@@ -106,6 +120,39 @@ export default function Dashboard() {
             {trendCard('新增搭子', trend.newMates, token.colorInfo)}
             {trendCard('活跃用户(登录)', trend.activeUsers, token.colorWarning)}
           </div>
+        ) : (
+          <p style={{ color: token.colorTextTertiary, textAlign: 'center', padding: 20 }}>加载中...</p>
+        )}
+      </Card>
+      <Card title="质量与漏斗指标" style={{ marginTop: 16 }}>
+        {quality ? (
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small" title="性别比">
+                <p>男 {quality.genderRatio.male}（{quality.genderRatio.maleRate}%）</p>
+                <p>女 {quality.genderRatio.female}（{quality.genderRatio.femaleRate}%）</p>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small" title="认证率">
+                <Statistic value={quality.verificationRate.rate} suffix="%" precision={2} />
+                <p style={{ color: token.colorTextSecondary }}>已认证 {quality.verificationRate.approved} / {quality.verificationRate.total}</p>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small" title="留存">
+                <p>7 日活跃 {quality.retention.active7d}（{quality.retention.activeRate}%）</p>
+                <p>老用户留存率 {quality.retention.retentionRate}%</p>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small" title="审核时效">
+                <p>待审:动态 {quality.moderationSla.pendingPosts} / 申诉 {quality.moderationSla.pendingAppeals}</p>
+                <p>认证 {quality.moderationSla.pendingVerifications} / 投诉 {quality.moderationSla.pendingReports}</p>
+                <p style={{ color: token.colorWarning }}>最久待审动态 {quality.moderationSla.oldestPendingPostHours}h</p>
+              </Card>
+            </Col>
+          </Row>
         ) : (
           <p style={{ color: token.colorTextTertiary, textAlign: 'center', padding: 20 }}>加载中...</p>
         )}

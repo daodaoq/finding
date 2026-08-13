@@ -28,6 +28,7 @@
         <module>finding-module-chat</module>
         <module>finding-module-bridge</module>
         <module>finding-module-group</module>
+        <module>finding-module-admin</module>
         <module>finding-app</module>
     </modules>
 
@@ -83,6 +84,11 @@
             <dependency>
                 <groupId>com.finding</groupId>
                 <artifactId>finding-module-group</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.finding</groupId>
+                <artifactId>finding-module-admin</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

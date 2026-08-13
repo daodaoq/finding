@@ -18,6 +18,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.finding.group.mapper",
         "com.finding.framework.mapper",
         "com.finding.common.audit",
+        "com.finding.common.content",
+        "com.finding.common.feedback",
+        "com.finding.common.moderation",
         "com.finding.app.mapper"
 })
 @EnableCaching

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.finding</groupId>
+        <artifactId>finding-server</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>finding-module-admin</artifactId>
+    <name>finding-module-admin</name>
+    <description>管理后台聚合模块:全部 /api/v1/admin/** 控制器</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-framework</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-user</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-message</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-post</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-mate</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-chat</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-bridge</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-group</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -36,6 +36,7 @@ const menuItems: MenuProps['items'] = [
       { key: '/banners', label: '轮播管理' },
       { key: '/announcements', label: '系统公告' },
       { key: '/banned-words', label: '违禁词管理' },
+      { key: '/image-moderation', label: '图片审核' },
     ],
   },
   {
@@ -65,6 +66,7 @@ const groupByPath: Record<string, string> = {
   '/banners': 'content-operations',
   '/announcements': 'content-operations',
   '/banned-words': 'content-operations',
+  '/image-moderation': 'content-operations',
   '/mates': 'social-and-activities',
   '/mate-review': 'social-and-activities',
   '/groups': 'social-and-activities',
@@ -87,6 +89,7 @@ const breadcrumbMap: Record<string, string> = {
   '/banners': '轮播管理',
   '/announcements': '系统公告',
   '/banned-words': '违禁词管理',
+  '/image-moderation': '图片审核',
   '/chat-audit': '聊天审查',
   '/feedback': '用户反馈',
   '/audit-logs': '操作审计',

@@ -52,6 +52,10 @@
             <groupId>com.finding</groupId>
             <artifactId>finding-module-group</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-module-admin</artifactId>
+        </dependency>
 
         <!-- Boot starters -->
         <dependency>

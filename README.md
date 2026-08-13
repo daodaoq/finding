@@ -86,14 +86,16 @@ npm run dev
 finding/
 ├── finding-server/            # Spring Boot 后端(多模块)
 │   ├── finding-app/           # 启动入口/配置/上传/首页聚合
-│   ├── finding-common/        # 通用:Result/ResultCode/异常/违禁词
+│   ├── finding-common/        # 通用:Result/ResultCode/异常/违禁词/审计/运营实体
 │   ├── finding-framework/     # 全局异常/限流/WebSocket 基座
 │   ├── finding-module-user/   # 用户/认证/关注/拉黑/设置/简历
-│   ├── finding-module-post/   # 动态/评论/点赞
+│   ├── finding-module-post/   # 动态/评论/点赞/申诉
 │   ├── finding-module-mate/   # 搭子活动/报名/候补
-│   ├── finding-module-chat/   # 相亲/私聊/信息互换/会话
+│   ├── finding-module-chat/   # 私聊/会话/举报
+│   ├── finding-module-bridge/ # 鹊桥/推荐/信息互换/心动配对
 │   ├── finding-module-message/# 站内通知
 │   ├── finding-module-group/  # 群聊
+│   ├── finding-module-admin/  # 管理后台聚合(全部 /api/v1/admin/**)
 │   └── finding-module-*       # 其他业务模块
 ├── finding-web/               # 用户端 H5
 ├── finding-admin/             # 管理后台

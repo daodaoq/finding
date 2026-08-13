@@ -17,9 +17,10 @@ public class UploadController {
     private final UploadService uploadService;
 
     @PostMapping("/image")
-    public Result<String> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+    public Result<String> uploadImage(@RequestParam("file") MultipartFile file,
+                                      @RequestParam(value = "scene", required = false) String scene) throws IOException {
         return Result.ok(uploadService.uploadImage(
-                file.getBytes(), file.getOriginalFilename(), file.getContentType()));
+                file.getBytes(), file.getOriginalFilename(), file.getContentType(), scene));
     }
 
     @PostMapping("/video")

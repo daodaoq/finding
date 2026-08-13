@@ -20,6 +20,7 @@ import Banners from './pages/Banners';
 import Announcements from './pages/Announcements';
 import ForbiddenWords from './pages/ForbiddenWords';
 import ChatAudit from './pages/ChatAudit';
+import ImageModeration from './pages/ImageModeration';
 import Feedback from './pages/Feedback';
 import Login from './pages/Login';
 import LoveGuideReview from './pages/LoveGuideReview';
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="announcements" element={<Announcements />} />
             <Route path="banned-words" element={<ForbiddenWords />} />
             <Route path="chat-audit" element={<ChatAudit />} />
+            <Route path="image-moderation" element={<ImageModeration />} />
             <Route path="feedback" element={<Feedback />} />
             <Route path="audit-logs" element={<AuditLogs />} />
             </Route>
