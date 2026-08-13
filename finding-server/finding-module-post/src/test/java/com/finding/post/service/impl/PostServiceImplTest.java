@@ -336,6 +336,95 @@ class PostServiceImplTest {
         assertTrue(sql.contains("review_status ="), "仍保留审核通过过滤");
     }
 
+    // ── 分类 / 标签 / 置顶排序 ──
+
+    @Test
+    void createPost_invalidCategory_rejected() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        PostCreateDTO dto = dto("内容");
+        dto.setCategory("nope");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPost(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void createPost_validCategoryAndTags_storedAndDeduped() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        when(userService.getUserProfile(any(), any())).thenReturn(new com.finding.user.vo.UserVO());
+        PostCreateDTO dto = dto("内容");
+        dto.setCategory("study");
+        dto.setTags(List.of("高数", "高数", "考试"));
+
+        service.createPost(1L, dto);
+
+        ArgumentCaptor<Post> cap = ArgumentCaptor.forClass(Post.class);
+        verify(postMapper).insert(cap.capture());
+        assertEquals("study", cap.getValue().getCategory());
+        assertEquals("高数,考试", cap.getValue().getTags());
+    }
+
+    @Test
+    void createPost_tooManyTags_rejected() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        PostCreateDTO dto = dto("内容");
+        dto.setTags(List.of("a", "b", "c", "d", "e", "f"));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPost(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void createPost_tagTooLong_rejected() {
+        when(sensitiveWordFilter.classifyReview(any(String[].class)))
+                .thenReturn(new ReviewResult(Set.of(), Set.of()));
+        PostCreateDTO dto = dto("内容");
+        dto.setTags(List.of("这是一个超过十五个字的超长标签内容测试"));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPost(1L, dto));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+    }
+
+    @Test
+    void listPosts_categoryAndTag_filterApplied() {
+        PostQueryDTO query = new PostQueryDTO();
+        query.setTab("latest");
+        query.setCategory("study");
+        query.setTag("高数");
+        query.setPage(1);
+        query.setSize(10);
+        when(postMapper.selectPage(any(), any())).thenReturn(new Page<>(1, 10));
+
+        service.listPosts(query, null);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Wrapper<Post>> cap = ArgumentCaptor.forClass(Wrapper.class);
+        verify(postMapper).selectPage(any(), cap.capture());
+        String sql = cap.getValue().getTargetSql();
+        assertTrue(sql.contains("category ="), "应含分类过滤");
+        assertTrue(sql.contains("tags"), "应含标签过滤");
+    }
+
+    @Test
+    void listPosts_latest_topFirst() {
+        PostQueryDTO query = new PostQueryDTO();
+        query.setTab("latest");
+        query.setPage(1);
+        query.setSize(10);
+        when(postMapper.selectPage(any(), any())).thenReturn(new Page<>(1, 10));
+
+        service.listPosts(query, null);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Wrapper<Post>> cap = ArgumentCaptor.forClass(Wrapper.class);
+        verify(postMapper).selectPage(any(), cap.capture());
+        String sql = cap.getValue().getTargetSql();
+        assertTrue(sql.contains("is_top"), "最新列表应置顶优先排序");
+    }
+
     private PostCreateDTO dto(String content) {
         PostCreateDTO dto = new PostCreateDTO();
         dto.setContent(content);
