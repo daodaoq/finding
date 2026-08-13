@@ -9,14 +9,14 @@ import java.util.Map;
 
 public interface AuthService {
 
-    /** Login by password or SMS code. Returns access+refresh tokens. */
-    Map<String, String> login(LoginDTO dto);
+    /** Login by password or SMS code. Returns access+refresh tokens. ip 用于登录失败限流。 */
+    Map<String, String> login(LoginDTO dto, String ip);
 
     /** 注册新账号:滑块拼图验证 + 按 IP/设备指纹防批量注册限流。 */
     void register(RegisterDTO dto, String ip, String deviceId);
 
-    /** Send SMS verification code. */
-    void sendCode(String phone, String type);
+    /** Send SMS verification code. ip 用于发送频率限流。 */
+    void sendCode(String phone, String type, String ip);
 
     /** 生成图片验证码,返回 captchaKey + captchaImage(base64 PNG)。 */
     Map<String, String> generateCaptcha();

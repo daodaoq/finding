@@ -25,8 +25,9 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public Result<Map<String, String>> login(@Valid @RequestBody LoginDTO dto) {
-        return Result.ok(authService.login(dto));
+    public Result<Map<String, String>> login(@Valid @RequestBody LoginDTO dto,
+                                             HttpServletRequest request) {
+        return Result.ok(authService.login(dto, clientIp(request)));
     }
 
     @PostMapping("/register")
@@ -38,8 +39,9 @@ public class AuthController {
     }
 
     @PostMapping("/send-code")
-    public Result<Void> sendCode(@Valid @RequestBody SendCodeDTO dto) {
-        authService.sendCode(dto.getPhone(), dto.getType());
+    public Result<Void> sendCode(@Valid @RequestBody SendCodeDTO dto,
+                                 HttpServletRequest request) {
+        authService.sendCode(dto.getPhone(), dto.getType(), clientIp(request));
         return Result.ok();
     }
 

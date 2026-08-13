@@ -64,6 +64,18 @@ public class AuthServiceImpl implements AuthService {
     private static final String CAPTCHA_PREFIX = "captcha:";
     private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String REFRESH_PREFIX = "token:refresh:";
+    private static final String LOGIN_FAIL_PHONE_PREFIX = "login:fail:phone:";
+    private static final String LOGIN_FAIL_IP_PREFIX = "login:fail:ip:";
+    private static final String SMS_SEND_IP_PREFIX = "sms:send-ip:";
+    private static final String SMS_VERIFY_FAIL_PREFIX = "sms:verify-fail:";
+
+    /** 登录失败锁定:同账号/IP 达到上限后 15 分钟内禁止登录 */
+    private static final int LOGIN_FAIL_LIMIT = 5;
+    private static final long LOGIN_LOCK_MINUTES = 15;
+    /** 短信验证码错误次数上限(超过需重新获取) */
+    private static final int SMS_VERIFY_FAIL_LIMIT = 5;
+    /** 同 IP 每小时发送验证码上限 */
+    private static final int SMS_SEND_IP_LIMIT = 10;
 
     /** 防批量注册:同设备每小时最多注册次数 */
     @Value("${finding.register.device-limit:3}")
@@ -74,10 +86,14 @@ public class AuthServiceImpl implements AuthService {
     private int registerIpLimit = 10;
 
     @Override
-    public Map<String, String> login(LoginDTO dto) {
+    public Map<String, String> login(LoginDTO dto, String ip) {
+        // 登录失败锁定:账号或 IP 任一达到上限即拒绝
+        checkLoginLocked(dto.getPhone(), ip);
+
         User user = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone()));
         if (user == null) {
+            recordLoginFailure(dto.getPhone(), ip);
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
         if (user.getStatus() != null && user.getStatus() != UserStatusEnum.ACTIVE.getCode()) {
@@ -93,24 +109,28 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        if ("password".equals(dto.getLoginType())) {
-            if (!StringUtils.hasText(dto.getPassword())) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "密码不能为空");
-            }
-            try {
+        try {
+            if ("password".equals(dto.getLoginType())) {
+                if (!StringUtils.hasText(dto.getPassword())) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR, "密码不能为空");
+                }
                 authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(dto.getPhone(), dto.getPassword()));
-            } catch (BadCredentialsException e) {
-                throw new BusinessException(ResultCode.LOGIN_FAILED);
+            } else if ("sms".equals(dto.getLoginType())) {
+                if (!StringUtils.hasText(dto.getSmsCode())) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR, "验证码不能为空");
+                }
+                verifySmsCode(dto.getPhone(), dto.getSmsCode());
+            } else {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的登录类型");
             }
-        } else if ("sms".equals(dto.getLoginType())) {
-            if (!StringUtils.hasText(dto.getSmsCode())) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "验证码不能为空");
-            }
-            verifySmsCode(dto.getPhone(), dto.getSmsCode());
-        } else {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的登录类型");
+        } catch (BadCredentialsException e) {
+            recordLoginFailure(dto.getPhone(), ip);
+            throw new BusinessException(ResultCode.LOGIN_FAILED);
         }
+
+        // 登录成功,清空失败计数
+        clearLoginFailure(dto.getPhone(), ip);
 
         user.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(user);
@@ -186,8 +206,8 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    /** 读取注册计数(容错:任何序列化形态/异常都按 0 处理) */
-    private long registerCount(String key) {
+    /** 读取 Redis 计数(容错:任何序列化形态/异常都按 0 处理) */
+    private long readLong(String key) {
         Object v = redisUtils.get(key);
         if (v instanceof Number n) return n.longValue();
         if (v != null) {
@@ -199,16 +219,54 @@ public class AuthServiceImpl implements AuthService {
         return 0;
     }
 
+    /** 计数 +1(首次写入时设置过期窗口) */
+    private void incrExpiring(String key, long minutes) {
+        long c = redisUtils.increment(key, 1);
+        if (c == 1) redisUtils.expire(key, minutes, TimeUnit.MINUTES);
+    }
+
+    /** 读取注册计数 */
+    private long registerCount(String key) {
+        return readLong(key);
+    }
+
+    /** 检查登录失败锁定:账号或 IP 任一达到上限即拒绝 */
+    private void checkLoginLocked(String phone, String ip) {
+        if (readLong(LOGIN_FAIL_PHONE_PREFIX + phone) >= LOGIN_FAIL_LIMIT
+                || (StringUtils.hasText(ip) && readLong(LOGIN_FAIL_IP_PREFIX + ip) >= LOGIN_FAIL_LIMIT)) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT, "登录失败次数过多，请稍后再试");
+        }
+    }
+
+    /** 记录一次登录失败(账号 + IP 双维度,带过期窗口) */
+    private void recordLoginFailure(String phone, String ip) {
+        incrExpiring(LOGIN_FAIL_PHONE_PREFIX + phone, LOGIN_LOCK_MINUTES);
+        if (StringUtils.hasText(ip)) incrExpiring(LOGIN_FAIL_IP_PREFIX + ip, LOGIN_LOCK_MINUTES);
+    }
+
+    /** 登录成功后清空失败计数 */
+    private void clearLoginFailure(String phone, String ip) {
+        redisUtils.delete(LOGIN_FAIL_PHONE_PREFIX + phone);
+        if (StringUtils.hasText(ip)) redisUtils.delete(LOGIN_FAIL_IP_PREFIX + ip);
+    }
+
     @Override
-    public void sendCode(String phone, String type) {
+    public void sendCode(String phone, String type, String ip) {
         String limitKey = SMS_LIMIT_PREFIX + phone;
         if (redisUtils.exists(limitKey)) {
             throw new BusinessException(ResultCode.SMS_SEND_TOO_FREQUENT);
+        }
+        // 同 IP 每小时发送上限,防止短信轰炸
+        if (StringUtils.hasText(ip) && readLong(SMS_SEND_IP_PREFIX + ip) >= SMS_SEND_IP_LIMIT) {
+            throw new BusinessException(ResultCode.TOO_FREQUENT, "发送验证码过于频繁，请稍后再试");
         }
 
         String code = String.format("%06d", new SecureRandom().nextInt(999999));
         redisUtils.set(SMS_CODE_PREFIX + type + ":" + phone, code, 5, TimeUnit.MINUTES);
         redisUtils.set(limitKey, "1", 60, TimeUnit.SECONDS);
+        if (StringUtils.hasText(ip)) {
+            incrExpiring(SMS_SEND_IP_PREFIX + ip, 60);
+        }
 
         log.info("SMS验证码已发送 phone={} type={}", phone, type);
     }
@@ -474,10 +532,19 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void verifySmsCode(String phone, String code) {
+        // 错误次数上限,防止 6 位验证码被暴力枚举
+        if (readLong(SMS_VERIFY_FAIL_PREFIX + phone) >= SMS_VERIFY_FAIL_LIMIT) {
+            throw new BusinessException(ResultCode.SMS_CODE_ERROR, "验证码错误次数过多，请重新获取验证码");
+        }
         String stored = redisUtils.get(SMS_CODE_PREFIX + "login:" + phone);
         if (stored == null) stored = redisUtils.get(SMS_CODE_PREFIX + "register:" + phone);
         if (stored == null) throw new BusinessException(ResultCode.SMS_CODE_EXPIRED);
-        if (!stored.equals(code)) throw new BusinessException(ResultCode.SMS_CODE_ERROR);
+        if (!stored.equals(code)) {
+            incrExpiring(SMS_VERIFY_FAIL_PREFIX + phone, 5);
+            throw new BusinessException(ResultCode.SMS_CODE_ERROR);
+        }
+        // 校验通过:清空错误计数并删除验证码(一次性)
+        redisUtils.delete(SMS_VERIFY_FAIL_PREFIX + phone);
         redisUtils.delete(SMS_CODE_PREFIX + "login:" + phone);
         redisUtils.delete(SMS_CODE_PREFIX + "register:" + phone);
     }
