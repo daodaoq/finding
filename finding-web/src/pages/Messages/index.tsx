@@ -45,14 +45,12 @@ export default function MessagesPage() {
   const loadHiddenConversations = async () => { try { const response = await chatApi.listHiddenConversations(); setHiddenConversations(response.data.data || []); } catch {} };
   const loadStrangerCount = async () => { try { const response = await chatApi.listStrangerMessages(); setStrangerCount((response.data.data || []).length); } catch {} };
   const loadUnreadCount = async () => { try { const response = await messageApi.unreadCount(); setUnreadCount(response.data.data.count); } catch {} };
-  const myId = useAuthStore((s) => s.user?.id);
   useWebSocket(useCallback((message) => {
     if (message.type === 'chat') {
       loadConversations(true);
-      // 自己发送的消息(其他设备同步)不计入未读
-      if (message.fromUserId !== myId) setUnreadCount(unreadCount + 1);
+      // 未读总角标由 MainLayout 的 refreshTotal() 统一从服务端拉取,这里不再本地 +1(避免双重计数与闭包过期)
     }
-  }, [unreadCount, myId]));
+  }, [loadConversations]));
   useEffect(() => { if (isLoggedIn) { loadConversations(); loadGroups(); loadHiddenConversations(); loadStrangerCount(); loadUnreadCount(); } else setLoading(false); }, [isLoggedIn]);
   const refresh = async () => { await loadConversations(true); await loadUnreadCount(); };
   // 断线补偿:WS 重连成功后刷新会话列表与未读
