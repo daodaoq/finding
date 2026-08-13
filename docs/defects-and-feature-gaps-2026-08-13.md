@@ -73,11 +73,11 @@
 
 ### 后端
 
-- [ ] **点赞计数非原子（读-改-写）** —— `PostServiceImpl.java:232-259 / 381-415`：并发点赞 `DuplicateKeyException`→500，且 `like_count` 丢失更新。应改原子 `UPDATE ... SET like_count = like_count + 1` + 捕获唯一键冲突。
+- [x] **点赞计数非原子（读-改-写）** —— `PostServiceImpl.java:232-259 / 381-415`：并发点赞 `DuplicateKeyException`→500，且 `like_count` 丢失更新。应改原子 `UPDATE ... SET like_count = like_count + 1` + 捕获唯一键冲突。
 - [x] **群聊 addMembers 无权限** —— `GroupChatService.java:289`：任意用户可把任何人拉进任意群（对比 `removeMember` 有 ownerId 校验）。
 - [x] **群详情泄露成员列表** —— `GroupChatService.java:134`：非成员也能拿到成员昵称/头像/角色。
-- [ ] **信息互换状态取「最新一条」bug** —— `InfoShareAdapter.java:21-36`：A→B 已通过、之后 B→A 被拒，最新记录变 REJECTED，导致 `profile_visible=2` 用户已互换资料被意外收回。应判定「是否存在任一方向 APPROVED」。
-- [ ] **自动互关并发回滚** —— `BridgeServiceImpl.java:867`：`insertFollowIfAbsent` 无并发兜底，反向申请同时审批时 `DuplicateKeyException` 把「审批+建会话+互关」整体回滚。
+- [x] **信息互换状态取「最新一条」bug** —— `InfoShareAdapter.java:21-36`：A→B 已通过、之后 B→A 被拒，最新记录变 REJECTED，导致 `profile_visible=2` 用户已互换资料被意外收回。应判定「是否存在任一方向 APPROVED」。
+- [x] **自动互关并发回滚** —— `BridgeServiceImpl.java:867`：`insertFollowIfAbsent` 无并发兜底，反向申请同时审批时 `DuplicateKeyException` 把「审批+建会话+互关」整体回滚。
 - [ ] **信息互换反向去重缺失** —— `InfoShareServiceImpl.java:90-111`：A↔B 可同时各存一条 pending；并发同方向发起报 500。
 
 ### 前端
