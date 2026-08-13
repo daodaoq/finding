@@ -14,6 +14,22 @@
 
 ---
 
+## ⚠️ 上线/部署须知（生产 Agent 必读）
+
+> 本次 P0-1 修复把 JWT 密钥从 `application.yml` 硬编码改为**环境变量注入**。**生产启动前必须确认**以下环境变量已设置为真实随机值，否则后端启动会直接失败：
+
+| 环境变量 | 说明 |
+|---|---|
+| `JWT_ACCESS_SECRET` | 访问令牌签名密钥，生成：`openssl rand -base64 64` |
+| `JWT_REFRESH_SECRET` | 刷新令牌签名密钥，生成：`openssl rand -base64 64` |
+
+- 这两个变量名**已出现在 `deploy/.env.example` 中**，但那里给的是占位符（`your-...-please-change-this`），**不能直接用于生产**，否则仍是公开已知密钥。
+- 生产 `.env` 会被 `deploy.sh`（第 78 行 `set -a; source .env`）注入到 `java -jar` 进程环境，必须在 `.env` 里填真实随机值。
+- 开发环境（`dev` profile）已在 `application-dev.yml` 提供 dev-only 默认值，本地运行不受影响。
+- 若部署时忘记设置，后端日志会报 `Could not resolve placeholder 'JWT_ACCESS_SECRET'`（或密钥过短），这是预期内的 fail-fast 保护，不是代码 bug。
+
+---
+
 ## 一、P0 缺陷（代码缺陷，立即修复）
 
 - [x] **P0-1 JWT 签名密钥硬编码公开默认值 → 可伪造任意用户/管理员令牌**
