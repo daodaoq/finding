@@ -210,7 +210,7 @@ public class AuthServiceImpl implements AuthService {
         redisUtils.set(SMS_CODE_PREFIX + type + ":" + phone, code, 5, TimeUnit.MINUTES);
         redisUtils.set(limitKey, "1", 60, TimeUnit.SECONDS);
 
-        log.info("SMS验证码 phone={} type={} code={}", phone, type, code);
+        log.info("SMS验证码已发送 phone={} type={}", phone, type);
     }
 
     @Override
