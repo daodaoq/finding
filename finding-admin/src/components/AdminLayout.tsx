@@ -21,6 +21,7 @@ const menuItems: MenuProps['items'] = [
       { key: '/reports', label: '投诉管理' },
       { key: '/appeals', label: '申诉管理' },
       { key: '/feedback', label: '用户反馈' },
+      { key: '/audit-logs', label: '操作审计' },
     ],
   },
   {
@@ -56,6 +57,7 @@ const groupByPath: Record<string, string> = {
   '/reports': 'users-and-risk',
   '/appeals': 'users-and-risk',
   '/feedback': 'users-and-risk',
+  '/audit-logs': 'users-and-risk',
   '/posts': 'content-operations',
   '/post-review': 'content-operations',
   '/love-guide-review': 'content-operations',
@@ -87,6 +89,7 @@ const breadcrumbMap: Record<string, string> = {
   '/banned-words': '违禁词管理',
   '/chat-audit': '聊天审查',
   '/feedback': '用户反馈',
+  '/audit-logs': '操作审计',
 };
 
 export default function AdminLayout() {

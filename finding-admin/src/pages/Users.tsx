@@ -4,6 +4,7 @@ import { UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import request from '../api/request';
+import { downloadCsv } from '../utils/download';
 import ResumeModal from '../components/ResumeModal';
 import ResumeEditModal from '../components/ResumeEditModal';
 import type { AdminUserRecord, AdminUserDetail, AdminUserForm } from '../types/admin';
@@ -226,6 +227,7 @@ export default function Users() {
         />
         <Button type="primary" onClick={openCreate}>+ 新建用户</Button>
         <Button onClick={() => { setMsgMode('broadcast'); setMsgUserId(null); setMsgContent(''); setMsgOpen(true); }}>📢 发送广播</Button>
+        <Button onClick={() => downloadCsv('users', 'users.csv').then(() => message.success('已导出')).catch(() => message.error('导出失败'))}>导出CSV</Button>
       </Space>
       <Table
         columns={columns} dataSource={data} rowKey="id" loading={loading}

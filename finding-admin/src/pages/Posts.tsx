@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Input, Popconfirm, Select, Modal, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import request from '../api/request';
+import { downloadCsv } from '../utils/download';
 
 interface PostRecord {
   id: number; content: string; userId: number; userNickname: string;
@@ -156,6 +157,7 @@ export default function Posts() {
           onChange={(e) => setKeyword(e.target.value)}
           onSearch={(v) => fetchData(1, v)}
         />
+        <Button onClick={() => downloadCsv('posts', 'posts.csv').then(() => message.success('已导出')).catch(() => message.error('导出失败'))}>导出CSV</Button>
       </Space>
       <Table
         columns={columns} dataSource={data} rowKey="id" loading={loading}
