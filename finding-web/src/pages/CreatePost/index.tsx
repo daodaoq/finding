@@ -24,6 +24,8 @@ export default function CreatePostPage() {
   const [loading, setLoading] = useState(!!editId);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const draftTimer = useRef<number | null>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const navigate = useNavigate();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
 
@@ -43,6 +45,50 @@ export default function CreatePostPage() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId]);
+
+  // 创建模式:登录后加载已有草稿
+  useEffect(() => {
+    if (editId || !isLoggedIn) { setDraftLoaded(true); return; }
+    postApi.getDraft()
+      .then((res) => {
+        const d = res.data.data;
+        if (!d) return;
+        setContent(d.content || '');
+        setLocation(d.location || '');
+        setCategory(d.category || '');
+        setTagInput((d.tags || []).join(','));
+        setVisibility(d.visibility ?? 0);
+        setImages(d.images || []);
+      })
+      .catch(() => { /* 忽略 */ })
+      .finally(() => setDraftLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, isLoggedIn]);
+
+  // 自动保存草稿(防抖 1s;空内容不落库,避免脏草稿)
+  useEffect(() => {
+    if (editId || !isLoggedIn || !draftLoaded) return;
+    if (draftTimer.current) window.clearTimeout(draftTimer.current);
+    draftTimer.current = window.setTimeout(() => {
+      const tags = parseTags();
+      if (!content.trim() && images.length === 0 && !location.trim() && !category && tags.length === 0) return;
+      postApi.saveDraft({
+        content: content.trim() || undefined,
+        images: images.length ? images : undefined,
+        location: location.trim() || undefined,
+        category: category || undefined,
+        tags: tags.length ? tags : undefined,
+        visibility,
+      }).catch(() => { /* 忽略 */ });
+    }, 1000);
+    return () => { if (draftTimer.current) window.clearTimeout(draftTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, images, tagInput, category, visibility, location, isLoggedIn, editId, draftLoaded]);
+
+  /** 标签:按中英文逗号/空白切分,去空去重,最多 5 个 */
+  const parseTags = () => Array.from(new Set(
+    tagInput.split(/[,，\s]+/).map((t) => t.trim()).filter(Boolean),
+  )).slice(0, 5);
 
   // ── 图片上传(多选,串行上传) ──
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,9 +124,7 @@ export default function CreatePostPage() {
       setSubmitting(true);
       try {
         // 标签:按中英文逗号/空白切分,去空去重,最多 5 个
-        const tags = Array.from(new Set(
-          tagInput.split(/[,，\s]+/).map((t) => t.trim()).filter(Boolean),
-        )).slice(0, 5);
+        const tags = parseTags();
         const payload = {
           content: content.trim(),
           images: images.length ? images : undefined,
@@ -95,6 +139,7 @@ export default function CreatePostPage() {
         } else {
           await postApi.create(payload);
           showToast('发布成功！');
+          postApi.clearDraft().catch(() => { /* 忽略 */ });
         }
         navigate(-1);
       } catch { showToast('操作失败，请稍后重试'); }

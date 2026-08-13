@@ -25,3 +25,15 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
 }
+
+/** 发帖草稿 */
+export interface PostDraft {
+  content?: string;
+  images?: string[];
+  location?: string;
+  city?: string;
+  category?: string;
+  tags?: string[];
+  visibility?: number;
+  updatedAt?: string;
+}

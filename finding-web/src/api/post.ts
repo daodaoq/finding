@@ -1,6 +1,6 @@
 import request from './request';
 import type { ApiResponse, PageResult } from '../types/common';
-import type { Post } from '../types/post';
+import type { Post, PostDraft } from '../types/post';
 import type { Comment } from '../types/comment';
 
 export const postApi = {
@@ -61,4 +61,16 @@ export const postApi = {
   /** 我的申诉记录 */
   myAppeals: () =>
     request.get<ApiResponse<any[]>>('/appeals/mine'),
+
+  /** 保存发帖草稿 */
+  saveDraft: (data: Partial<PostDraft>) =>
+    request.put<ApiResponse<null>>('/posts/draft', data),
+
+  /** 获取我的发帖草稿(无则 data 为 null) */
+  getDraft: () =>
+    request.get<ApiResponse<PostDraft | null>>('/posts/draft'),
+
+  /** 清除我的发帖草稿 */
+  clearDraft: () =>
+    request.delete<ApiResponse<null>>('/posts/draft'),
 };
