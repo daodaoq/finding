@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,7 +36,10 @@ public class SearchController {
     public Result<Map<String, Object>> search(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String school,
+            @RequestParam(required = false) String timeRange) {
 
         Map<String, Object> result = new LinkedHashMap<>();
 
@@ -72,12 +76,35 @@ public class SearchController {
             return m;
         }).toList();
 
-        // 动态：按内容模糊匹配
-        Page<Post> postPage = postMapper.selectPage(new Page<>(page, size),
-                new LambdaQueryWrapper<Post>()
-                        .like(Post::getContent, keyword)
-                        .eq(Post::getStatus, 1)
-                        .orderByDesc(Post::getCreatedAt));
+        // 动态：内容 + 标签模糊匹配;支持分类/学校/时间范围过滤
+        LambdaQueryWrapper<Post> postWrapper = new LambdaQueryWrapper<Post>()
+                .eq(Post::getStatus, 1)
+                .eq(Post::getReviewStatus, 0)
+                .and(w -> w.like(Post::getContent, keyword).or().like(Post::getTags, keyword))
+                .eq(StringUtils.hasText(category), Post::getCategory, category);
+        if (StringUtils.hasText(school)) {
+            List<Long> schoolUserIds = userMapper.selectList(new LambdaQueryWrapper<User>()
+                            .eq(User::getStatus, 1)
+                            .like(User::getSchool, school))
+                    .stream().map(User::getId).toList();
+            if (schoolUserIds.isEmpty()) {
+                postWrapper.apply("1 = 0");
+            } else {
+                postWrapper.in(Post::getUserId, schoolUserIds);
+            }
+        }
+        if (StringUtils.hasText(timeRange)) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime since = switch (timeRange) {
+                case "day" -> now.minusDays(1);
+                case "week" -> now.minusDays(7);
+                case "month" -> now.minusDays(30);
+                default -> null;
+            };
+            if (since != null) postWrapper.ge(Post::getCreatedAt, since);
+        }
+        postWrapper.orderByDesc(Post::getIsTop).orderByDesc(Post::getCreatedAt);
+        Page<Post> postPage = postMapper.selectPage(new Page<>(page, size), postWrapper);
         List<Long> postUserIds = postPage.getRecords().stream().map(Post::getUserId).distinct().toList();
         Map<Long, User> postUserMap = new HashMap<>();
         if (!postUserIds.isEmpty()) {
@@ -88,6 +115,8 @@ public class SearchController {
             m.put("id", p.getId());
             m.put("content", p.getContent());
             m.put("userId", p.getUserId());
+            m.put("category", p.getCategory());
+            m.put("tags", p.getTags() != null ? List.of(p.getTags().split(",")) : List.of());
             User uu = postUserMap.get(p.getUserId());
             m.put("userNickname", uu != null ? uu.getNickname() : "");
             m.put("userAvatar", uu != null ? uu.getAvatar() : "");
