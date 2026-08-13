@@ -3,11 +3,13 @@ package com.finding.post.controller;
 import com.finding.common.Result;
 import com.finding.user.common.VerificationGuard;
 import com.finding.post.dto.PostCreateDTO;
+import com.finding.post.dto.PostDraftSaveDTO;
 import com.finding.post.dto.PostQueryDTO;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.post.service.PostService;
 import com.finding.post.vo.CommentVO;
 import com.finding.common.PageVO;
+import com.finding.post.vo.PostDraftVO;
 import com.finding.post.vo.PostVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -138,5 +140,31 @@ public class PostController {
         Long userId = JwtInterceptor.getCurrentUserId();
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
         return Result.ok(postService.getMyFavorites(userId, page, size));
+    }
+
+    /** 保存发帖草稿 */
+    @PutMapping("/draft")
+    public Result<Void> saveDraft(@Valid @RequestBody PostDraftSaveDTO dto) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        postService.saveDraft(userId, dto);
+        return Result.ok();
+    }
+
+    /** 获取我的发帖草稿(无则 data 为 null) */
+    @GetMapping("/draft")
+    public Result<PostDraftVO> getDraft() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(postService.getDraft(userId));
+    }
+
+    /** 清除我的发帖草稿 */
+    @DeleteMapping("/draft")
+    public Result<Void> clearDraft() {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        postService.clearDraft(userId);
+        return Result.ok();
     }
 }

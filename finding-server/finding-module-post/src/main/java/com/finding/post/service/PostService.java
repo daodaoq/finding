@@ -1,9 +1,11 @@
 package com.finding.post.service;
 
 import com.finding.post.dto.PostCreateDTO;
+import com.finding.post.dto.PostDraftSaveDTO;
 import com.finding.post.dto.PostQueryDTO;
 import com.finding.post.vo.CommentVO;
 import com.finding.common.PageVO;
+import com.finding.post.vo.PostDraftVO;
 import com.finding.post.vo.PostVO;
 
 public interface PostService {
@@ -33,4 +35,13 @@ public interface PostService {
 
     /** 获取指定用户的公开动态(仅展示中,他人主页用) */
     PageVO<PostVO> getUserPublicPosts(Long userId, Long viewerId, int page, int size);
+
+    /** 保存发帖草稿(每用户一份,upsert) */
+    void saveDraft(Long userId, PostDraftSaveDTO dto);
+
+    /** 获取我的发帖草稿(无则返回 null) */
+    PostDraftVO getDraft(Long userId);
+
+    /** 清除我的发帖草稿 */
+    void clearDraft(Long userId);
 }

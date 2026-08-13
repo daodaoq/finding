@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.post.dto.PostCreateDTO;
+import com.finding.post.dto.PostDraftSaveDTO;
 import com.finding.post.dto.PostQueryDTO;
 import com.finding.post.constant.PostCategory;
 
@@ -21,6 +22,7 @@ import com.finding.common.PageVO;
 import com.finding.common.util.XssUtil;
 import com.finding.common.word.ReviewResult;
 import com.finding.common.word.SensitiveWordFilter;
+import com.finding.post.vo.PostDraftVO;
 import com.finding.post.vo.PostVO;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -44,12 +47,14 @@ import java.util.stream.Collectors;
 import com.finding.post.entity.Post;
 import com.finding.post.entity.PostComment;
 import com.finding.post.entity.PostCommentLike;
+import com.finding.post.entity.PostDraft;
 import com.finding.post.entity.PostFavorite;
 import com.finding.post.entity.PostLike;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserFollow;
 import com.finding.post.mapper.PostCommentLikeMapper;
 import com.finding.post.mapper.PostCommentMapper;
+import com.finding.post.mapper.PostDraftMapper;
 import com.finding.post.mapper.PostFavoriteMapper;
 import com.finding.post.mapper.PostLikeMapper;
 import com.finding.post.mapper.PostMapper;
@@ -62,6 +67,7 @@ import com.finding.message.service.MessageService;
 public class PostServiceImpl implements PostService {
 
     private final PostMapper postMapper;
+    private final PostDraftMapper draftMapper;
     private final PostLikeMapper likeMapper;
     private final PostFavoriteMapper favoriteMapper;
     private final PostCommentLikeMapper commentLikeMapper;
@@ -596,6 +602,76 @@ public class PostServiceImpl implements PostService {
                 .map(p -> toVO(p, userId))
                 .collect(Collectors.toList());
         return PageVO.of(records, favs.getTotal(), page, size);
+    }
+
+    @Override
+    @Transactional
+    public void saveDraft(Long userId, PostDraftSaveDTO dto) {
+        PostDraft existing = draftMapper.selectOne(new LambdaQueryWrapper<PostDraft>()
+                .eq(PostDraft::getUserId, userId));
+        String images = toJsonImages(dto.getImages());
+        String tags = toTagsString(cleanDraftTags(dto.getTags()));
+        Integer visibility = normalizeVisibility(dto.getVisibility());
+        if (existing == null) {
+            PostDraft draft = new PostDraft();
+            draft.setUserId(userId);
+            draft.setContent(dto.getContent());
+            draft.setImages(images);
+            draft.setLocation(dto.getLocation());
+            draft.setCity(dto.getCity());
+            draft.setCategory(dto.getCategory());
+            draft.setTags(tags);
+            draft.setVisibility(visibility);
+            draftMapper.insert(draft);
+        } else {
+            existing.setContent(dto.getContent());
+            existing.setImages(images);
+            existing.setLocation(dto.getLocation());
+            existing.setCity(dto.getCity());
+            existing.setCategory(dto.getCategory());
+            existing.setTags(tags);
+            existing.setVisibility(visibility);
+            existing.setUpdatedAt(LocalDateTime.now());
+            draftMapper.updateById(existing);
+        }
+    }
+
+    @Override
+    public PostDraftVO getDraft(Long userId) {
+        PostDraft draft = draftMapper.selectOne(new LambdaQueryWrapper<PostDraft>()
+                .eq(PostDraft::getUserId, userId));
+        if (draft == null) return null;
+        PostDraftVO vo = new PostDraftVO();
+        vo.setContent(draft.getContent());
+        vo.setImages(parseImages(draft.getImages()));
+        vo.setLocation(draft.getLocation());
+        vo.setCity(draft.getCity());
+        vo.setCategory(draft.getCategory());
+        vo.setTags(parseTags(draft.getTags()));
+        vo.setVisibility(draft.getVisibility());
+        vo.setUpdatedAt(draft.getUpdatedAt());
+        return vo;
+    }
+
+    @Override
+    public void clearDraft(Long userId) {
+        draftMapper.delete(new LambdaQueryWrapper<PostDraft>().eq(PostDraft::getUserId, userId));
+    }
+
+    /** 草稿标签轻清洗(草稿私密,只 XSS 清洗 + 截断/去重,不跑违禁词拦截) */
+    private List<String> cleanDraftTags(List<String> tags) {
+        if (tags == null) return List.of();
+        List<String> cleaned = new ArrayList<>();
+        for (String t : tags) {
+            if (!StringUtils.hasText(t)) continue;
+            String tag = XssUtil.clean(t.trim());
+            if (!StringUtils.hasText(tag)) continue;
+            if (tag.length() > 15) tag = tag.substring(0, 15);
+            cleaned.add(tag);
+        }
+        List<String> distinct = new ArrayList<>(new LinkedHashSet<>(cleaned));
+        if (distinct.size() > 5) return distinct.subList(0, 5);
+        return distinct;
     }
 
     /** 可见性归一化:null/非法 → 0(公开) */
