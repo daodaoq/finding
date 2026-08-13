@@ -5,9 +5,9 @@ import '../subpage.css';
 import './help.css';
 
 const CONTACTS: { label: string; value: string; icon: AppIconName; copyable?: boolean }[] = [
-  { label: '官方邮箱', value: 'service@finding.edu.cn', icon: 'mail', copyable: true },
-  { label: '客服 QQ', value: '1008610086', icon: 'message', copyable: true },
-  { label: '微信公众号', value: 'Finding 校园', icon: 'sparkles' },
+  { label: '官方邮箱', value: '2090953265@qq.com', icon: 'mail', copyable: true },
+  { label: '客服 QQ', value: '2090953265', icon: 'message', copyable: true },
+  { label: '官方微信', value: '13096120690', icon: 'sparkles', copyable: true },
   { label: '服务时间', value: '每天 9:00 - 21:00', icon: 'clock' },
 ];
 
@@ -40,7 +40,7 @@ export default function ContactPage() {
         ))}
       </div>
       <p style={{ textAlign: 'center', fontSize: 12, color: '#bbb', padding: '16px 0' }}>
-        点按可复制邮箱 / QQ 号
+        点按可复制邮箱 / QQ / 微信号
       </p>
     </div>
   );
