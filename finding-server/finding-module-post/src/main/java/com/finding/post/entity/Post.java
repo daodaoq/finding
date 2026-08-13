@@ -28,6 +28,7 @@ public class Post {
     private Integer isHot;
     private Integer isTop;
     private Integer status;         // 0=deleted, 1=active, 2=hidden
+    private Integer visibility;     // 0=公开 1=仅好友 2=仅自己
     private Integer reviewStatus;   // 0=已发布 1=待审 2=拒绝
     private String reviewReason;    // 审核拒绝原因
     private Long reviewBy;          // 审核人

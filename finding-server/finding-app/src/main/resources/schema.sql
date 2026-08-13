@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `post` (
     `is_hot` TINYINT DEFAULT 0,
     `is_top` TINYINT DEFAULT 0,
     `status` TINYINT DEFAULT 1 COMMENT '0=deleted, 1=active, 2=hidden',
+    `visibility` TINYINT NOT NULL DEFAULT 0 COMMENT '0=公开 1=仅好友 2=仅自己',
     `review_status` TINYINT DEFAULT 0 COMMENT '0=已发布 1=待审 2=拒绝',
     `review_reason` VARCHAR(500) DEFAULT NULL COMMENT '审核拒绝原因',
     `review_by` BIGINT DEFAULT NULL COMMENT '审核人',
@@ -110,6 +111,19 @@ CREATE TABLE IF NOT EXISTS `post_like` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_post_user` (`post_id`, `user_id`),
     KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 4b. post_favorite - 帖子收藏
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `post_favorite` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `post_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_post_user` (`post_id`, `user_id`),
+    KEY `idx_user` (`user_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

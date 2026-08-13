@@ -24,6 +24,9 @@ public class PostCreateDTO {
     /** 标签(最多 5 个,每个 ≤15 字),可选 */
     private List<String> tags;
 
+    /** 可见性:0=公开 1=仅好友 2=仅自己,默认公开 */
+    private Integer visibility;
+
     private BigDecimal latitude;
     private BigDecimal longitude;
 }

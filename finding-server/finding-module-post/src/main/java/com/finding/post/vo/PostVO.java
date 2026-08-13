@@ -30,6 +30,8 @@ public class PostVO {
     private Integer shareCount;
     private Integer isHot;
     private Integer isTop;
+    /** 可见性:0=公开 1=仅好友 2=仅自己 */
+    private Integer visibility;
     /** 审核状态:0=已发布 1=待审 2=拒绝(作者可见) */
     private Integer reviewStatus;
     /** 审核拒绝原因 */
@@ -40,6 +42,8 @@ public class PostVO {
 
     // Current user interaction state
     private Boolean isLiked;
+    /** 当前用户是否已收藏 */
+    private Boolean isFavorited;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

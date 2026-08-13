@@ -25,6 +25,12 @@ public interface PostService {
     /** 获取当前用户点赞过的动态列表 */
     PageVO<PostVO> getMyLikedPosts(Long userId, int page, int size);
 
+    /** 收藏/取消收藏(幂等,唯一约束兜底) */
+    void toggleFavorite(Long userId, Long postId);
+
+    /** 获取当前用户收藏的动态列表 */
+    PageVO<PostVO> getMyFavorites(Long userId, int page, int size);
+
     /** 获取指定用户的公开动态(仅展示中,他人主页用) */
     PageVO<PostVO> getUserPublicPosts(Long userId, Long viewerId, int page, int size);
 }
