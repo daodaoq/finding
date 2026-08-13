@@ -28,6 +28,7 @@ public class WebSocketServer extends TextWebSocketHandler {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
+    private final OnlineStatusService onlineStatusService;
 
     /** 所有在线连接: WebSocketSession → 用户ID */
     public static final ConcurrentHashMap<WebSocketSession, Long> ONLINE_MAP = new ConcurrentHashMap<>();
@@ -46,6 +47,7 @@ public class WebSocketServer extends TextWebSocketHandler {
             if (userId != null) {
                 ONLINE_MAP.put(session, userId);
                 USER_CHANNELS.computeIfAbsent(userId, k -> new CopyOnWriteArraySet<>()).add(session);
+                onlineStatusService.markOnline(userId);
                 log.info("WebSocket 连接成功: userId={}, sessionId={}", userId, session.getId());
                 return;
             }
@@ -79,7 +81,8 @@ public class WebSocketServer extends TextWebSocketHandler {
                 reject.setToUserId(userId);
                 sendToSession(session, reject);
             } else if ("heartbeat".equals(wsMsg.getType())) {
-                // 心跳：回复 pong
+                // 心跳：回复 pong + 刷新在线 TTL
+                onlineStatusService.markOnline(userId);
                 WsMessage pong = new WsMessage();
                 pong.setType("pong");
                 sendToSession(session, pong);
@@ -111,7 +114,10 @@ public class WebSocketServer extends TextWebSocketHandler {
             CopyOnWriteArraySet<WebSocketSession> channels = USER_CHANNELS.get(userId);
             if (channels != null) {
                 channels.remove(session);
-                if (channels.isEmpty()) USER_CHANNELS.remove(userId);
+                if (channels.isEmpty()) {
+                    USER_CHANNELS.remove(userId);
+                    onlineStatusService.markOffline(userId);
+                }
             }
         }
         try { session.close(); } catch (IOException e) {
@@ -131,6 +137,7 @@ public class WebSocketServer extends TextWebSocketHandler {
                 channels.remove(session);
                 if (channels.isEmpty()) {
                     USER_CHANNELS.remove(userId);
+                    onlineStatusService.markOffline(userId);
                 }
             }
             log.info("WebSocket 断开: userId={}, sessionId={}", userId, session.getId());

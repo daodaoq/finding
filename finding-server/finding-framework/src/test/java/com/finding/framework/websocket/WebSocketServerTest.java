@@ -31,7 +31,8 @@ class WebSocketServerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
-    private final WebSocketServer server = new WebSocketServer(jwtTokenProvider, objectMapper);
+    private final OnlineStatusService onlineStatusService = mock(OnlineStatusService.class);
+    private final WebSocketServer server = new WebSocketServer(jwtTokenProvider, objectMapper, onlineStatusService);
 
     @BeforeEach
     @AfterEach
