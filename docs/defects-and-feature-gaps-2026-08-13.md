@@ -112,11 +112,11 @@
 - [x] JWT 用 `atob` 而非 base64url 解码（`tokenStorage.ts:11`）可能误清有效 token。
 - [x] `Date.now()` 作临时消息 ID 同毫秒互相覆盖（`useChatActions.ts:91`）。
 - [x] 多标签页登出无 `storage` 事件同步（`authStore.ts`）。
-- [ ] WebSocket token 走 URL query（前后端都命中：`chatSocket.ts:95`、`WebSocketServer.java:176`）。
+- [x] WebSocket token 走 URL query（前后端都命中：`chatSocket.ts:95`、`WebSocketServer.java:176`）。
 - [x] Resume 表单年龄/身高/生日无边界校验（`Resume/index.tsx:135-139`）。
-- [ ] 未清理的定时器（`useChatSocket.ts:34`、`ChatBubble.tsx:56`、`PostDetail/index.tsx:127`）。
-- [ ] Bridge 推荐加载无竞态守卫（`Bridge/index.tsx:51-92`）。
-- [ ] 静默吞异常导致 UI 停在空/加载态（admin `Announcements.tsx:31`、`ChatAudit.tsx:66` 等；web `messageStore.ts:31`）。
+- [x] 未清理的定时器（`useChatSocket.ts:34`、`ChatBubble.tsx:56`、`PostDetail/index.tsx:127`）。
+- [x] Bridge 推荐加载无竞态守卫（`Bridge/index.tsx:51-92`）。
+- [x] 静默吞异常导致 UI 停在空/加载态（admin `Announcements.tsx:31`、`ChatAudit.tsx:66` 等；web `messageStore.ts:31`）。
 - [x] 并发 401 时 `logout()` 被重复调用（`request.ts:77-78`，web 端缺 `loggingOut` 锁）。
 
 ---
