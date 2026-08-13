@@ -56,16 +56,18 @@ export function useChatSession({ targetUserId, user, onInitError }: Options) {
       showToast(getErrorMessage(e, '还没有会话，请先通过『相亲桥』发起聊天申请'));
       // 会话不存在或无权限:抛出让调用方(init effect)触发 onInitError 回退
       throw e;
-    } finally {
-      setLoading(false);
     }
   }, [targetUserId]);
 
   useEffect(() => {
-    const { promise } = initGuard.run((signal) => init(signal));
+    const { promise, isCurrent } = initGuard.run((signal) => init(signal));
     // 非过期失败(无会话/无权限):回退上一页
     promise.catch((e) => {
       if (!isStaleError(e)) onInitErrorRef.current?.();
+    });
+    // 只有最新请求才允许关闭 loading,避免切换会话时旧请求(被 abort)的收尾提前关掉新请求的 loading
+    promise.finally(() => {
+      if (isCurrent()) setLoading(false);
     });
   }, [targetUserId, initGuard.run, init]);
 
