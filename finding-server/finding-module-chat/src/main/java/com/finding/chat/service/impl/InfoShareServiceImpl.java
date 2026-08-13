@@ -26,6 +26,7 @@ import com.finding.user.service.UserRelationshipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,26 +88,42 @@ public class InfoShareServiceImpl implements InfoShareService {
             throw new BusinessException(ResultCode.INFO_SHARE_NEED_CHAT);
         }
 
-        InfoShare existing = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
+        // 任一方向已存在 pending/approved → 不允许重复发起(含反向,避免双方各持一条 pending)
+        Long activeCount = infoShareMapper.selectCount(new LambdaQueryWrapper<InfoShare>()
+                .and(w -> w
+                        .eq(InfoShare::getFromUserId, fromUserId).eq(InfoShare::getToUserId, toUserId)
+                        .or()
+                        .eq(InfoShare::getFromUserId, toUserId).eq(InfoShare::getToUserId, fromUserId))
+                .ne(InfoShare::getStatus, InfoShareStatus.REJECTED.getCode()));
+        if (activeCount != null && activeCount > 0) {
+            throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT, "已经发起过互换申请了");
+        }
+
+        // 同方向已被拒 → 原地改回 pending(允许重新申请,迁移 REJECTED->PENDING)
+        InfoShare rejected = infoShareMapper.selectOne(new LambdaQueryWrapper<InfoShare>()
                 .eq(InfoShare::getFromUserId, fromUserId)
-                .eq(InfoShare::getToUserId, toUserId));
+                .eq(InfoShare::getToUserId, toUserId)
+                .eq(InfoShare::getStatus, InfoShareStatus.REJECTED.getCode())
+                .orderByDesc(InfoShare::getCreatedAt)
+                .last("LIMIT 1"));
 
         Long shareId;
-        if (existing != null) {
-            // 已存在: pending/approved 不允许重复发起; rejected 则原地改回 pending(允许重新申请,迁移 REJECTED->PENDING)
-            if (existing.getStatus() != InfoShareStatus.REJECTED.getCode()) {
-                throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT, "已经发起过互换申请了");
-            }
-            existing.setStatus(InfoShareStatus.PENDING.getCode());
-            existing.setHandledAt(null);
-            infoShareMapper.updateById(existing);
-            shareId = existing.getId();
+        if (rejected != null) {
+            rejected.setStatus(InfoShareStatus.PENDING.getCode());
+            rejected.setHandledAt(null);
+            infoShareMapper.updateById(rejected);
+            shareId = rejected.getId();
         } else {
             InfoShare share = new InfoShare();
             share.setFromUserId(fromUserId);
             share.setToUserId(toUserId);
             share.setStatus(InfoShareStatus.PENDING.getCode());
-            infoShareMapper.insert(share);
+            try {
+                infoShareMapper.insert(share);
+            } catch (DuplicateKeyException e) {
+                // 并发同方向重复发起:唯一约束 uk_from_to 兜底
+                throw new BusinessException(ResultCode.CHAT_APPLY_ALREADY_SENT, "已经发起过互换申请了");
+            }
             shareId = share.getId();
         }
 
