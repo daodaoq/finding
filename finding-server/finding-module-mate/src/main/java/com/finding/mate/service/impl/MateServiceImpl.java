@@ -24,6 +24,7 @@ import com.finding.common.word.SensitiveWordFilter;
 import com.finding.common.event.UserBlockedEvent;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.context.event.EventListener;
@@ -347,6 +348,10 @@ public class MateServiceImpl implements MateService {
         if (invitation.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能加入自己发布的搭子");
         }
+        // 待审/被拒活动不可报名(与公开列表/详情可见性一致,避免按自增 id 枚举报名未公开活动)
+        if (invitation.getReviewStatus() != null && invitation.getReviewStatus() != 0) {
+            throw new BusinessException(ResultCode.MATE_NOT_FOUND);
+        }
         if (invitation.getStatus() != MateInvitationStatus.ACTIVE.getCode()) {
             throw new BusinessException(ResultCode.MATE_CLOSED);
         }
@@ -395,7 +400,12 @@ public class MateServiceImpl implements MateService {
             previous.setLastAppliedAt(LocalDateTime.now());
             participantMapper.updateById(previous);
         } else {
-            participantMapper.insert(participant);
+            try {
+                participantMapper.insert(participant);
+            } catch (DuplicateKeyException e) {
+                // 并发首次报名:唯一约束 uk_mate_user(invitation_id, user_id) 兜底,视为已申请
+                throw new BusinessException(ResultCode.ALREADY_JOINED);
+            }
         }
 
         // Notify creator
@@ -444,6 +454,10 @@ public class MateServiceImpl implements MateService {
         }
         if (!invitation.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.NOT_CREATOR);
+        }
+        // 待审/被拒活动不开放报名,不应有可审批的申请(防御性兜底,避免漏网审批)
+        if (invitation.getReviewStatus() != null && invitation.getReviewStatus() != 0) {
+            throw new BusinessException(ResultCode.MATE_CLOSED, "活动审核未通过，暂不能处理报名");
         }
         if (invitation.getStatus() != MateInvitationStatus.ACTIVE.getCode()) {
             throw new BusinessException(ResultCode.MATE_CLOSED);
@@ -782,26 +796,37 @@ public class MateServiceImpl implements MateService {
         if (invitation == null || invitation.getStatus() != MateInvitationStatus.ACTIVE.getCode() || isExpired(invitation)) {
             return;
         }
-        MateParticipant next = participantMapper.selectOne(new LambdaQueryWrapper<MateParticipant>()
-                .eq(MateParticipant::getInvitationId, invitationId)
-                .eq(MateParticipant::getStatus, MateParticipantStatus.WAITLISTED.getCode())
-                .orderByAsc(MateParticipant::getCreatedAt)
-                .last("LIMIT 1"));
-        if (next == null) return;
-        // 先原子占用名额，再迁移候补状态；任一步失败均抛错并由外层事务回滚。
-        int slotRows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
-                .eq(MateInvitation::getId, invitationId)
-                .lt(MateInvitation::getCurrentParticipants, invitation.getMaxParticipants())
-                .setSql("current_participants = current_participants + 1"));
-        if (slotRows == 0) return;
-        int pRows = participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
-                .eq(MateParticipant::getId, next.getId())
-                .eq(MateParticipant::getStatus, MateParticipantStatus.WAITLISTED.getCode())
-                .set(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
-        if (pRows == 0) {
-            throw new BusinessException(ResultCode.MATE_APPLY_HANDLED, "候补状态已变化，请重试");
+        // 并发退出时多个线程可能选中同一候补,依赖「状态条件更新」兜底:
+        // 更新失败说明该候补已被并发补位,释放刚占用的名额后重选下一位,直至选到唯一候补或无可补位。
+        // 不抛错,避免使「退出」请求整体回滚(名额已正确释放,补位失败不应阻止退出)。
+        for (int attempt = 0; attempt < 50; attempt++) {
+            MateParticipant next = participantMapper.selectOne(new LambdaQueryWrapper<MateParticipant>()
+                    .eq(MateParticipant::getInvitationId, invitationId)
+                    .eq(MateParticipant::getStatus, MateParticipantStatus.WAITLISTED.getCode())
+                    .orderByAsc(MateParticipant::getCreatedAt)
+                    .last("LIMIT 1"));
+            if (next == null) return;
+            // 先原子占用名额，再迁移候补状态
+            int slotRows = invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                    .eq(MateInvitation::getId, invitationId)
+                    .lt(MateInvitation::getCurrentParticipants, invitation.getMaxParticipants())
+                    .setSql("current_participants = current_participants + 1"));
+            if (slotRows == 0) return;
+            int pRows = participantMapper.update(null, new LambdaUpdateWrapper<MateParticipant>()
+                    .eq(MateParticipant::getId, next.getId())
+                    .eq(MateParticipant::getStatus, MateParticipantStatus.WAITLISTED.getCode())
+                    .set(MateParticipant::getStatus, MateParticipantStatus.ACCEPTED.getCode()));
+            if (pRows == 0) {
+                // 该候补已被并发补位:释放刚占用的名额,重选下一位
+                invitationMapper.update(null, new LambdaUpdateWrapper<MateInvitation>()
+                        .eq(MateInvitation::getId, invitationId)
+                        .gt(MateInvitation::getCurrentParticipants, 1)
+                        .setSql("current_participants = GREATEST(current_participants - 1, 0)"));
+                continue;
+            }
+            messageService.notify(invitation.getUserId(), next.getUserId(), "mate_accepted", "名额有空位，你已补位成功", invitationId);
+            return;
         }
-        messageService.notify(invitation.getUserId(), next.getUserId(), "mate_accepted", "名额有空位，你已补位成功", invitationId);
     }
 
     /** 通知活动的已通过成员 + 待审批/候补申请人(活动取消/关闭时) */
