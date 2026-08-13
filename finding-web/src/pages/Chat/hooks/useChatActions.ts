@@ -18,6 +18,9 @@ interface Options {
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }
 
+/** 模块级自增序号:临时消息 ID 同毫秒连续发送时递增,避免互相覆盖 */
+let tempIdSeq = 0;
+
 /** 回复/引用目标(输入栏显示引用条) */
 export interface ReplyTarget {
   id: number;
@@ -88,7 +91,7 @@ export function useChatActions({ targetUserId, user, conversation, setMessages }
     if (!user || !conversation) return;
     const roomId = conversation.roomId || conversation.id;
     if (!roomId) return;
-    const tempId = Date.now();
+    const tempId = Date.now() * 1000 + (tempIdSeq++ % 1000);
     const newMsg: ChatMessage = {
       id: tempId, // 临时 ID
       fromUserId: user.id,
