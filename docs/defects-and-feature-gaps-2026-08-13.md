@@ -97,9 +97,9 @@
 
 ### 后端
 
-- [ ] 搭子报名/审批未校验 `review_status`（`MateServiceImpl.java:341 / 440`）：待审/被拒活动仍可报名。
-- [ ] 搭子首次报名、并发退出补位无唯一键兜底 → 偶发 500（`MateServiceImpl.java:398 / 407-436`）。
-- [ ] 聊天申请 `applyChat` 未惰性过期旧 pending（`BridgeServiceImpl.java:450`）：过期申请仍阻塞重发。
+- [x] 搭子报名/审批未校验 `review_status`（`MateServiceImpl.java:341 / 440`）：待审/被拒活动仍可报名。
+- [x] 搭子首次报名、并发退出补位无唯一键兜底 → 偶发 500（`MateServiceImpl.java:398 / 407-436`）。
+- [x] 聊天申请 `applyChat` 未惰性过期旧 pending（`BridgeServiceImpl.java:450`）：过期申请仍阻塞重发。
 - [x] 建群群名先赋值后清洗（`GroupChatService.java:51`）：落库未清洗原文（存储型 XSS）；评论清洗后未判空（`PostServiceImpl.java:297`）。
 - [ ] 反骚扰限流是进程内内存实现（`InMemoryRateLimiter`）：多实例/重启后「1 小时限 10 次」失效，应改 Redis。
 - [ ] 动态列表 N+1 + 读路径写库（`PostServiceImpl.java:110`）；群列表逐群查最后消息/未读数 N+1。
