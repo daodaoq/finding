@@ -10,15 +10,19 @@ import com.finding.common.word.ReviewResult;
 import com.finding.common.word.SensitiveWordFilter;
 import com.finding.message.service.MessageService;
 import com.finding.post.dto.PostCreateDTO;
+import com.finding.post.dto.PostDraftSaveDTO;
 import com.finding.post.dto.PostQueryDTO;
 import com.finding.post.entity.Post;
 import com.finding.post.entity.PostComment;
+import com.finding.post.entity.PostDraft;
 import com.finding.post.entity.PostFavorite;
 import com.finding.post.mapper.PostCommentLikeMapper;
 import com.finding.post.mapper.PostCommentMapper;
+import com.finding.post.mapper.PostDraftMapper;
 import com.finding.post.mapper.PostFavoriteMapper;
 import com.finding.post.mapper.PostLikeMapper;
 import com.finding.post.mapper.PostMapper;
+import com.finding.post.vo.PostDraftVO;
 import com.finding.post.vo.PostVO;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserFollowMapper;
@@ -57,6 +61,7 @@ import static org.mockito.Mockito.when;
 class PostServiceImplTest {
 
     @Mock private PostMapper postMapper;
+    @Mock private PostDraftMapper draftMapper;
     @Mock private PostLikeMapper likeMapper;
     @Mock private PostFavoriteMapper favoriteMapper;
     @Mock private PostCommentLikeMapper commentLikeMapper;
@@ -78,6 +83,7 @@ class PostServiceImplTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), Post.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), PostComment.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), PostDraft.class);
     }
 
     @Test
@@ -536,6 +542,72 @@ class PostServiceImplTest {
         verify(postMapper).selectPage(any(), cap.capture());
         String sql = cap.getValue().getTargetSql();
         assertTrue(sql.contains("visibility"), "游客应仅看到公开动态");
+    }
+
+    // ── 草稿 ──
+
+    @Test
+    void saveDraft_newUser_inserts() {
+        when(draftMapper.selectOne(any())).thenReturn(null);
+        when(draftMapper.insert(any())).thenReturn(1);
+
+        PostDraftSaveDTO dto = new PostDraftSaveDTO();
+        dto.setContent("草稿内容");
+        dto.setVisibility(2);
+        service.saveDraft(1L, dto);
+
+        ArgumentCaptor<PostDraft> cap = ArgumentCaptor.forClass(PostDraft.class);
+        verify(draftMapper).insert(cap.capture());
+        assertEquals("草稿内容", cap.getValue().getContent());
+        assertEquals(2, cap.getValue().getVisibility());
+    }
+
+    @Test
+    void saveDraft_existing_updates() {
+        PostDraft existing = new PostDraft();
+        existing.setId(9L);
+        existing.setUserId(1L);
+        when(draftMapper.selectOne(any())).thenReturn(existing);
+
+        PostDraftSaveDTO dto = new PostDraftSaveDTO();
+        dto.setContent("更新草稿");
+        service.saveDraft(1L, dto);
+
+        verify(draftMapper).updateById(existing);
+        verify(draftMapper, never()).insert(any());
+        assertEquals("更新草稿", existing.getContent());
+    }
+
+    @Test
+    void getDraft_none_returnsNull() {
+        when(draftMapper.selectOne(any())).thenReturn(null);
+        assertEquals(null, service.getDraft(1L));
+    }
+
+    @Test
+    void getDraft_parsesImagesAndTags() {
+        PostDraft draft = new PostDraft();
+        draft.setUserId(1L);
+        draft.setContent("内容");
+        draft.setImages("[\"/api/v1/images/a.jpg\"]");
+        draft.setTags("tag1,tag2");
+        draft.setCategory("study");
+        draft.setVisibility(2);
+        when(draftMapper.selectOne(any())).thenReturn(draft);
+
+        PostDraftVO vo = service.getDraft(1L);
+
+        assertEquals("内容", vo.getContent());
+        assertEquals(List.of("/api/v1/images/a.jpg"), vo.getImages());
+        assertEquals(List.of("tag1", "tag2"), vo.getTags());
+        assertEquals("study", vo.getCategory());
+        assertEquals(2, vo.getVisibility());
+    }
+
+    @Test
+    void clearDraft_deletes() {
+        service.clearDraft(1L);
+        verify(draftMapper).delete(any());
     }
 
     private PostCreateDTO dto(String content) {
