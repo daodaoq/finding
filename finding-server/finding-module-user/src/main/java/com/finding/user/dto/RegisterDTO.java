@@ -1,7 +1,6 @@
 package com.finding.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -16,12 +15,8 @@ public class RegisterDTO {
     @NotBlank(message = "验证码标识不能为空")
     private String captchaKey;
 
-    /** 滑块拼图最终 X(拼图块左边缘,相对 300px 原图) */
-    @NotNull(message = "请完成滑块验证")
-    private Integer captchaX;
-
-    /** 拖动耗时(ms),行为校验用 */
-    private Long captchaTime;
+    @NotBlank(message = "验证码不能为空")
+    private String captchaCode;
 
     @NotBlank(message = "密码不能为空")
     @Size(min = 8, max = 32, message = "密码长度8-32位")

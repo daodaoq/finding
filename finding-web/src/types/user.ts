@@ -31,10 +31,7 @@ export interface LoginParams {
 export interface RegisterParams {
   phone: string;
   captchaKey: string;
-  /** 滑块拼图最终 X(拼图块左边缘,相对 300px 原图) */
-  captchaX: number;
-  /** 拖动耗时(ms),行为校验 */
-  captchaTime?: number;
+  captchaCode: string;
   password: string;
   nickname: string;
   school?: string;

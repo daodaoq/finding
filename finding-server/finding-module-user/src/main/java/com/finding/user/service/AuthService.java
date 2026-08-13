@@ -18,7 +18,7 @@ public interface AuthService {
     /** Send SMS verification code. */
     void sendCode(String phone, String type);
 
-    /** 生成滑块拼图验证码,返回 captchaKey + bgImage + pieceImage + y(base64 PNG)。 */
+    /** 生成图片验证码,返回 captchaKey + captchaImage(base64 PNG)。 */
     Map<String, String> generateCaptcha();
 
     /** Refresh access token using refresh token. */

@@ -54,7 +54,8 @@ class AuthServiceImplTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         service = new AuthServiceImpl(userMapper, verificationMapper, followMapper, userPostStatsQuery,
-                jwtTokenProvider, redisUtils, passwordEncoder, authenticationManager, sensitiveWordFilter, eventPublisher);
+                jwtTokenProvider, redisUtils, passwordEncoder, authenticationManager, sensitiveWordFilter,
+                eventPublisher);
     }
 
     @Test
@@ -108,22 +109,21 @@ class AuthServiceImplTest {
         assertEquals(1, vo.getTargetType());
     }
 
-    // ── 注册:滑块拼图验证 + 防批量注册限流 ──
+    // ── 注册:图片验证码 + 防批量注册限流 ──
 
     private RegisterDTO regDto() {
         RegisterDTO d = new RegisterDTO();
         d.setPhone("13800000000");
         d.setCaptchaKey("key1");
-        d.setCaptchaX(120);   // 与目标 X 一致
-        d.setCaptchaTime(2000L);
+        d.setCaptchaCode("1234");
         d.setPassword("12345678");
         d.setNickname("小明");
         return d;
     }
 
     @Test
-    void register_puzzleVerified_succeeds() {
-        when(redisUtils.get("captcha:key1")).thenReturn("120"); // 目标 X=120
+    void register_captchaVerified_succeeds() {
+        when(redisUtils.get("captcha:key1")).thenReturn("1234"); // 验证码正确
         when(userMapper.selectCount(any())).thenReturn(0L);
         when(passwordEncoder.encode(any())).thenReturn("$2a$10$hash");
         when(userMapper.insert(any())).thenReturn(1);
@@ -134,24 +134,22 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void register_puzzleWrongX_rejected() {
-        RegisterDTO dto = regDto();
-        dto.setCaptchaX(200); // 目标 120,差 80 > 容差 5
-        when(redisUtils.get("captcha:key1")).thenReturn("120");
+    void register_captchaWrongCode_rejected() {
+        when(redisUtils.get("captcha:key1")).thenReturn("1234");
 
+        RegisterDTO dto = regDto();
+        dto.setCaptchaCode("9999");
         BusinessException ex = assertThrows(BusinessException.class, () -> service.register(dto, "1.2.3.4", "dev-1"));
         assertEquals(ResultCode.SMS_CODE_ERROR.getCode(), ex.getCode());
         verify(userMapper, never()).insert(any());
     }
 
     @Test
-    void register_puzzleTooFast_rejected() {
-        RegisterDTO dto = regDto();
-        dto.setCaptchaTime(100L); // 拖动耗时过短,判定为脚本
-        when(redisUtils.get("captcha:key1")).thenReturn("120");
+    void register_captchaExpired_rejected() {
+        when(redisUtils.get("captcha:key1")).thenReturn(null); // 已过期
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.register(dto, "1.2.3.4", "dev-1"));
-        assertEquals(ResultCode.SMS_CODE_ERROR.getCode(), ex.getCode());
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.register(regDto(), "1.2.3.4", "dev-1"));
+        assertEquals(ResultCode.SMS_CODE_EXPIRED.getCode(), ex.getCode());
         verify(userMapper, never()).insert(any());
     }
 

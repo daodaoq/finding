@@ -19,7 +19,7 @@ import com.finding.user.service.UserPostStatsQuery;
 import com.finding.common.RedisUtils;
 import com.finding.common.util.XssUtil;
 import com.finding.common.word.SensitiveWordFilter;
-import com.finding.user.util.PuzzleCaptchaGenerator;
+import com.finding.user.util.CaptchaGenerator;
 import com.finding.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,11 +64,6 @@ public class AuthServiceImpl implements AuthService {
     private static final String CAPTCHA_PREFIX = "captcha:";
     private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String REFRESH_PREFIX = "token:refresh:";
-
-    /** 滑块拼图容差(px) */
-    private static final int PUZZLE_TOLERANCE = 5;
-    /** 拖动耗时下限(ms),低于视为脚本 */
-    private static final long PUZZLE_MIN_TIME_MS = 300;
 
     /** 防批量注册:同设备每小时最多注册次数 */
     @Value("${finding.register.device-limit:3}")
@@ -139,8 +134,8 @@ public class AuthServiceImpl implements AuthService {
     public void register(RegisterDTO dto, String ip, String deviceId) {
         // 防批量注册:已达上限直接拒绝(仅在注册成功后计数)
         checkRegisterFlood(ip, deviceId);
-        // 滑块拼图验证(一次性,校验后删除)
-        verifyPuzzleCaptcha(dto.getCaptchaKey(), dto.getCaptchaX(), dto.getCaptchaTime());
+        // 图片验证码校验(一次性,校验后删除)
+        verifyCaptcha(dto.getCaptchaKey(), dto.getCaptchaCode());
 
         if (userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone())) > 0) {
@@ -221,19 +216,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public Map<String, String> generateCaptcha() {
         try {
-            PuzzleCaptchaGenerator.Result r = PuzzleCaptchaGenerator.generate();
             String key = UUID.randomUUID().toString().replace("-", "");
-            // 存目标 X(字符串存储,避免序列化类型歧义),5 分钟过期
-            redisUtils.set(CAPTCHA_PREFIX + key, String.valueOf(r.targetX()), 5, TimeUnit.MINUTES);
+            String code = CaptchaGenerator.randomCode(4);
+            redisUtils.set(CAPTCHA_PREFIX + key, code, 5, TimeUnit.MINUTES);
 
+            String image = CaptchaGenerator.drawImage(code);
             Map<String, String> result = new HashMap<>();
             result.put("captchaKey", key);
-            result.put("bgImage", r.bgImage());
-            result.put("pieceImage", r.pieceImage());
-            result.put("y", String.valueOf(r.targetY()));
+            result.put("captchaImage", image);
             return result;
         } catch (Exception e) {
-            log.error("生成滑块拼图验证码失败", e);
+            log.error("生成图片验证码失败", e);
             throw new BusinessException(ResultCode.INTERNAL_ERROR, "验证码生成失败，请重试");
         }
     }
@@ -465,26 +458,17 @@ public class AuthServiceImpl implements AuthService {
                 : "该账号已被封禁";
     }
 
-    /** 校验滑块拼图验证码(一次性,校验后删除):x 容差 + 拖动耗时下限 */
-    private void verifyPuzzleCaptcha(String key, Integer x, Long timeMs) {
-        if (!StringUtils.hasText(key) || x == null) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "请完成滑块验证");
+    /** 校验图片验证码(一次性,校验后删除) */
+    private void verifyCaptcha(String key, String code) {
+        if (!StringUtils.hasText(key) || !StringUtils.hasText(code)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "请输入图片验证码");
         }
         String stored = redisUtils.get(CAPTCHA_PREFIX + key);
         if (stored == null) {
             throw new BusinessException(ResultCode.SMS_CODE_EXPIRED, "验证码已过期，请刷新");
         }
-        int targetX;
-        try {
-            targetX = Integer.parseInt(stored);
-        } catch (NumberFormatException e) {
-            throw new BusinessException(ResultCode.SMS_CODE_EXPIRED, "验证码已过期，请刷新");
-        }
-        // 行为校验:拖动耗时过短(<300ms)判定为脚本,直接作废
-        boolean tooFast = timeMs != null && timeMs < PUZZLE_MIN_TIME_MS;
-        if (tooFast || Math.abs(x - targetX) > PUZZLE_TOLERANCE) {
-            redisUtils.delete(CAPTCHA_PREFIX + key);
-            throw new BusinessException(ResultCode.SMS_CODE_ERROR, "验证未通过，请重试");
+        if (!stored.equalsIgnoreCase(code)) {
+            throw new BusinessException(ResultCode.SMS_CODE_ERROR, "验证码错误");
         }
         redisUtils.delete(CAPTCHA_PREFIX + key);
     }

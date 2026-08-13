@@ -26,9 +26,9 @@ export const authApi = {
   register: (data: RegisterParams) =>
     request.post<ApiResponse<null>>('/auth/register', data, { headers: { 'X-Device-Id': getDeviceId() } }),
 
-  /** 获取滑块拼图验证码(注册用) */
+  /** 获取图片验证码 */
   getCaptcha: () =>
-    request.get<ApiResponse<{ captchaKey: string; bgImage: string; pieceImage: string; y: string }>>('/auth/captcha'),
+    request.get<ApiResponse<{ captchaKey: string; captchaImage: string }>>('/auth/captcha'),
 
   getMe: () =>
     request.get<ApiResponse<User>>('/auth/me'),
