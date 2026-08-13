@@ -121,4 +121,22 @@ public class PostController {
         if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
         return Result.ok(postService.getMyLikedPosts(userId, page, size));
     }
+
+    /** 收藏/取消收藏(幂等) */
+    @PostMapping("/{id}/favorite")
+    public Result<Void> favorite(@PathVariable Long id) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        postService.toggleFavorite(userId, id);
+        return Result.ok();
+    }
+
+    /** 我收藏的动态 */
+    @GetMapping("/my-favorites")
+    public Result<PageVO<PostVO>> myFavorites(@RequestParam(defaultValue = "1") int page,
+                                               @RequestParam(defaultValue = "10") int size) {
+        Long userId = JwtInterceptor.getCurrentUserId();
+        if (userId == null) return Result.error(com.finding.common.ResultCode.UNAUTHORIZED);
+        return Result.ok(postService.getMyFavorites(userId, page, size));
+    }
 }

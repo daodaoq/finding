@@ -38,15 +38,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import com.finding.post.entity.Post;
 import com.finding.post.entity.PostComment;
 import com.finding.post.entity.PostCommentLike;
+import com.finding.post.entity.PostFavorite;
 import com.finding.post.entity.PostLike;
 import com.finding.user.entity.User;
 import com.finding.user.entity.UserFollow;
 import com.finding.post.mapper.PostCommentLikeMapper;
 import com.finding.post.mapper.PostCommentMapper;
+import com.finding.post.mapper.PostFavoriteMapper;
 import com.finding.post.mapper.PostLikeMapper;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserFollowMapper;
@@ -59,6 +63,7 @@ public class PostServiceImpl implements PostService {
 
     private final PostMapper postMapper;
     private final PostLikeMapper likeMapper;
+    private final PostFavoriteMapper favoriteMapper;
     private final PostCommentLikeMapper commentLikeMapper;
     private final PostCommentMapper commentMapper;
     private final UserMapper userMapper;
@@ -72,12 +77,28 @@ public class PostServiceImpl implements PostService {
     /** 图片 JSON 序列化(独立实例,避免受全局 ObjectMapper 日期格式影响) */
     private static final ObjectMapper IMAGE_OBJECT_MAPPER = new ObjectMapper();
 
+    /** @提及:匹配 @昵称(中英文/数字/下划线/连字符,1-20 字) */
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([\\p{L}\\p{N}_\\-]{1,20})");
+
     @Override
     public PageVO<PostVO> listPosts(PostQueryDTO query, Long currentUserId) {
         // 只返回已发布(审核通过)的动态
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<Post>()
                 .eq(Post::getStatus, 1)
                 .eq(Post::getReviewStatus, 0);
+
+        // 可见性过滤:公开全员;仅好友=好友+作者;仅自己=作者(游客只看到公开)
+        if (currentUserId == null) {
+            wrapper.eq(Post::getVisibility, 0);
+        } else {
+            Set<Long> friendIds = friendIdsOf(currentUserId);
+            wrapper.and(w -> {
+                w.eq(Post::getVisibility, 0).or().eq(Post::getUserId, currentUserId);
+                if (!friendIds.isEmpty()) {
+                    w.or().and(v -> v.eq(Post::getVisibility, 1).in(Post::getUserId, friendIds));
+                }
+            });
+        }
 
         // 分类/标签过滤(置顶优先排序在各 tab 内统一前置)
         if (StringUtils.hasText(query.getCategory())) {
@@ -180,6 +201,15 @@ public class PostServiceImpl implements PostService {
         if (rs != 0 && (currentUserId == null || !post.getUserId().equals(currentUserId))) {
             throw new BusinessException(ResultCode.POST_NOT_FOUND);
         }
+        // 可见性:作者可见;好友可见公开+仅好友;陌生人仅公开
+        Integer vis = post.getVisibility() != null ? post.getVisibility() : 0;
+        boolean isOwner = currentUserId != null && post.getUserId().equals(currentUserId);
+        if (vis == 2 && !isOwner) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
+        if (vis == 1 && !isOwner && (currentUserId == null || !isFriend(currentUserId, post.getUserId()))) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
         return post;
     }
 
@@ -203,8 +233,10 @@ public class PostServiceImpl implements PostService {
         post.setLatitude(dto.getLatitude());
         post.setLongitude(dto.getLongitude());
         post.setStatus(1);
+        post.setVisibility(normalizeVisibility(dto.getVisibility()));
         post.setReviewStatus(review.hasReview() ? 1 : 0);
         postMapper.insert(post);
+        notifyMentions(userId, content, "在动态中提到了你", post.getId());
         return toVO(post, userId);
     }
 
@@ -225,6 +257,7 @@ public class PostServiceImpl implements PostService {
         post.setCity(dto.getCity());
         post.setCategory(normalizeCategory(dto.getCategory()));
         post.setTags(toTagsString(cleanTags(dto.getTags())));
+        post.setVisibility(normalizeVisibility(dto.getVisibility()));
         if (dto.getLatitude() != null) post.setLatitude(dto.getLatitude());
         if (dto.getLongitude() != null) post.setLongitude(dto.getLongitude());
         // 编辑后重新审核:拦截词拒绝;送审词回到待审;干净则发布并清除拒绝原因
@@ -347,6 +380,8 @@ public class PostServiceImpl implements PostService {
         } else if (!post.getUserId().equals(userId)) {
             messageService.notify(userId, post.getUserId(), "comment", "评论了你的动态", postId);
         }
+        // @提及通知
+        notifyMentions(userId, cleaned, "在评论中提到了你", postId);
 
         return toCommentVO(comment, userId);
     }
@@ -497,17 +532,116 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PageVO<PostVO> getUserPublicPosts(Long userId, Long viewerId, int page, int size) {
-        Page<Post> pg = new Page<>(page, size);
-        Page<Post> result = postMapper.selectPage(pg,
-                new LambdaQueryWrapper<Post>()
-                        .eq(Post::getUserId, userId)
-                        .eq(Post::getStatus, 1)
-                        .eq(Post::getReviewStatus, 0)
-                        .orderByDesc(Post::getCreatedAt));
+        LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<Post>()
+                .eq(Post::getUserId, userId)
+                .eq(Post::getStatus, 1)
+                .eq(Post::getReviewStatus, 0);
+        // 他人主页:自己看全部;好友看公开+仅好友;陌生人仅公开
+        if (viewerId == null || !viewerId.equals(userId)) {
+            if (viewerId != null && isFriend(viewerId, userId)) {
+                wrapper.le(Post::getVisibility, 1);
+            } else {
+                wrapper.eq(Post::getVisibility, 0);
+            }
+        }
+        wrapper.orderByDesc(Post::getCreatedAt);
+        Page<Post> result = postMapper.selectPage(new Page<>(page, size), wrapper);
         List<PostVO> records = result.getRecords().stream()
                 .map(p -> toVO(p, viewerId))
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), page, size);
+    }
+
+    @Override
+    @Transactional
+    public void toggleFavorite(Long userId, Long postId) {
+        Post post = postMapper.selectById(postId);
+        if (post == null || post.getStatus() == 0) {
+            throw new BusinessException(ResultCode.POST_NOT_FOUND);
+        }
+        PostFavorite existing = favoriteMapper.selectOne(new LambdaQueryWrapper<PostFavorite>()
+                .eq(PostFavorite::getPostId, postId)
+                .eq(PostFavorite::getUserId, userId));
+        if (existing != null) {
+            favoriteMapper.deleteById(existing.getId());
+        } else {
+            PostFavorite fav = new PostFavorite();
+            fav.setPostId(postId);
+            fav.setUserId(userId);
+            try {
+                favoriteMapper.insert(fav);
+            } catch (DuplicateKeyException e) {
+                // 并发双击:唯一约束兜底,视为已收藏(幂等)
+            }
+        }
+    }
+
+    @Override
+    public PageVO<PostVO> getMyFavorites(Long userId, int page, int size) {
+        Page<PostFavorite> favPage = new Page<>(page, size);
+        Page<PostFavorite> favs = favoriteMapper.selectPage(favPage,
+                new LambdaQueryWrapper<PostFavorite>()
+                        .eq(PostFavorite::getUserId, userId)
+                        .orderByDesc(PostFavorite::getCreatedAt));
+        List<Long> postIds = favs.getRecords().stream().map(PostFavorite::getPostId).toList();
+        if (postIds.isEmpty()) {
+            return PageVO.of(List.of(), 0L, page, size);
+        }
+        List<Post> posts = postMapper.selectBatchIds(postIds);
+        // 保持收藏时间倒序(selectBatchIds 不保证顺序)
+        Map<Long, Post> postMap = posts.stream().collect(Collectors.toMap(Post::getId, p -> p));
+        List<PostVO> records = favs.getRecords().stream()
+                .map(f -> postMap.get(f.getPostId()))
+                .filter(p -> p != null && p.getStatus() != null && p.getStatus() != 0)
+                .map(p -> toVO(p, userId))
+                .collect(Collectors.toList());
+        return PageVO.of(records, favs.getTotal(), page, size);
+    }
+
+    /** 可见性归一化:null/非法 → 0(公开) */
+    private Integer normalizeVisibility(Integer v) {
+        if (v == null) return 0;
+        return (v >= 0 && v <= 2) ? v : 0;
+    }
+
+    /** 双向关注的好友 ID 集合(仅好友可见用) */
+    private Set<Long> friendIdsOf(Long userId) {
+        List<Long> followees = followMapper.selectList(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, userId))
+                .stream().map(UserFollow::getFolloweeId).toList();
+        if (followees.isEmpty()) return Set.of();
+        return followMapper.selectList(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFolloweeId, userId)
+                .in(UserFollow::getFollowerId, followees))
+                .stream().map(UserFollow::getFollowerId).collect(Collectors.toSet());
+    }
+
+    /** a 与 b 是否互为好友(双向关注) */
+    private boolean isFriend(Long a, Long b) {
+        if (a == null || b == null) return false;
+        long ab = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, a).eq(UserFollow::getFolloweeId, b));
+        long ba = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
+                .eq(UserFollow::getFollowerId, b).eq(UserFollow::getFolloweeId, a));
+        return ab > 0 && ba > 0;
+    }
+
+    /** 解析 @昵称 并通知被提及用户(去重、排除自己、昵称唯一才通知) */
+    private void notifyMentions(Long fromUserId, String content, String text, Long relatedId) {
+        if (content == null) return;
+        Matcher m = MENTION_PATTERN.matcher(content);
+        Set<String> seen = new LinkedHashSet<>();
+        while (m.find()) {
+            seen.add(m.group(1));
+        }
+        for (String nickname : seen) {
+            List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
+                    .eq(User::getStatus, 1)
+                    .eq(User::getNickname, nickname));
+            if (users.size() == 1 && !users.get(0).getId().equals(fromUserId)) {
+                messageService.notify(fromUserId, users.get(0).getId(), "mention", text, relatedId);
+            }
+        }
     }
 
     /** 分类校验:空→null;非法 code → 报错 */
@@ -623,6 +757,7 @@ public class PostServiceImpl implements PostService {
         vo.setShareCount(post.getShareCount());
         vo.setIsHot(post.getIsHot());
         vo.setIsTop(post.getIsTop());
+        vo.setVisibility(post.getVisibility() != null ? post.getVisibility() : 0);
         vo.setReviewStatus(post.getReviewStatus() != null ? post.getReviewStatus() : 0);
         vo.setReviewReason(post.getReviewReason());
         vo.setCreatedAt(post.getCreatedAt());
@@ -637,6 +772,9 @@ public class PostServiceImpl implements PostService {
             vo.setIsLiked(likeMapper.selectCount(new LambdaQueryWrapper<PostLike>()
                     .eq(PostLike::getPostId, post.getId())
                     .eq(PostLike::getUserId, currentUserId)) > 0);
+            vo.setIsFavorited(favoriteMapper.selectCount(new LambdaQueryWrapper<PostFavorite>()
+                    .eq(PostFavorite::getPostId, post.getId())
+                    .eq(PostFavorite::getUserId, currentUserId)) > 0);
         }
         return vo;
     }
