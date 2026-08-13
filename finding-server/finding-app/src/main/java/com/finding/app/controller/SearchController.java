@@ -48,7 +48,7 @@ public class SearchController {
 
         String kw = "%" + keyword + "%";
 
-        // 用户：按昵称或手机号模糊匹配(排除关闭"允许被搜索"、自己、与当前用户双向拉黑的用户)
+        // 用户：仅按昵称模糊匹配(不含手机号,防止未登录按手机号枚举注册用户;排除关闭"允许被搜索"、自己、双向拉黑)
         Long currentUserId = JwtInterceptor.getCurrentUserId();
         List<Long> hiddenIds = userSettingsMapper.selectList(
                         new LambdaQueryWrapper<UserSettings>().eq(UserSettings::getSearchable, 0))
@@ -60,7 +60,7 @@ public class SearchController {
                         .ne(currentUserId != null, User::getId, currentUserId)
                         .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds)
                         .notIn(!blockedIds.isEmpty(), User::getId, blockedIds)
-                        .and(w -> w.like(User::getNickname, keyword).or().like(User::getPhone, keyword))
+                        .like(User::getNickname, keyword)
                         .orderByDesc(User::getLastLoginAt));
         List<Map<String, Object>> users = userPage.getRecords().stream().map(u -> {
             Map<String, Object> m = new LinkedHashMap<>();
