@@ -19,7 +19,7 @@ import com.finding.chat.vo.HomeFeedVO;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.message.service.MessageService;
 import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
@@ -85,7 +85,7 @@ class BridgeServiceImplTest {
     @Mock private com.finding.chat.mapper.UserCardConfigMapper cardConfigMapper;
     @Mock private MatchScoreWeights weights;
     @Mock private UserWriteGuard userWriteGuard;
-    @Mock private InMemoryRateLimiter rateLimiter;
+    @Mock private RedisRateLimiter rateLimiter;
 
     @InjectMocks
     private BridgeServiceImpl service;

@@ -23,7 +23,7 @@ import com.finding.common.BusinessException;
 import com.finding.common.PageVO;
 import com.finding.common.ResultCode;
 import com.finding.common.word.SensitiveWordFilter;
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.message.vo.ConversationVO;
 import com.finding.user.common.VerificationGuard;
@@ -82,7 +82,7 @@ class ChatServiceImplTest {
     @Mock private SensitiveWordFilter sensitiveWordFilter;
     @Mock private UserRelationshipService relationshipService;
     @Mock private UserWriteGuard userWriteGuard;
-    @Mock private InMemoryRateLimiter rateLimiter;
+    @Mock private RedisRateLimiter rateLimiter;
     @Mock private WebSocketServer webSocketServer;
 
     @InjectMocks

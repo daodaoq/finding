@@ -17,7 +17,7 @@ import com.finding.chat.service.InfoShareService;
 import com.finding.chat.vo.InfoShareStatusVO;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.message.service.MessageService;
 import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
@@ -42,7 +42,7 @@ public class InfoShareServiceImpl implements InfoShareService {
     private final MessageService messageService;
     private final VerificationGuard verificationGuard;
     private final UserRelationshipService relationshipService;
-    private final InMemoryRateLimiter rateLimiter;
+    private final RedisRateLimiter rateLimiter;
     private final ApplicationEventPublisher eventPublisher;
     private final ChatApplyMapper chatApplyMapper;
     private final RoomFriendMapper roomFriendMapper;

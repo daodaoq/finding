@@ -12,7 +12,7 @@ import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.message.service.MessageService;
 import com.finding.user.common.VerificationGuard;
 import com.finding.user.entity.User;
@@ -49,7 +49,7 @@ class InfoShareServiceImplTest {
     @Mock private MessageService messageService;
     @Mock private VerificationGuard verificationGuard;
     @Mock private UserRelationshipService relationshipService;
-    @Mock private InMemoryRateLimiter rateLimiter;
+    @Mock private RedisRateLimiter rateLimiter;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private ChatApplyMapper chatApplyMapper;
     @Mock private RoomFriendMapper roomFriendMapper;

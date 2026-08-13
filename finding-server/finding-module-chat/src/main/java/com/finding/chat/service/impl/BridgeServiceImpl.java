@@ -36,7 +36,7 @@ import com.finding.user.service.UserWriteGuard;
 import com.finding.chat.service.BridgeService;
 import com.finding.chat.service.ChatService;
 import com.finding.message.service.MessageService;
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.common.GeoUtils;
 import com.finding.chat.vo.ChatApplyVO;
 import com.finding.chat.vo.HomeFeedVO;
@@ -86,7 +86,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final UserCardConfigMapper cardConfigMapper;
     private final MatchScoreWeights weights;
     private final UserWriteGuard userWriteGuard;
-    private final InMemoryRateLimiter rateLimiter;
+    private final RedisRateLimiter rateLimiter;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {

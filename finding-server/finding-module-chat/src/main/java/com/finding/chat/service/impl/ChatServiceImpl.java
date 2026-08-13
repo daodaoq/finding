@@ -7,7 +7,7 @@ import com.finding.common.BusinessException;
 import com.finding.common.ResultCode;
 import com.finding.chat.dto.MessageSendDTO;
 
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.framework.websocket.WebSocketServer;
 import com.finding.framework.websocket.WsMessage;
 
@@ -76,7 +76,7 @@ public class ChatServiceImpl implements ChatService {
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
     private final UserWriteGuard userWriteGuard;
-    private final InMemoryRateLimiter rateLimiter;
+    private final RedisRateLimiter rateLimiter;
     private final WebSocketServer webSocketServer;
 
     @Override

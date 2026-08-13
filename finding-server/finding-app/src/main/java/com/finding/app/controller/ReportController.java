@@ -10,7 +10,7 @@ import com.finding.chat.entity.RoomFriend;
 import com.finding.chat.mapper.PrivateChatMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.chat.mapper.RoomFriendMapper;
-import com.finding.framework.util.InMemoryRateLimiter;
+import com.finding.framework.util.RedisRateLimiter;
 import com.finding.group.entity.GroupChat;
 import com.finding.group.entity.GroupMessage;
 import com.finding.group.mapper.GroupChatMapper;
@@ -46,7 +46,7 @@ public class ReportController {
     private final ReportMapper reportMapper;
     private final PrivateChatMapper privateChatMapper;
     private final RoomFriendMapper roomFriendMapper;
-    private final InMemoryRateLimiter rateLimiter;
+    private final RedisRateLimiter rateLimiter;
     private final GroupMessageMapper groupMessageMapper;
     private final GroupChatMapper groupChatMapper;
     private final PostMapper postMapper;
