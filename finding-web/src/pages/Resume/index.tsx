@@ -30,6 +30,11 @@ export default function ResumeEditPage() {
   }, []);
 
   const handleSave = async () => {
+    const invalid = validateForm();
+    if (invalid) {
+      showToast(invalid);
+      return;
+    }
     setSaving(true);
     try {
       await resumeApi.save(form);
@@ -40,6 +45,19 @@ export default function ResumeEditPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // 保存前边界校验:年龄/身高/体重/生日做合理范围拦截,避免脏数据入库
+  const validateForm = (): string | null => {
+    const { age, heightCm, weightKg, birthday } = form;
+    if (age != null && (age < 18 || age > 100)) return '年龄应在 18-100 之间';
+    if (heightCm != null && (heightCm < 100 || heightCm > 250)) return '身高应在 100-250cm 之间';
+    if (weightKg != null && (weightKg < 30 || weightKg > 200)) return '体重应在 30-200kg 之间';
+    if (birthday) {
+      const d = new Date(birthday);
+      if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) return '生日不能晚于今天';
+    }
+    return null;
   };
 
   // ── 相册上传 ──
