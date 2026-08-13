@@ -62,6 +62,8 @@ public class AdminPostController {
             map.put("userNickname", nicknameMap.getOrDefault(p.getUserId(), ""));
             map.put("likeCount", p.getLikeCount());
             map.put("commentCount", p.getCommentCount());
+            map.put("isTop", p.getIsTop());
+            map.put("isHot", p.getIsHot());
             map.put("status", p.getStatus());
             map.put("reviewStatus", p.getReviewStatus() != null ? p.getReviewStatus() : 0);
             map.put("reviewReason", p.getReviewReason());
@@ -95,6 +97,21 @@ public class AdminPostController {
         if (status == null) throw new BusinessException(ResultCode.PARAM_ERROR, "status 必填");
         post.setStatus(status);
         postMapper.updateById(post);
+        return Result.ok();
+    }
+
+    /** 设置置顶/精华(isTop/isHot 传 1 或 0;不传的字段保持不变) */
+    @PutMapping("/posts/{id}/flag")
+    public Result<Void> updatePostFlag(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Post post = postMapper.selectById(id);
+        if (post == null || post.getStatus() == 0) throw new BusinessException(ResultCode.PARAM_ERROR, "动态不存在");
+        Integer isTop = body.get("isTop");
+        Integer isHot = body.get("isHot");
+        if (isTop != null) post.setIsTop(isTop == 1 ? 1 : 0);
+        if (isHot != null) post.setIsHot(isHot == 1 ? 1 : 0);
+        postMapper.updateById(post);
+        operationAuditService.record(JwtInterceptor.getCurrentUserId(), "post_flag", "post", id,
+                "设置置顶/精华", "isTop=" + post.getIsTop() + ", isHot=" + post.getIsHot());
         return Result.ok();
     }
 
