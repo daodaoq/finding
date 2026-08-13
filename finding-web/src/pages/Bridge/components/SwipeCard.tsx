@@ -100,7 +100,9 @@ export default function SwipeCard({ user, onLike, onApply, onSkip, disabled }: P
               {hasOnline && (
                 <section className="swipe-detail-section swipe-detail-online">
                   <div className="swipe-subcard-title">在线状态</div>
-                  <p className="swipe-online">{fmtOnline(user.lastLoginAt)}</p>
+                  <p className={`swipe-online ${user.online ? 'is-online' : ''}`}>
+                    {user.online ? '在线' : fmtOnline(user.lastLoginAt)}
+                  </p>
                 </section>
               )}
             </div>

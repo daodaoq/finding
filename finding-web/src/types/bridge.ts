@@ -31,6 +31,8 @@ export interface BridgeRecommendUser {
   /** 交友目标 0=未设置 1=找对象 2=交朋友 */
   targetType?: number;
   lastLoginAt: string;
+  /** 是否实时在线(Redis 心跳) */
+  online?: boolean;
   isLiked: boolean;
   /** 是否已心动(双向 match 的喜欢) */
   liked?: boolean;

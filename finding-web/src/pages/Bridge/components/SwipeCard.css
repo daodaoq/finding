@@ -145,6 +145,10 @@
   font-size: 12px;
   line-height: 1.45;
 }
+.swipe-online.is-online {
+  color: #2e9e5b;
+  font-weight: 650;
+}
 .swipe-actions {
   position: sticky;
   bottom: 72px;
