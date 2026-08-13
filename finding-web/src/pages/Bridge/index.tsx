@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bridgeApi } from '../../api/bridge';
 import { homeApi } from '../../api/home';
@@ -33,6 +33,8 @@ export default function BridgePage() {
   const [noMore, setNoMore] = useState(false);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 竞态守卫:登录态/定位变化与手动刷新可能并发触发 loadNext,仅最新一次请求生效
+  const loadSeqRef = useRef(0);
 
   useEffect(() => {
     loadBanners();
@@ -68,16 +70,19 @@ export default function BridgePage() {
 
   /** 拉取下一个推荐用户(每次一个;已跳过/已申请的用户会被后端排除) */
   const loadNext = async () => {
+    const seq = ++loadSeqRef.current;
     setLoading(true);
     try {
       const params: { page: number; size: number; lat?: number; lng?: number } = { page: 1, size: 1 };
       if (lat != null && lng != null) { params.lat = lat; params.lng = lng; }
       const res = await bridgeApi.recommend(params);
+      if (seq !== loadSeqRef.current) return; // 已被更新请求取代,丢弃过期响应
       const records = res.data.data.records || [];
       setNoMore(records.length === 0);
       setCandidate(records[0] || null);
       setError(null);
     } catch (e) {
+      if (seq !== loadSeqRef.current) return;
       // 首次加载失败→错误态+重试;滑动中失败仅提示并保留当前卡
       if (!candidate) {
         setError(getErrorMessage(e, '加载推荐用户失败'));
@@ -86,8 +91,10 @@ export default function BridgePage() {
         setNoMore(true);
       }
     } finally {
-      setLoading(false);
-      setActing(false);
+      if (seq === loadSeqRef.current) {
+        setLoading(false);
+        setActing(false);
+      }
     }
   };
 
