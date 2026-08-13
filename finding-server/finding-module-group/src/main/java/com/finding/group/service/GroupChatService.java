@@ -47,13 +47,13 @@ public class GroupChatService {
     /** 创建群聊 */
     @Transactional
     public GroupChatVO createGroup(Long ownerId, String name, List<Long> memberIds) {
+        // XSS 清洗 + 违禁词拦截(先清洗再落库,避免存储型 XSS)
+        name = XssUtil.clean(name);
+        sensitiveWordFilter.assertClean(name);
         GroupChat group = new GroupChat();
         group.setName(name);
         group.setOwnerId(ownerId);
         group.setMemberCount(memberIds.size() + 1); // +owner
-        // XSS 清洗 + 违禁词拦截
-        name = XssUtil.clean(name);
-        sensitiveWordFilter.assertClean(name);
         groupMapper.insert(group);
 
         // 添加群主

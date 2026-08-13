@@ -303,12 +303,17 @@ public class PostServiceImpl implements PostService {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "父评论不存在或已删除");
             }
         }
+        // 先清洗再校验/落库;清洗后为空(纯标签内容)则拒绝,避免落库空串
+        String cleaned = XssUtil.clean(content);
+        if (cleaned == null || cleaned.isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "评论内容不能为空");
+        }
         PostComment comment = new PostComment();
         comment.setPostId(postId);
         comment.setUserId(userId);
         comment.setParentId(parentId);
-        comment.setContent(XssUtil.clean(content));
-        sensitiveWordFilter.assertClean(content);
+        comment.setContent(cleaned);
+        sensitiveWordFilter.assertClean(cleaned);
         commentMapper.insert(comment);
 
         post.setCommentCount(post.getCommentCount() + 1);
