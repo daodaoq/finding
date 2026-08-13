@@ -6,6 +6,7 @@ import request from '../api/request';
 interface PostRecord {
   id: number; content: string; userId: number; userNickname: string;
   likeCount: number; commentCount: number; status: number;
+  isTop?: number; isHot?: number;
   reviewStatus?: number; reviewReason?: string; createdAt: string;
 }
 
@@ -79,9 +80,23 @@ export default function Posts() {
     } catch { message.error('操作失败'); }
   };
 
+  const handleFlag = async (id: number, field: 'isTop' | 'isHot', value: number) => {
+    try {
+      await request.put(`/admin/posts/${id}/flag`, { [field]: value });
+      message.success('已更新');
+      fetchData(page);
+    } catch { message.error('操作失败'); }
+  };
+
   const columns: ColumnsType<PostRecord> = [
     { title: '序号', width: 60, render: (_, __, i) => (page - 1) * 10 + i + 1 },
-    { title: '内容', dataIndex: 'content', ellipsis: true },
+    { title: '内容', dataIndex: 'content', ellipsis: true, render: (v: string, r: PostRecord) => (
+      <span>
+        {r.isTop === 1 && <Tag color="orange" style={{ marginRight: 4 }}>置顶</Tag>}
+        {r.isHot === 1 && <Tag color="purple" style={{ marginRight: 4 }}>精华</Tag>}
+        {v}
+      </span>
+    ) },
     { title: '发布者', dataIndex: 'userNickname', width: 100 },
     { title: '点赞', dataIndex: 'likeCount', width: 60 },
     { title: '评论', dataIndex: 'commentCount', width: 60 },
@@ -102,6 +117,16 @@ export default function Posts() {
       title: '操作', render: (_, record) => (
         <Space>
           <a onClick={() => openEdit(record)}>编辑</a>
+          {record.isTop === 1 ? (
+            <a style={{ color: 'orange' }} onClick={() => handleFlag(record.id, 'isTop', 0)}>取消置顶</a>
+          ) : (
+            <a onClick={() => handleFlag(record.id, 'isTop', 1)}>置顶</a>
+          )}
+          {record.isHot === 1 ? (
+            <a style={{ color: 'purple' }} onClick={() => handleFlag(record.id, 'isHot', 0)}>取消精华</a>
+          ) : (
+            <a onClick={() => handleFlag(record.id, 'isHot', 1)}>精华</a>
+          )}
           {record.status !== 2 && (
             <Popconfirm title="确定隐藏该动态？" onConfirm={() => updateStatus(record.id, 2)}>
               <a>隐藏</a>
