@@ -97,6 +97,11 @@ public class AdminPostController {
         if (status == null) throw new BusinessException(ResultCode.PARAM_ERROR, "status 必填");
         post.setStatus(status);
         postMapper.updateById(post);
+        // 下架/删除通知作者(不通知恢复)
+        if (post.getUserId() != null && status != null && status != 1) {
+            String text = status == 0 ? "你的动态已被管理员删除" : "你的动态已被管理员下架";
+            messageService.notify(JwtInterceptor.getCurrentUserId(), post.getUserId(), "post_admin_action", text, id);
+        }
         return Result.ok();
     }
 
@@ -123,6 +128,9 @@ public class AdminPostController {
         post.setStatus(0);
         postMapper.updateById(post);
         operationAuditService.record(JwtInterceptor.getCurrentUserId(), "post_delete", "post", id, "删除动态", null);
+        if (post.getUserId() != null) {
+            messageService.notify(JwtInterceptor.getCurrentUserId(), post.getUserId(), "post_admin_action", "你的动态已被管理员删除", id);
+        }
         return Result.ok();
     }
 
