@@ -78,13 +78,13 @@
 - [x] **群详情泄露成员列表** —— `GroupChatService.java:134`：非成员也能拿到成员昵称/头像/角色。
 - [x] **信息互换状态取「最新一条」bug** —— `InfoShareAdapter.java:21-36`：A→B 已通过、之后 B→A 被拒，最新记录变 REJECTED，导致 `profile_visible=2` 用户已互换资料被意外收回。应判定「是否存在任一方向 APPROVED」。
 - [x] **自动互关并发回滚** —— `BridgeServiceImpl.java:867`：`insertFollowIfAbsent` 无并发兜底，反向申请同时审批时 `DuplicateKeyException` 把「审批+建会话+互关」整体回滚。
-- [ ] **信息互换反向去重缺失** —— `InfoShareServiceImpl.java:90-111`：A↔B 可同时各存一条 pending；并发同方向发起报 500。
+- [x] **信息互换反向去重缺失** —— `InfoShareServiceImpl.java:90-111`：A↔B 可同时各存一条 pending；并发同方向发起报 500。
 
 ### 前端
 
-- [ ] **WS 撤回跨会话串扰** —— `useChatSocket.ts:26-29` + `GroupChat/index.tsx:38-41`：撤回事件只按 `messageId` 匹配，忽略 `action`/`conversationId`。私聊表与群消息表 ID 各自自增必然重叠 → 群聊撤回会错标私聊消息。
+- [x] **WS 撤回跨会话串扰** —— `useChatSocket.ts:26-29` + `GroupChat/index.tsx:38-41`：撤回事件只按 `messageId` 匹配，忽略 `action`/`conversationId`。私聊表与群消息表 ID 各自自增必然重叠 → 群聊撤回会错标私聊消息。
 - [ ] **未读角标双重计数竞态** —— `Messages/index.tsx:49-55` 本地 `+1` 与 `MainLayout.tsx:93` 的 `refreshUnread()` 同时改角标，语义错位。
-- [ ] **切换会话时旧请求提前关 loading** —— `useChatSession.ts:59-61`：`finally` 不检查 `isCurrent()`，快速切换用户时闪现空消息列表。
+- [x] **切换会话时旧请求提前关 loading** —— `useChatSession.ts:59-61`：`finally` 不检查 `isCurrent()`，快速切换用户时闪现空消息列表。
 
 ### 安全（P1）
 
