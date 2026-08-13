@@ -36,6 +36,11 @@ spring:
           initial-interval: 3000ms
           max-attempts: 3
 
+# JWT —— 开发环境默认密钥(仅 dev 生效;生产 prod 不加载本文件,密钥必须走环境变量)
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET:dev-only-access-secret-key-at-least-256-bits-0000000000}
+  refresh-secret: ${JWT_REFRESH_SECRET:dev-only-refresh-secret-key-at-least-256-bits-000000000}
+
 # MinIO 对象存储
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

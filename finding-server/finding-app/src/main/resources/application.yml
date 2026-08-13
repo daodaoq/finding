@@ -34,10 +34,10 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
-# JWT
+# JWT —— 密钥必须通过环境变量注入,不提供默认值(缺失时启动即失败,避免误用硬编码密钥)
 jwt:
-  access-secret: finding-access-secret-key-must-be-at-least-256-bits-long-for-hs256
-  refresh-secret: finding-refresh-secret-key-must-be-at-least-256-bits-long-too
+  access-secret: ${JWT_ACCESS_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}
   access-expiration: 7200000    # 2 hours
   refresh-expiration: 604800000  # 7 days
 
