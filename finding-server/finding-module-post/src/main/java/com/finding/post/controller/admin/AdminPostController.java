@@ -101,8 +101,11 @@ public class AdminPostController {
     @DeleteMapping("/posts/{id}")
     public Result<Void> deletePost(@PathVariable Long id) {
         Post post = postMapper.selectById(id);
-        if (post == null) throw new BusinessException(ResultCode.PARAM_ERROR, "动态不存在");
-        postMapper.deleteById(id);
+        if (post == null || post.getStatus() == 0) throw new BusinessException(ResultCode.PARAM_ERROR, "动态不存在");
+        // 软删(与用户端一致):保留记录与审计,前端/查询按 status!=1 过滤
+        post.setStatus(0);
+        postMapper.updateById(post);
+        operationAuditService.record(JwtInterceptor.getCurrentUserId(), "post_delete", "post", id, "删除动态", null);
         return Result.ok();
     }
 
