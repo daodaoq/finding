@@ -100,16 +100,16 @@
 - [ ] 搭子报名/审批未校验 `review_status`（`MateServiceImpl.java:341 / 440`）：待审/被拒活动仍可报名。
 - [ ] 搭子首次报名、并发退出补位无唯一键兜底 → 偶发 500（`MateServiceImpl.java:398 / 407-436`）。
 - [ ] 聊天申请 `applyChat` 未惰性过期旧 pending（`BridgeServiceImpl.java:450`）：过期申请仍阻塞重发。
-- [ ] 建群群名先赋值后清洗（`GroupChatService.java:51`）：落库未清洗原文（存储型 XSS）；评论清洗后未判空（`PostServiceImpl.java:297`）。
+- [x] 建群群名先赋值后清洗（`GroupChatService.java:51`）：落库未清洗原文（存储型 XSS）；评论清洗后未判空（`PostServiceImpl.java:297`）。
 - [ ] 反骚扰限流是进程内内存实现（`InMemoryRateLimiter`）：多实例/重启后「1 小时限 10 次」失效，应改 Redis。
 - [ ] 动态列表 N+1 + 读路径写库（`PostServiceImpl.java:110`）；群列表逐群查最后消息/未读数 N+1。
-- [ ] 公开搜索可按手机号枚举注册用户（`SearchController.java:63`，`permitAll`）。
+- [x] 公开搜索可按手机号枚举注册用户（`SearchController.java:63`，`permitAll`）。
 - [ ] 登出黑名单是死代码（`JwtAuthenticationFilter` 从未读 `token:blacklist:`）。
 - [ ] admin `deletePost` 用硬删（`AdminPostController.java:105`），与用户端软删约定不一致。
 
 ### 前端
 
-- [ ] JWT 用 `atob` 而非 base64url 解码（`tokenStorage.ts:11`）可能误清有效 token。
+- [x] JWT 用 `atob` 而非 base64url 解码（`tokenStorage.ts:11`）可能误清有效 token。
 - [ ] `Date.now()` 作临时消息 ID 同毫秒互相覆盖（`useChatActions.ts:91`）。
 - [ ] 多标签页登出无 `storage` 事件同步（`authStore.ts`）。
 - [ ] WebSocket token 走 URL query（前后端都命中：`chatSocket.ts:95`、`WebSocketServer.java:176`）。
