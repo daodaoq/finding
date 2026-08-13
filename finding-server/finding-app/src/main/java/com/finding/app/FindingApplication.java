@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.finding.post.mapper",
         "com.finding.mate.mapper",
         "com.finding.chat.mapper",
+        "com.finding.bridge.mapper",
         "com.finding.group.mapper",
         "com.finding.framework.mapper",
         "com.finding.common.audit",

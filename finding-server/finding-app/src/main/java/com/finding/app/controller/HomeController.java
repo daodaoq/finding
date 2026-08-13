@@ -7,7 +7,7 @@ import com.finding.user.security.JwtInterceptor;
 import com.finding.app.entity.SystemAnnouncement;
 import com.finding.app.mapper.SystemAnnouncementMapper;
 import com.finding.app.service.HomeService;
-import com.finding.chat.vo.HomeFeedVO;
+import com.finding.bridge.vo.HomeFeedVO;
 import com.finding.common.PageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

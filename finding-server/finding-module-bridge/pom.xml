@@ -10,14 +10,18 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>finding-module-chat</artifactId>
-    <name>finding-module-chat</name>
-    <description>私聊/群聊/会话/举报 + MQ 消息推送消费</description>
+    <artifactId>finding-module-bridge</artifactId>
+    <name>finding-module-bridge</name>
+    <description>鹊桥相亲 + 心动配对(推荐/聊天申请/信息互换/卡片/偏好/配对)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.finding</groupId>
             <artifactId>finding-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
+            <artifactId>finding-framework</artifactId>
         </dependency>
         <dependency>
             <groupId>com.finding</groupId>
@@ -29,7 +33,7 @@
         </dependency>
         <dependency>
             <groupId>com.finding</groupId>
-            <artifactId>finding-framework</artifactId>
+            <artifactId>finding-module-chat</artifactId>
         </dependency>
 
         <dependency>

@@ -1,8 +1,8 @@
 package com.finding.app.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.finding.chat.entity.RecommendEvent;
-import com.finding.chat.mapper.RecommendEventMapper;
+import com.finding.bridge.entity.RecommendEvent;
+import com.finding.bridge.mapper.RecommendEventMapper;
 import com.finding.common.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

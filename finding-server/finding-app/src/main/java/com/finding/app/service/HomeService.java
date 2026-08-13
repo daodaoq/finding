@@ -1,6 +1,6 @@
 package com.finding.app.service;
 
-import com.finding.chat.vo.HomeFeedVO;
+import com.finding.bridge.vo.HomeFeedVO;
 import com.finding.common.PageVO;
 
 import java.util.List;

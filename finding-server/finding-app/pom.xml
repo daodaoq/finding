@@ -46,6 +46,10 @@
         </dependency>
         <dependency>
             <groupId>com.finding</groupId>
+            <artifactId>finding-module-bridge</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.finding</groupId>
             <artifactId>finding-module-group</artifactId>
         </dependency>
 

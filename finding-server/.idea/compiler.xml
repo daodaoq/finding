@@ -13,6 +13,7 @@
         <module name="finding-module-chat" />
         <module name="finding-module-group" />
         <module name="finding-module-message" />
+        <module name="finding-module-bridge" />
         <module name="finding-app" />
         <module name="finding-module-post" />
         <module name="finding-module-user" />
@@ -24,6 +25,7 @@
       <module name="finding-app" options="-parameters" />
       <module name="finding-common" options="-parameters" />
       <module name="finding-framework" options="-parameters" />
+      <module name="finding-module-bridge" options="-parameters" />
       <module name="finding-module-chat" options="-parameters" />
       <module name="finding-module-group" options="-parameters" />
       <module name="finding-module-mate" options="-parameters" />
