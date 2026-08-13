@@ -20,6 +20,17 @@ const request = axios.create({
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
+// 并发 401/403 时避免重复登出(多次 clear + 多次服务端 logout)
+let loggingOut = false;
+
+function logoutOnce() {
+  if (loggingOut) return;
+  loggingOut = true;
+  tokenStorage.clear();
+  useAuthStore.getState().logout().finally(() => {
+    loggingOut = false;
+  });
+}
 
 request.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = tokenStorage.getAccess();
@@ -74,10 +85,9 @@ request.interceptors.response.use(
         return request(config);
       }
       // 刷新失败:统一清理并登出一次
-      tokenStorage.clear();
-      useAuthStore.getState().logout();
+      logoutOnce();
     } else if (status === 403) {
-      useAuthStore.getState().logout();
+      logoutOnce();
     }
     // 统一抛出 AppError:优先服务端业务文案,网络错误可重试
     const data = error.response?.data as { message?: string; code?: number } | undefined;
