@@ -874,7 +874,11 @@ public class BridgeServiceImpl implements BridgeService {
             UserFollow f = new UserFollow();
             f.setFollowerId(followerId);
             f.setFolloweeId(followeeId);
-            followMapper.insert(f);
+            try {
+                followMapper.insert(f);
+            } catch (DuplicateKeyException e) {
+                // 并发下唯一约束 uk_follow 兜底,已存在则忽略(幂等,避免反向申请同时审批时整体回滚)
+            }
         }
     }
 
