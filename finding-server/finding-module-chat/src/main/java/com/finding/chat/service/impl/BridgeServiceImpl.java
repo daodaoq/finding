@@ -446,6 +446,9 @@ public class BridgeServiceImpl implements BridgeService {
             throw new BusinessException(ResultCode.CHAT_APPLY_COOLDOWN);
         }
 
+        // 惰性过期:超期未处理的 pending 先置为 EXPIRED,避免旧申请阻塞重发
+        expireStalePending();
+
         // 已有待处理申请 → 拒绝重复申请
         Long pendingCount = chatApplyMapper.selectCount(new LambdaQueryWrapper<ChatApply>()
                 .eq(ChatApply::getFromUserId, fromUserId)
