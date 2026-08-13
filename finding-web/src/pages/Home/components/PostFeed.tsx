@@ -14,6 +14,7 @@ interface Props {
   showGuestLimit: boolean;
   guestMaxPosts: number;
   onLike: (id: number) => void;
+  onFavorite: (id: number) => void;
   onOpen: (id: number) => void;
   onGuestLimitClick: () => void;
 }
@@ -26,13 +27,14 @@ export default function PostFeed({
   showGuestLimit,
   guestMaxPosts,
   onLike,
+  onFavorite,
   onOpen,
   onGuestLimitClick,
 }: Props) {
   return (
     <div className="home-post-list">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} onLike={onLike} onClick={onOpen} />
+        <PostCard key={post.id} post={post} onLike={onLike} onFavorite={onFavorite} onClick={onOpen} />
       ))}
       {loading && <LoadingSkeleton />}
       {!loading && posts.length === 0 && <EmptyState message="暂无动态" />}

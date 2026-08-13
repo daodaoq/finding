@@ -18,6 +18,7 @@ const HiddenConversationsPage = lazy(() => import('../pages/Messages/HiddenConve
 const MinePage = lazy(() => import('../pages/Mine'));
 const MyPostsPage = lazy(() => import('../pages/Mine/MyPosts'));
 const MyLikesPage = lazy(() => import('../pages/Mine/MyLikes'));
+const MyFavoritesPage = lazy(() => import('../pages/Mine/MyFavorites'));
 const MyMatesPage = lazy(() => import('../pages/Mine/MyMates'));
 const MyInvitationsPage = lazy(() => import('../pages/Mine/MyInvitations'));
 const MyJoinedPage = lazy(() => import('../pages/Mine/MyJoined'));
@@ -104,6 +105,7 @@ const router = createBrowserRouter([
       { path: 'mine', element: withSuspense(<MinePage />) },
       { path: 'mine/posts', element: withSuspense(<MyPostsPage />) },
       { path: 'mine/likes', element: withSuspense(<MyLikesPage />) },
+      { path: 'mine/favorites', element: withSuspense(<MyFavoritesPage />) },
       { path: 'mine/mates', element: withSuspense(<MyMatesPage />) },
       { path: 'mine/invitations', element: withSuspense(<MyInvitationsPage />) },
       { path: 'mine/joined', element: withSuspense(<MyJoinedPage />) },

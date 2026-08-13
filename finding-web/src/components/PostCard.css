@@ -87,6 +87,13 @@
 .post-badge-hot {
   background: #e5484d;
 }
+.post-badge-visibility {
+  background: #9aa4b2;
+}
+.post-mention {
+  color: var(--accent);
+  font-weight: 600;
+}
 .post-meta-tags {
   display: flex;
   flex-wrap: wrap;
@@ -182,6 +189,25 @@
 }
 .like-btn.liked {
   color: var(--primary);
+}
+.fav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fav-btn:hover {
+  background: var(--primary-soft);
+  color: var(--accent);
+}
+.fav-btn.favored {
+  color: #f5a623;
 }
 
 @media (max-width: 480px) {

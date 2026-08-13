@@ -10,6 +10,7 @@ import './index.css';
 
 const QUICK_ITEMS: { key: string; icon: AppIconName; label: string; to: string }[] = [
   { key: 'likes', icon: 'heart', label: '我的点赞', to: '/mine/likes' },
+  { key: 'favorites', icon: 'star', label: '我的收藏', to: '/mine/favorites' },
   { key: 'joined', icon: 'calendar', label: '我的预约', to: '/mine/joined' },
   { key: 'posts', icon: 'message', label: '我的圈子', to: '/mine/posts' },
   { key: 'history', icon: 'refresh', label: '历史记录', to: '/mine/history' },

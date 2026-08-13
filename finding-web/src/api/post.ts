@@ -13,14 +13,22 @@ export const postApi = {
   detail: (id: number) =>
     request.get<ApiResponse<Post>>(`/posts/${id}`),
 
-  create: (data: { content: string; images?: string[]; location?: string; city?: string; category?: string; tags?: string[] }) =>
+  create: (data: { content: string; images?: string[]; location?: string; city?: string; category?: string; tags?: string[]; visibility?: number }) =>
     request.post<ApiResponse<Post>>('/posts', data),
 
-  update: (id: number, data: { content: string; images?: string[]; location?: string; city?: string; category?: string; tags?: string[] }) =>
+  update: (id: number, data: { content: string; images?: string[]; location?: string; city?: string; category?: string; tags?: string[]; visibility?: number }) =>
     request.put<ApiResponse<Post>>(`/posts/${id}`, data),
 
   myLikes: (page = 1, size = 20) =>
     request.get<ApiResponse<PageResult<Post>>>('/posts/my-likes', { params: { page, size } }),
+
+  /** 收藏/取消收藏 */
+  favorite: (id: number) =>
+    request.post<ApiResponse<null>>(`/posts/${id}/favorite`),
+
+  /** 我收藏的动态 */
+  myFavorites: (page = 1, size = 20) =>
+    request.get<ApiResponse<PageResult<Post>>>('/posts/my-favorites', { params: { page, size } }),
 
   /** 指定用户的公开动态(他人主页) */
   userPosts: (userId: number, page = 1, size = 10, signal?: AbortSignal) =>

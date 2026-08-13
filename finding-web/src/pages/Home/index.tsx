@@ -89,6 +89,16 @@ export default function HomePage() {
     });
   };
 
+  const handleFavorite = (id: number) => {
+    requireLogin(async () => {
+      try {
+        await postApi.favorite(id);
+        postList.setItems((prev) => prev.map((p) =>
+          p.id === id ? { ...p, isFavorited: !p.isFavorited } : p));
+      } catch { showToast('操作失败'); }
+    });
+  };
+
   const handleJoinMate = (id: number) => {
     requireLogin(async () => {
       try {
@@ -174,6 +184,7 @@ export default function HomePage() {
             showGuestLimit={!isLoggedIn}
             guestMaxPosts={GUEST_MAX_POSTS}
             onLike={handleLike}
+            onFavorite={handleFavorite}
             onOpen={(id) => navigate(`/square/post/${id}`)}
             onGuestLimitClick={() => requireLogin(() => {})}
           />

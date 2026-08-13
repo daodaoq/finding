@@ -18,6 +18,7 @@ export default function CreatePostPage() {
   const [location, setLocation] = useState('');
   const [category, setCategory] = useState('');
   const [tagInput, setTagInput] = useState('');
+  const [visibility, setVisibility] = useState(0);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(!!editId);
@@ -35,6 +36,7 @@ export default function CreatePostPage() {
         setLocation(res.data.data.location || '');
         setCategory(res.data.data.category || '');
         setTagInput((res.data.data.tags || []).join(','));
+        setVisibility(res.data.data.visibility ?? 0);
         setImages(res.data.data.images || []);
       })
       .catch(() => { navigate(-1); })
@@ -85,6 +87,7 @@ export default function CreatePostPage() {
           location: location.trim() || undefined,
           category: category || undefined,
           tags: tags.length ? tags : undefined,
+          visibility,
         };
         if (editId) {
           await postApi.update(editId, payload);
@@ -152,6 +155,28 @@ export default function CreatePostPage() {
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
           />
+        </div>
+
+        {/* 可见性 */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          {[
+            { v: 0, label: '公开' },
+            { v: 1, label: '仅好友' },
+            { v: 2, label: '仅自己' },
+          ].map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              onClick={() => setVisibility(opt.v)}
+              style={{
+                padding: '6px 14px', borderRadius: 16, border: '1px solid #ddd', background: '#fff',
+                color: visibility === opt.v ? '#fff' : '#555', fontSize: 13, cursor: 'pointer',
+                ...(visibility === opt.v ? { background: '#7c4dff', borderColor: '#7c4dff' } : {}),
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         {/* 图片上传区 */}
