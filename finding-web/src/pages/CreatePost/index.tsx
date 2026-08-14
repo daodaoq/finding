@@ -5,6 +5,7 @@ import { uploadApi } from '../../api/upload';
 import LoginModal from '../../components/LoginModal';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { showToast } from '../../components/Toast';
+import { getErrorMessage } from '../../utils/appError';
 import AppIcon from '../../components/AppIcon';
 import { POST_CATEGORIES } from '../../utils/constants';
 import './index.css';
@@ -142,7 +143,7 @@ export default function CreatePostPage() {
           postApi.clearDraft().catch(() => { /* 忽略 */ });
         }
         navigate(-1);
-      } catch { showToast('操作失败，请稍后重试'); }
+      } catch (e) { showToast(getErrorMessage(e, '发布失败，请稍后重试')); }
       finally { setSubmitting(false); }
     });
   };

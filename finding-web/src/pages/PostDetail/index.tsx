@@ -10,6 +10,7 @@ import PostCard from '../../components/PostCard';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import ReportDialog from '../../components/ReportDialog';
 import { showToast } from '../../components/Toast';
+import { getErrorMessage } from '../../utils/appError';
 import type { Post } from '../../types/post';
 import type { Comment } from '../../types/comment';
 import CommentList from './components/CommentList';
@@ -122,7 +123,7 @@ export default function PostDetailPage() {
         if (post) setPost(prev => prev ? { ...prev, commentCount: prev.commentCount + 1 } : null);
         setInputText('');
         setReplyTo(null);
-      } catch { showToast('评论失败'); }
+      } catch (e) { showToast(getErrorMessage(e, '评论失败')); }
     });
   };
 
