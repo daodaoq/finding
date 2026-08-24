@@ -1,8 +1,6 @@
 .gi-page {
   min-height: 100vh;
   background: #fff;
-  max-width: var(--detail-cap);
-  margin: 0 auto;
 }
 .gi-header {
   display: flex; align-items: center; gap: 12px;

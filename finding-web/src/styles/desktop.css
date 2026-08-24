@@ -35,23 +35,11 @@
     top: var(--topnav-h);
   }
 
-  /* ── 视口固定条:不再需要为底部导航留白,宽度对齐详情栏 ── */
+  /* ── 视口固定条:不再需要为底部导航留白,宽度对齐内容容器 ── */
   .pd-input-bar,
   .md-bottom-bar {
     bottom: 0;
-    max-width: var(--detail-cap);
-  }
-
-  /* ── 详情/表单类页面收窄居中,保持移动端阅读节奏 ── */
-  .post-detail-page,
-  .md-page,
-  .subpage,
-  .notifications-page,
-  .legal-page,
-  .love-guide-page,
-  .mine-page {
-    max-width: var(--detail-cap);
-    margin: 0 auto;
+    max-width: var(--page-max);
   }
 
   /* ── 社区信息流:一行一个卡片、撑满容器宽度(仅桌面加宽,卡片样式不变)── */

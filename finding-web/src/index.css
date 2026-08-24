@@ -102,15 +102,13 @@ button {
      断点统一为 768px,与 src/hooks/useIsDesktop.ts、src/styles/desktop.css 保持一致。 */
   --topnav-h: 0px;   /* 桌面顶部导航高度 */
   --botnav-h: 60px;  /* 底部导航高度 */
-  --page-max: 480px;   /* 浏览型页面容器宽 */
-  --detail-cap: 480px; /* 详情/表单类页面阅读宽 */
+  --page-max: 480px;   /* 内容容器宽 */
 }
 
 @media (min-width: 768px) {
   :root {
     --topnav-h: 56px;
     --page-max: 1100px;
-    --detail-cap: 720px;
   }
 
   /* Desktop: restore a thin scrollbar (mobile hides it entirely above). */

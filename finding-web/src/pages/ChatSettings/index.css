@@ -1,8 +1,6 @@
 .cs-page {
   min-height: 100vh;
   background: var(--paper);
-  max-width: var(--detail-cap);
-  margin: 0 auto;
 }
 
 .cs-header {

@@ -1,8 +1,6 @@
 .search-page {
   min-height: 100vh;
   background: #fff;
-  max-width: var(--detail-cap);
-  margin: 0 auto;
 }
 .search-page-top {
   display: flex;
