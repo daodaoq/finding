@@ -1,7 +1,7 @@
 .search-page {
   min-height: 100vh;
   background: #fff;
-  max-width: 480px;
+  max-width: var(--detail-cap);
   margin: 0 auto;
 }
 .search-page-top {

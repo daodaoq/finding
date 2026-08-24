@@ -23,7 +23,8 @@ export default defineConfig({
     locale: 'zh-CN',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // 冒烟用手机视口:用户端以移动端为主形态;桌面布局由 web.desktop.spec.ts 自行 test.use 覆盖
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } } },
   ],
   webServer: [
     {

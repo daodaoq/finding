@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
+import TopNav from '../components/TopNav';
 import CreateActionSheet from '../components/CreateActionSheet';
 import ToastContainer, { showToast } from '../components/Toast';
 import InfoShareModal from '../components/InfoShareModal';
@@ -155,6 +156,7 @@ export default function MainLayout() {
 
   return (
     <div className="main-layout">
+      <TopNav onCenterClick={() => setShowCreate(true)} />
       <div className="main-content">
         <Outlet context={{ openCreateSheet: () => setShowCreate(true) }} />
       </div>

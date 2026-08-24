@@ -1,24 +1,34 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import LoginModal from '../../components/LoginModal';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AppIcon from '../../components/AppIcon';
+import LoginModal from '../../components/LoginModal';
 import { useMessageStore } from '../../store/messageStore';
 import type { Conversation } from '../../types/message';
 import type { GroupChat } from '../../types/groupChat';
 import { useConversations } from './useConversations';
 import ConversationSections from './ConversationSections';
-import './index.css';
 
-export default function MessagesPage() {
+/**
+ * 桌面双栏布局的左侧会话栏:紧凑版消息中心(标题 + 通知入口 + 会话分区)。
+ * 数据层与移动端 MessagesPage 相同;桌面下整页列表不再渲染,仅此栏存在一份。
+ */
+export default function ConversationPane() {
   const {
     conversations, groups, hiddenConversations, strangerCount,
     convError, loading, refreshing, isLoggedIn, loadConversations, refresh,
   } = useConversations();
-  const [showLogin, setShowLogin] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showLogin, setShowLogin] = useState(false);
   const unreadCount = useMessageStore((state) => state.unreadCount);
 
-  // 打开会话的 URL 约定保持不变(桌面双栏与移动端共用同一套路由)
+  // 从当前路由解析选中的私聊/群聊,驱动左栏高亮
+  const params = new URLSearchParams(location.search);
+  const userIdParam = Number(params.get('userId'));
+  const activeUserId = location.pathname === '/messages/chat' && Number.isFinite(userIdParam) && userIdParam > 0 ? userIdParam : undefined;
+  const groupMatch = location.pathname.match(/^\/messages\/group-chat\/(\d+)/);
+  const activeGroupId = groupMatch ? Number(groupMatch[1]) : undefined;
+
   const openPrivate = (conv: Conversation) => {
     const name = encodeURIComponent(conv.targetNickname || `用户${conv.targetUserId}`);
     const avatar = encodeURIComponent(conv.targetAvatar || '');
@@ -26,7 +36,8 @@ export default function MessagesPage() {
   };
   const openGroup = (group: GroupChat) => navigate(`/messages/group-chat/${group.id}?name=${encodeURIComponent(group.name)}`);
 
-  return <div className="messages-page"><header className="msg-header"><h2 className="msg-header-title">互动消息</h2><div className="msg-header-actions"><button className="header-create-group-btn" onClick={() => navigate('/messages/create-group')}>建群</button><button className="header-action-btn" onClick={refresh} aria-label="刷新"><AppIcon name="refresh" size={19} className={refreshing ? 'is-spinning' : ''} /></button></div></header>
+  return <div className="conv-pane-inner">
+    <header className="msg-header"><h2 className="msg-header-title">互动消息</h2><div className="msg-header-actions"><button className="header-create-group-btn" onClick={() => navigate('/messages/create-group')}>建群</button><button className="header-action-btn" onClick={refresh} aria-label="刷新"><AppIcon name="refresh" size={19} className={refreshing ? 'is-spinning' : ''} /></button></div></header>
     {!isLoggedIn && <button className="msg-login-prompt" onClick={() => setShowLogin(true)}><AppIcon name="user" size={22} /><span><b>登录后查看消息</b><small>登录后可查看互动通知和私聊消息</small></span><em>登录</em></button>}
     {isLoggedIn && <>
       <button className="notify-condensed" onClick={() => navigate('/messages/notifications')}><span className="notify-icon-wrap"><AppIcon name="bell" size={20} />{unreadCount > 0 && <span className="notify-badge">{unreadCount}</span>}</span><span className="notify-info"><b>互动通知</b><small>{unreadCount > 0 ? `${unreadCount} 条未读` : '暂无新通知'}</small></span><em>查看</em></button>
@@ -37,10 +48,13 @@ export default function MessagesPage() {
         groups={groups}
         loading={loading}
         convError={convError}
+        activeUserId={activeUserId}
+        activeGroupId={activeGroupId}
         onRetry={() => loadConversations()}
         onOpenPrivate={openPrivate}
         onOpenGroup={openGroup}
       />
     </>}
-    <LoginModal visible={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setShowLogin(false); window.location.reload(); }} /></div>;
+    <LoginModal visible={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setShowLogin(false); window.location.reload(); }} />
+  </div>;
 }

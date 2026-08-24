@@ -97,6 +97,31 @@ button {
   --radius-lg: 12px;
   --shadow: 0 2px 12px rgba(0, 0, 0, .08);
   --shadow-card: 0 1px 8px rgba(0, 0, 0, .06);
+
+  /* 响应式布局令牌(移动端默认值)。
+     断点统一为 768px,与 src/hooks/useIsDesktop.ts、src/styles/desktop.css 保持一致。 */
+  --topnav-h: 0px;   /* 桌面顶部导航高度 */
+  --botnav-h: 60px;  /* 底部导航高度 */
+  --page-max: 480px;   /* 浏览型页面容器宽 */
+  --detail-cap: 480px; /* 详情/表单类页面阅读宽 */
+}
+
+@media (min-width: 768px) {
+  :root {
+    --topnav-h: 56px;
+    --page-max: 1100px;
+    --detail-cap: 720px;
+  }
+
+  /* Desktop: restore a thin scrollbar (mobile hides it entirely above). */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d9d9d9;
+    border-radius: 3px;
+  }
 }
 
 img {

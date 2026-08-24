@@ -1,13 +1,13 @@
 .main-layout {
   min-height: 100vh;
   background: var(--paper);
-  max-width: 480px;
+  max-width: var(--page-max);
   margin: 0 auto;
   position: relative;
 }
 
 .main-content {
-  padding-bottom: 60px; /* BottomNav height */
+  padding-bottom: var(--botnav-h); /* BottomNav height */
   min-height: 100vh;
 }
 

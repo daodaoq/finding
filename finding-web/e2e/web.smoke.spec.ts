@@ -1,35 +1,10 @@
 import { test, expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import { login } from './utils';
 
 /**
  * 用户端冒烟:登录 / 发布动态 / 搭子列表 / 聊天发消息 / 信息互换。
  * 依赖后端在线与种子账号(见 playwright.config.ts)。
  */
-const PHONE = '13096120690';
-const PASSWORD = '12345678';
-
-/** 登录:密码登录成功后回到首页 */
-async function login(page: Page) {
-  await page.goto('/login');
-  await page.fill('input[type="tel"]', PHONE);
-  await page.fill('input[type="password"]', PASSWORD);
-  await page.click('.submit-btn');
-  await page.waitForURL('/', { timeout: 10000 });
-  // 关闭启动时弹出的「系统公告」弹窗(覆盖全屏会挡后续点击)
-  await dismissAnnouncement(page);
-}
-
-/** 若系统公告弹窗弹出则关闭;无弹窗时快速跳过 */
-async function dismissAnnouncement(page: Page) {
-  const btn = page.locator('.confirm-btn.primary');
-  try {
-    await btn.waitFor({ state: 'visible', timeout: 3000 });
-    await btn.click();
-    await btn.waitFor({ state: 'detached', timeout: 3000 });
-  } catch {
-    // 未弹出公告弹窗
-  }
-}
 
 test.describe('用户端冒烟', () => {
   test('登录成功进入首页', async ({ page }) => {

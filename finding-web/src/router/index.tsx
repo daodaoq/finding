@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import AuthLayout from '../layouts/AuthLayout';
+import MessagesLayout from '../pages/Messages/MessagesLayout';
 
 /* ── 页面懒加载：首屏只加载布局骨架，进入路由时才拉取对应页面 chunk ── */
 const HomePage = lazy(() => import('../pages/Home'));
@@ -95,15 +96,22 @@ const router = createBrowserRouter([
       { path: 'square/post/:id', element: withSuspense(<PostDetailPage />) },
       { path: 'mate', element: withSuspense(<MatePage />) },
       { path: 'mate/:id', element: withSuspense(<MateDetailPage />) },
-      { path: 'messages', element: withSuspense(<MessagesPage />) },
-      { path: 'messages/notifications', element: withSuspense(<NotificationsPage />) },
-      { path: 'messages/strangers', element: withSuspense(<StrangerMessagesPage />) },
-      { path: 'messages/hidden', element: withSuspense(<HiddenConversationsPage />) },
-      { path: 'messages/chat', element: withSuspense(<ChatDetailPage />) },
-      { path: 'messages/chat-settings', element: withSuspense(<ChatSettingsPage />) },
-      { path: 'messages/group-chat/:id', element: withSuspense(<GroupChatPage />) },
-      { path: 'messages/group-chat/:id/info', element: withSuspense(<GroupInfoPage />) },
-      { path: 'messages/create-group', element: withSuspense(<CreateGroupPage />) },
+      {
+        // 消息区嵌套布局:移动端透传子路由(行为不变);桌面端渲染双栏(左会话栏 + 右内容)
+        path: 'messages',
+        element: <MessagesLayout />,
+        children: [
+          { index: true, element: withSuspense(<MessagesPage />) },
+          { path: 'notifications', element: withSuspense(<NotificationsPage />) },
+          { path: 'strangers', element: withSuspense(<StrangerMessagesPage />) },
+          { path: 'hidden', element: withSuspense(<HiddenConversationsPage />) },
+          { path: 'chat', element: withSuspense(<ChatDetailPage />) },
+          { path: 'chat-settings', element: withSuspense(<ChatSettingsPage />) },
+          { path: 'group-chat/:id', element: withSuspense(<GroupChatPage />) },
+          { path: 'group-chat/:id/info', element: withSuspense(<GroupInfoPage />) },
+          { path: 'create-group', element: withSuspense(<CreateGroupPage />) },
+        ],
+      },
       { path: 'user/:id', element: withSuspense(<UserProfilePage />) },
       { path: 'search', element: withSuspense(<SearchPage />) },
       { path: 'mine', element: withSuspense(<MinePage />) },

@@ -1,0 +1,89 @@
+/* 桌面顶部导航:移动端整体隐藏,≥768px 由 desktop.css 配合显示。
+   断点与 index.css 令牌、useIsDesktop.ts 保持一致。 */
+.top-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    display: block;
+    height: var(--topnav-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .top-nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .top-nav-brand {
+    margin-right: auto;
+    padding-right: 24px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .top-nav .nav-item {
+    flex: none;
+    flex-direction: row;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .top-nav .nav-item:hover {
+    background: var(--primary-soft);
+  }
+
+  .top-nav .nav-icon {
+    display: flex;
+    height: auto;
+  }
+
+  .top-nav .nav-label {
+    font-size: 14px;
+  }
+
+  .top-nav-item--active {
+    color: var(--primary);
+  }
+
+  .top-nav-item--active .nav-label {
+    font-weight: 600;
+  }
+
+  .top-nav .nav-badge {
+    margin-left: 2px;
+    color: inherit;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .top-nav-item--center {
+    margin: 0 8px;
+    background: var(--primary);
+    color: var(--paper);
+  }
+
+  .top-nav-item--center:hover {
+    background: var(--primary);
+    opacity: 0.9;
+  }
+}

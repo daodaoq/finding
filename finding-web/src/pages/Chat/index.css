@@ -1,9 +1,9 @@
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px); /* 减去底部导航栏高度 */
+  height: calc(100vh - var(--botnav-h)); /* 减去底部导航栏高度 */
   background: #f0f0f0;
-  max-width: 480px;
+  max-width: var(--page-max);
   margin: 0 auto;
 }
 
