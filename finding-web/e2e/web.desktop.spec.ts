@@ -42,12 +42,19 @@ test.describe('桌面端布局', () => {
     await expect(page.locator('.chat-bubble').first()).toBeVisible();
   });
 
-  test('首页信息流在桌面呈现多列网格', async ({ page }) => {
+  test('社区信息流单列:一行一个卡片', async ({ page }) => {
     await login(page);
     await page.goto('/');
     const list = page.locator('.home-post-list');
     await expect(list).toBeVisible({ timeout: 8000 });
-    const columns = await list.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-    expect(columns).toBeGreaterThan(1);
+    // 非 grid 布局(移动端同款块级堆叠),且整体收窄居中
+    const display = await list.evaluate((el) => getComputedStyle(el).display);
+    expect(display).not.toBe('grid');
+    const cards = page.locator('.home-post-list .post-card');
+    if (await cards.count() >= 2) {
+      const first = await cards.nth(0).boundingBox();
+      const second = await cards.nth(1).boundingBox();
+      expect(second!.y).toBeGreaterThanOrEqual(first!.y + first!.height! - 1);
+    }
   });
 });
