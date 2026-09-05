@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import request from '../../api/request';
 import type { ApiResponse } from '../../types/common';
 import type { User } from '../../types/user';
@@ -39,6 +39,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { run } = useStaleGuard();
 
   // 快速连按回车只保留最新一次结果;组件卸载时自动取消在途请求
@@ -62,6 +63,16 @@ export default function SearchPage() {
   useEffect(() => {
     const input = document.querySelector<HTMLInputElement>('.search-page-input');
     input?.focus();
+  }, []);
+
+  // 支持 URL ?q= 直达搜索(顶部导航全局搜索 Enter 后跳入)
+  useEffect(() => {
+    const qp = searchParams.get('q');
+    if (qp) {
+      setKeyword(qp);
+      doSearch(qp);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const showTab = (tab: string) => {

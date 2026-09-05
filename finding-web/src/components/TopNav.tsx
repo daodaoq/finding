@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppIcon from './AppIcon';
 import { BOTTOM_NAV_ITEMS } from '../utils/constants';
@@ -13,11 +14,26 @@ export default function TopNav({ onCenterClick }: Props) {
   const navigate = useNavigate();
   const unreadCount = useMessageStore((s) => s.unreadCount);
   const bridgePending = useBridgeStore((s) => s.pendingCount);
+  const [q, setQ] = useState('');
   const isActive = (item: typeof BOTTOM_NAV_ITEMS[number]) => !item.isCenter && (item.key === 'home' ? location.pathname === '/' : location.pathname.startsWith(item.path));
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const t = q.trim();
+    if (!t) return;
+    setQ('');
+    navigate(`/search?q=${encodeURIComponent(t)}`);
+  };
 
   return <nav className="top-nav" aria-label="主导航">
     <div className="top-nav-inner">
       <span className="top-nav-brand">Finding</span>
+      <form className="top-nav-search" onSubmit={submitSearch} role="search">
+        <div className="top-nav-search-box">
+          <AppIcon name="search" size={15} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索用户、动态、搭子..." aria-label="站内搜索" />
+        </div>
+      </form>
       {BOTTOM_NAV_ITEMS.map((item) => {
         const count = item.key === 'messages' ? unreadCount : item.key === 'bridge' ? bridgePending : 0;
         return <button key={item.key} className={`nav-item ${item.isCenter ? 'top-nav-item--center' : ''} ${isActive(item) ? 'top-nav-item--active' : ''}`} onClick={() => item.isCenter ? onCenterClick?.() : navigate(item.path)}>
