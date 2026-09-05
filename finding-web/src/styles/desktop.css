@@ -140,4 +140,40 @@
   .messages-split .chat-page .back-btn {
     display: none;
   }
+
+  /* ── 全局打磨:键盘焦点环(墨色描边)── */
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  /* 搭子卡片悬停轻抬升(与 PostCard 既有 hover 习惯一致) */
+  .square-mate-list .mate-card,
+  .mate-list-section .mate-card {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .square-mate-list .mate-card:hover,
+  .mate-list-section .mate-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  /* 会话行悬停 tint */
+  .chat-conv-item:hover {
+    background: var(--primary-soft);
+  }
+}
+
+/* ── 减弱动效偏好:关闭抬升/过渡(嵌套 @media 合法)── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .square-mate-list .mate-card:hover,
+  .mate-list-section .mate-card:hover {
+    transform: none;
+  }
 }
