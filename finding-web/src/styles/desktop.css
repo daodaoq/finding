@@ -227,6 +227,42 @@
     margin-right: auto;
   }
 
+  /* ── 我的页:菜单行 → 两列卡片网格(贴合 Mine 本地蓝灰板,根类前缀压过懒加载 CSS)── */
+  .mine-page .mine-menu-card {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 13px;
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .mine-page .mine-menu-item {
+    border: 1px solid #f0f1f4;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(35, 42, 59, 0.04);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .mine-page .mine-menu-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(35, 42, 59, 0.08);
+  }
+
+  /* 末位项通栏,避免半宽孤行;补回整卡边框 */
+  .mine-page .mine-menu-item:last-child {
+    border-bottom: 1px solid #f0f1f4;
+    grid-column: 1 / -1;
+  }
+
+  /* 快捷入口一行铺满(移动端 4 个,桌面 5 个) */
+  .mine-page .mine-quick-card {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
   /* ── 帖子详情:文章列 + 作者/相关右栏 ── */
   .pd-body {
     display: grid;
