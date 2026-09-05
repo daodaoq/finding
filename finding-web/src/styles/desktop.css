@@ -141,6 +141,24 @@
     display: none;
   }
 
+  /* ── 首页:主列 + 右侧栏(校园公告板)── */
+  .home-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 28px;
+    align-items: start;
+    padding: 0 24px 40px;
+  }
+
+  .home-main {
+    min-width: 0;
+  }
+
+  /* 首页搭子 Tab 在主列内保持单列(覆盖全局 auto-fill 多列规则) */
+  .home-body .square-mate-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* ── 全局打磨:键盘焦点环(墨色描边)── */
   :focus-visible {
     outline: 2px solid var(--ink);

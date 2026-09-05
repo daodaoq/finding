@@ -1,0 +1,312 @@
+/* 桌面右侧栏「校园公告板」:仅在 ≥768px 由 useIsDesktop 门控挂载,故无需媒体查询。 */
+
+.rail-sticky {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rail-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 15px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.rail-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 布告记号:标题前的小墨块 */
+.rail-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--ink);
+  border-radius: 1px;
+}
+
+.rail-card-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.rail-card-action {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* ── 用户卡 ── */
+.rail-user-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-avatar {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.rail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rail-user-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.rail-user-copy b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.rail-user-copy span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.rail-verified {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #edf5f0;
+  color: #52705f;
+  font-size: 10px;
+}
+
+.rail-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-muted);
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.rail-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+.rail-user-foot {
+  margin-top: 11px;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rail-user-foot .rail-cta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rail-user-foot .rail-cta.is-ghost {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ── 热榜 ── */
+.rail-hot-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rail-hot-row:hover .rail-hot-title {
+  color: var(--ink);
+}
+
+.rail-rank {
+  flex: none;
+  width: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.rail-rank.is-top {
+  color: var(--ink);
+}
+
+.rail-hot-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+}
+
+.rail-hot-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ── 搭子推荐 ── */
+.rail-mate-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rail-mate-item + .rail-mate-item {
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.rail-mate-item img {
+  width: 62px;
+  height: 62px;
+  flex: none;
+  border-radius: var(--radius);
+  object-fit: cover;
+  background: var(--primary-soft);
+}
+
+.rail-mate-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.rail-mate-copy b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.rail-mate-copy span {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── 公告 ── */
+.rail-ann-row {
+  padding: 6px 0;
+}
+
+.rail-ann-row + .rail-ann-row {
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.rail-ann-row b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.rail-ann-row time {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ── 页脚 ── */
+.rail-footer {
+  padding: 4px 2px 0;
+  text-align: center;
+}
+
+.rail-footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.rail-footer-links a:hover {
+  color: var(--ink);
+}
+
+.rail-footer-version {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* 空/错占位 */
+.rail-empty {
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}

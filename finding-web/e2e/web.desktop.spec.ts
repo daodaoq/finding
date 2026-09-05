@@ -14,6 +14,15 @@ test.describe('桌面端布局', () => {
     await expect(page.locator('.bottom-nav')).toBeHidden();
   });
 
+  test('首页右栏:顶栏搜索 + 公告板模块', async ({ page }) => {
+    await login(page);
+    await page.goto('/');
+    await expect(page.locator('.top-nav-search input')).toBeVisible({ timeout: 8000 });
+    const rail = page.locator('.home-rail');
+    await expect(rail).toBeVisible({ timeout: 8000 });
+    await expect(rail.locator('.rail-card', { hasText: '热榜' })).toBeVisible();
+  });
+
   test('消息双栏:左会话栏 + 空态占位,点开会话后仍在', async ({ page }) => {
     await login(page);
     await page.goto('/messages');

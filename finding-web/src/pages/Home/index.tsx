@@ -14,6 +14,8 @@ import type { Mate } from '../../types/mate';
 import PostFeed from './components/PostFeed';
 import MateFeed from './components/MateFeed';
 import AppIcon from '../../components/AppIcon';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
+import HomeRail from '../../components/rail/HomeRail';
 import './index.css';
 
 const HOME_TABS = [
@@ -40,6 +42,7 @@ export default function HomePage() {
   const [mateSortBy, setMateSortBy] = useState('time');
 
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose, isLoggedIn } = useRequireLogin();
   // 搭子 Tab 下获取浏览器定位(用于距离)
   const { lat, lng } = useGeolocation(activeTab === 'mate');
@@ -131,61 +134,68 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Tab 切换 */}
-      <div className="home-tabs">
-        {HOME_TABS.map((tab) => (
-          <button key={tab.key}
-            className={`home-tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* 桌面 ≥768px:主列 + 右侧栏;移动端:以下两个包裹层为无样式 div */}
+      <div className="home-body">
+        <div className="home-main">
+          {/* Tab 切换 */}
+          <div className="home-tabs">
+            {HOME_TABS.map((tab) => (
+              <button key={tab.key}
+                className={`home-tab ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-      {/* 帖子 Tab */}
-      {isPostTab && (
-        <>
-          {/* 热门子排序 */}
-          {activeTab === 'hot' && (
-            <div className="home-sort-bar">
-              {SORT_OPTIONS.map((opt) => (
-                <button key={opt.key}
-                  className={`sort-btn ${sortBy === opt.key ? 'active' : ''}`}
-                  onClick={() => setSortBy(opt.key)}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          {/* 帖子 Tab */}
+          {isPostTab && (
+            <>
+              {/* 热门子排序 */}
+              {activeTab === 'hot' && (
+                <div className="home-sort-bar">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button key={opt.key}
+                      className={`sort-btn ${sortBy === opt.key ? 'active' : ''}`}
+                      onClick={() => setSortBy(opt.key)}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <PostFeed
+                posts={postList.items}
+                loading={postList.loading}
+                hasMore={postList.hasMore}
+                showGuestLimit={!isLoggedIn}
+                guestMaxPosts={GUEST_MAX_POSTS}
+                onLike={handleLike}
+                onFavorite={handleFavorite}
+                onOpen={(id) => navigate(`/square/post/${id}`)}
+                onGuestLimitClick={() => requireLogin(() => {})}
+              />
+            </>
           )}
 
-          <PostFeed
-            posts={postList.items}
-            loading={postList.loading}
-            hasMore={postList.hasMore}
-            showGuestLimit={!isLoggedIn}
-            guestMaxPosts={GUEST_MAX_POSTS}
-            onLike={handleLike}
-            onFavorite={handleFavorite}
-            onOpen={(id) => navigate(`/square/post/${id}`)}
-            onGuestLimitClick={() => requireLogin(() => {})}
-          />
-        </>
-      )}
+          {/* 搭子 Tab */}
+          {!isPostTab && (
+            <MateFeed
+              mates={mateList.items}
+              loading={mateList.loading}
+              hasMore={mateList.hasMore}
+              category={mateCategory}
+              sortBy={mateSortBy}
+              onCategoryChange={(code) => setMateCategory(mateCategory === code ? '' : code)}
+              onSortChange={setMateSortBy}
+              onJoin={handleJoinMate}
+              onOpen={(id) => navigate(`/mate/${id}`)}
+            />
+          )}
+        </div>
 
-      {/* 搭子 Tab */}
-      {!isPostTab && (
-        <MateFeed
-          mates={mateList.items}
-          loading={mateList.loading}
-          hasMore={mateList.hasMore}
-          category={mateCategory}
-          sortBy={mateSortBy}
-          onCategoryChange={(code) => setMateCategory(mateCategory === code ? '' : code)}
-          onSortChange={setMateSortBy}
-          onJoin={handleJoinMate}
-          onOpen={(id) => navigate(`/mate/${id}`)}
-        />
-      )}
+        {isDesktop && <HomeRail />}
+      </div>
 
       {/* 登录弹窗 */}
       <LoginModal visible={showLogin} onClose={handleClose} onSuccess={handleLoginSuccess} />
