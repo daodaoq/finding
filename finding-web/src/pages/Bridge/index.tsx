@@ -209,41 +209,39 @@ export default function BridgePage() {
         </div>
       </div>
 
-      {/* 桌面 ≥768px:左操作栏 + 右舞台;移动端 .bridge-body/.bridge-stage 为无样式块 */}
+      {/* Banner 轮播(通栏) */}
+      {banners.length > 0 && (
+        <div className="bridge-banner-wrap">
+          <BannerCarousel banners={banners} />
+        </div>
+      )}
+
+      {/* 桌面 ≥768px:左 = 今日推荐+滑动卡,右 = 心动匹配/快捷键(钉住);移动端按序堆叠 */}
       <div className="bridge-body">
-        {isDesktop && (
-          <aside className="bridge-rail">
-            <div className="bridge-rail-title">心动匹配</div>
-            <nav className="bridge-rail-menu">
-              {QUICK_ACTIONS.map((action) => (
-                <button key={action.key} className="bridge-rail-item" onClick={() => handleQuickAction(action.key)}>
-                  <span className={`bridge-rail-ic bridge-rail-ic--${action.key}`}>
-                    <AppIcon name={action.icon} size={19} />
-                    {action.key === 'letter' && bridgePending > 0 && (
-                      <span className="bridge-rail-badge">{bridgePending > 99 ? '99+' : bridgePending}</span>
-                    )}
-                  </span>
-                  <span className="bridge-rail-label">{action.label}</span>
-                </button>
-              ))}
-            </nav>
-            <div className="bridge-rail-hint">
-              <b>桌面快捷操作</b>
-              <p><kbd>←</kbd> 跳过&nbsp;&nbsp;<kbd>→</kbd> 心动</p>
+        {/* 心动匹配入口:桌面为右侧钉住纵向菜单,移动端为横排快捷入口 */}
+        <aside className="bridge-aside">
+          {isDesktop ? (
+            <div className="bridge-menu">
+              <div className="bridge-menu-title">心动匹配</div>
+              <nav className="bridge-menu-nav">
+                {QUICK_ACTIONS.map((action) => (
+                  <button key={action.key} className="bridge-menu-item" onClick={() => handleQuickAction(action.key)}>
+                    <span className="bridge-menu-ic">
+                      <AppIcon name={action.icon} size={19} />
+                      {action.key === 'letter' && bridgePending > 0 && (
+                        <span className="bridge-menu-badge">{bridgePending > 99 ? '99+' : bridgePending}</span>
+                      )}
+                    </span>
+                    <span className="bridge-menu-label">{action.label}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="bridge-menu-hint">
+                <b>桌面快捷操作</b>
+                <p><kbd>←</kbd> 跳过&nbsp;&nbsp;<kbd>→</kbd> 心动</p>
+              </div>
             </div>
-          </aside>
-        )}
-
-        <main className="bridge-stage">
-          {/* Banner 轮播 */}
-          {banners.length > 0 && (
-            <div className="bridge-banner-wrap">
-              <BannerCarousel banners={banners} />
-            </div>
-          )}
-
-          {/* 移动端心动匹配快捷入口(桌面见左栏) */}
-          {!isDesktop && (
+          ) : (
             <div className="bridge-quick-section">
               <div className="bridge-quick-title">心动匹配</div>
               <div className="bridge-quick-icons">
@@ -267,8 +265,10 @@ export default function BridgePage() {
               </div>
             </div>
           )}
+        </aside>
 
-          {/* 单卡推荐:一次一个用户,爱心喜欢/叉号换下一个 */}
+        {/* 单卡推荐:一次一个用户,爱心喜欢/叉号换下一个 */}
+        <div className="bridge-listing">
           <div className="bridge-recommend-heading">
             <div>
               <h2>今日推荐</h2>
@@ -307,7 +307,7 @@ export default function BridgePage() {
               <div className="bridge-kbd-hint"><kbd>←</kbd> 不喜欢 <span>·</span> <kbd>→</kbd> 心动</div>
             )}
           </div>
-        </main>
+        </div>
       </div>
 
       {/* 登录弹窗 */}
