@@ -168,6 +168,12 @@
     align-self: stretch;
   }
 
+  /* 首页右栏锁定点 = 通栏 header 高度(与 .home-tabs top:62 同源),右栏初始即在
+     该位置 → 滚动全程零位移,不会先上移再锁定 */
+  .home-body > .home-rail .rail-sticky {
+    top: 62px;
+  }
+
   /* 首页搭子 Tab 在主列内保持单列(覆盖全局 auto-fill 多列规则) */
   .home-body .square-mate-list {
     grid-template-columns: minmax(0, 1fr);
