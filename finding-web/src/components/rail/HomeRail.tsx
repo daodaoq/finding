@@ -1,6 +1,7 @@
 import RailUserCard from './RailUserCard';
 import RailHotPosts from './RailHotPosts';
-import RailMatePicks from './RailMatePicks';
+// 搭子推荐暂时隐藏(反馈用处不大),需要时取消注释即可
+// import RailMatePicks from './RailMatePicks';
 import RailAnnouncements from './RailAnnouncements';
 import RailFooter from './RailFooter';
 import './rail.css';
@@ -12,7 +13,6 @@ export default function HomeRail() {
       <div className="rail-sticky">
         <RailUserCard />
         <RailHotPosts />
-        <RailMatePicks />
         <RailAnnouncements />
         <RailFooter />
       </div>
