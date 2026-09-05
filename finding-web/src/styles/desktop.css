@@ -162,6 +162,12 @@
     min-width: 0;
   }
 
+  /* 右栏撑满与主列同高:内部 sticky 才有滑行空间,滚动时模块固定在视口内 */
+  .home-body > .home-rail,
+  .pd-body > .pd-rail {
+    align-self: stretch;
+  }
+
   /* 首页搭子 Tab 在主列内保持单列(覆盖全局 auto-fill 多列规则) */
   .home-body .square-mate-list {
     grid-template-columns: minmax(0, 1fr);
