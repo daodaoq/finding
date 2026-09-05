@@ -69,6 +69,8 @@ export default function CreateMatePage() {
       </div>
 
       <div className="cm-form">
+        {/* 桌面专属卡片标题(移动端由 CSS 隐藏) */}
+        <div className="cm-card-head"><h2>{editingId ? '编辑搭子' : '发起搭子邀约'}</h2><p>找到一起吃饭、运动、自习的人</p></div>
         {/* 分类选择 */}
         <div className="cm-section">
           <label className="cm-label">搭子分类 *</label>

@@ -159,6 +159,8 @@ export default function CreatePostPage() {
       </div>
 
       <div className="cp-form">
+        {/* 桌面专属卡片标题(移动端由 CSS 隐藏) */}
+        <div className="cp-card-head"><h2>{editId ? '编辑动态' : '发布动态'}</h2><p>记录你的校园生活</p></div>
         {loading ? (
           <div className="cp-loading">加载中...</div>
         ) : (

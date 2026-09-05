@@ -1,5 +1,12 @@
 /* desktop.css — 桌面端(≥768px)全部结构性覆盖集中在此,移动端零改动。
    断点必须与 src/index.css 响应式令牌、src/hooks/useIsDesktop.ts 保持一致。 */
+
+/* 桌面专属元素的移动端默认态:常驻 DOM,默认隐藏,≥768px 才显示 */
+.cp-card-head,
+.cm-card-head {
+  display: none;
+}
+
 @media (min-width: 768px) {
 
   /* ── 导航换位:底栏隐藏(常驻挂载,仅 CSS 切换),顶栏由 TopNav.css 自行显示 ── */
@@ -158,6 +165,66 @@
   /* 首页搭子 Tab 在主列内保持单列(覆盖全局 auto-fill 多列规则) */
   .home-body .square-mate-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* ── 发布页:表单收进居中卡片(「作曲家」形态)── */
+  .cp-form,
+  .cm-form {
+    max-width: 760px;
+    margin: 24px auto 0;
+    padding: 24px 28px 22px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  .cp-card-head,
+  .cm-card-head {
+    display: block;
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .cp-card-head h2,
+  .cm-card-head h2 {
+    font-size: 19px;
+    color: var(--ink);
+  }
+
+  .cp-card-head p,
+  .cm-card-head p {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* 发帖正文区加高 */
+  .cp-textarea {
+    min-height: 260px;
+    font-size: 15px;
+  }
+
+  /* CreateMate 短字段两列(分类/标题/描述/封面通栏,时间/地点等自动两列) */
+  .cm-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 18px;
+  }
+
+  .cm-section,
+  .cm-input,
+  .cm-textarea {
+    grid-column: 1 / -1;
+  }
+
+  /* 登录提示条与卡片同宽居中 */
+  .cp-login-hint,
+  .cm-login-hint {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* ── 帖子详情:文章列 + 作者/相关右栏 ── */
