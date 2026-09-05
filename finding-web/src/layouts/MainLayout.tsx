@@ -154,8 +154,12 @@ export default function MainLayout() {
   const handleCreatePost = () => navigate('/create-post');
   const handleCreateMate = () => navigate('/create-mate');
 
+  // 单一任务型页面(发布/编辑)不需要 1100 宽容器,收窄避免大框架内留白
+  const isNarrowLayout = /^\/(create-post|create-mate)(\/|\?|$)/.test(location.pathname);
+  const layoutClass = `main-layout${isNarrowLayout ? ' main-layout--narrow' : ''}`;
+
   return (
-    <div className="main-layout">
+    <div className={layoutClass}>
       <TopNav onCenterClick={() => setShowCreate(true)} />
       <div className="main-content">
         <Outlet context={{ openCreateSheet: () => setShowCreate(true) }} />
