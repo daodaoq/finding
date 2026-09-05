@@ -17,12 +17,11 @@
   z-index: 100;
 }
 
-.home-school {
-  font-size: 15px;
-  font-weight: 700;
-  color: #29241f;
-  white-space: nowrap;
+.home-logo {
+  height: 30px;
+  width: auto;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .home-search-wrapper {

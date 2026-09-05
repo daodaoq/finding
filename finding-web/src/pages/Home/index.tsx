@@ -8,6 +8,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import LoginModal from '../../components/LoginModal';
 import { showToast } from '../../components/Toast';
 import { APP_CONFIG } from '../../utils/config';
+import homeLogo from '../../assets/images/home-logo.jpg';
 import type { Post } from '../../types/post';
 import type { Mate } from '../../types/mate';
 import PostFeed from './components/PostFeed';
@@ -121,9 +122,9 @@ export default function HomePage() {
 
   return (
     <div className="home-page" onScroll={handleScroll}>
-      {/* 顶部：校名 + 搜索框 */}
+      {/* 顶部：品牌 logo + 搜索框 */}
       <div className="home-top">
-        <span className="home-school">{APP_CONFIG.SCHOOL_NAME}</span>
+        <img className="home-logo" src={homeLogo} alt={APP_CONFIG.SCHOOL_NAME} />
         <div className="home-search-wrapper" onClick={() => navigate('/search')}>
           <AppIcon name="search" className="home-search-icon" size={17} />
           <input className="home-search-input" type="text" placeholder="搜索用户、动态、搭子..." readOnly />
