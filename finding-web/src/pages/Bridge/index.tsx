@@ -209,75 +209,105 @@ export default function BridgePage() {
         </div>
       </div>
 
-      {/* Banner 轮播 */}
-      {banners.length > 0 && (
-        <div className="bridge-banner-wrap">
-          <BannerCarousel banners={banners} />
-        </div>
-      )}
-
-      {/* 心动匹配快捷入口 */}
-      <div className="bridge-quick-section">
-        <div className="bridge-quick-title">心动匹配</div>
-        <div className="bridge-quick-icons">
-          {QUICK_ACTIONS.map((action) => (
-            <button
-              key={action.key}
-              className="bridge-quick-item"
-              onClick={() => handleQuickAction(action.key)}
-            >
-              <span className={`bridge-quick-icon bridge-quick-icon--${action.key}`}>
-                <AppIcon name={action.icon} size={22} />
-                {action.key === 'letter' && bridgePending > 0 && (
-                  <span className="bridge-quick-badge">
-                    {bridgePending > 99 ? '99+' : bridgePending}
+      {/* 桌面 ≥768px:左操作栏 + 右舞台;移动端 .bridge-body/.bridge-stage 为无样式块 */}
+      <div className="bridge-body">
+        {isDesktop && (
+          <aside className="bridge-rail">
+            <div className="bridge-rail-title">心动匹配</div>
+            <nav className="bridge-rail-menu">
+              {QUICK_ACTIONS.map((action) => (
+                <button key={action.key} className="bridge-rail-item" onClick={() => handleQuickAction(action.key)}>
+                  <span className={`bridge-rail-ic bridge-rail-ic--${action.key}`}>
+                    <AppIcon name={action.icon} size={19} />
+                    {action.key === 'letter' && bridgePending > 0 && (
+                      <span className="bridge-rail-badge">{bridgePending > 99 ? '99+' : bridgePending}</span>
+                    )}
                   </span>
-                )}
-              </span>
-              <span className="bridge-quick-label">{action.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 单卡推荐:一次一个用户,爱心喜欢/叉号换下一个 */}
-      <div className="bridge-recommend-heading">
-        <div>
-          <h2>今日推荐</h2>
-          <p>根据你的偏好，为你找到可能聊得来的人</p>
-        </div>
-        <span className="bridge-recommend-count">逐个认识</span>
-      </div>
-
-      <div className="bridge-swipe-section">
-        {!isLoggedIn ? (
-          <EmptyState
-            icon="heart"
-            message="登录后即可查看推荐用户"
-            action={<button onClick={openLogin}>去登录</button>}
-          />
-        ) : loading ? (
-          <div className="bridge-swipe-loading">加载中...</div>
-        ) : error ? (
-          <PageState loading={false} error={error} onRetry={() => loadNext()} />
-        ) : noMore || !candidate ? (
-          <EmptyState
-            icon="heart"
-            message="没有更多推荐了"
-            action={<button onClick={handleRefresh}>刷新看看</button>}
-          />
-        ) : (
-          <SwipeCard
-            user={candidate}
-            onLike={handleLike}
-            onApply={handleApply}
-            onSkip={handleSkip}
-            disabled={acting}
-          />
+                  <span className="bridge-rail-label">{action.label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="bridge-rail-hint">
+              <b>桌面快捷操作</b>
+              <p><kbd>←</kbd> 跳过&nbsp;&nbsp;<kbd>→</kbd> 心动</p>
+            </div>
+          </aside>
         )}
-        {isDesktop && isLoggedIn && candidate && !loading && !error && !noMore && (
-          <div className="bridge-kbd-hint"><kbd>←</kbd> 不喜欢 <span>·</span> <kbd>→</kbd> 心动</div>
-        )}
+
+        <main className="bridge-stage">
+          {/* Banner 轮播 */}
+          {banners.length > 0 && (
+            <div className="bridge-banner-wrap">
+              <BannerCarousel banners={banners} />
+            </div>
+          )}
+
+          {/* 移动端心动匹配快捷入口(桌面见左栏) */}
+          {!isDesktop && (
+            <div className="bridge-quick-section">
+              <div className="bridge-quick-title">心动匹配</div>
+              <div className="bridge-quick-icons">
+                {QUICK_ACTIONS.map((action) => (
+                  <button
+                    key={action.key}
+                    className="bridge-quick-item"
+                    onClick={() => handleQuickAction(action.key)}
+                  >
+                    <span className={`bridge-quick-icon bridge-quick-icon--${action.key}`}>
+                      <AppIcon name={action.icon} size={22} />
+                      {action.key === 'letter' && bridgePending > 0 && (
+                        <span className="bridge-quick-badge">
+                          {bridgePending > 99 ? '99+' : bridgePending}
+                        </span>
+                      )}
+                    </span>
+                    <span className="bridge-quick-label">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 单卡推荐:一次一个用户,爱心喜欢/叉号换下一个 */}
+          <div className="bridge-recommend-heading">
+            <div>
+              <h2>今日推荐</h2>
+              <p>根据你的偏好，为你找到可能聊得来的人</p>
+            </div>
+            <span className="bridge-recommend-count">逐个认识</span>
+          </div>
+
+          <div className="bridge-swipe-section">
+            {!isLoggedIn ? (
+              <EmptyState
+                icon="heart"
+                message="登录后即可查看推荐用户"
+                action={<button onClick={openLogin}>去登录</button>}
+              />
+            ) : loading ? (
+              <div className="bridge-swipe-loading">加载中...</div>
+            ) : error ? (
+              <PageState loading={false} error={error} onRetry={() => loadNext()} />
+            ) : noMore || !candidate ? (
+              <EmptyState
+                icon="heart"
+                message="没有更多推荐了"
+                action={<button onClick={handleRefresh}>刷新看看</button>}
+              />
+            ) : (
+              <SwipeCard
+                user={candidate}
+                onLike={handleLike}
+                onApply={handleApply}
+                onSkip={handleSkip}
+                disabled={acting}
+              />
+            )}
+            {isDesktop && isLoggedIn && candidate && !loading && !error && !noMore && (
+              <div className="bridge-kbd-hint"><kbd>←</kbd> 不喜欢 <span>·</span> <kbd>→</kbd> 心动</div>
+            )}
+          </div>
+        </main>
       </div>
 
       {/* 登录弹窗 */}

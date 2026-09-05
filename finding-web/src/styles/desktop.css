@@ -275,39 +275,154 @@
     grid-template-columns: repeat(5, 1fr);
   }
 
-  /* ── 相识页舞台:内容收拢为居中 640px 舞台,卡片放大、操作钮落回文档流 ── */
-  .bridge-page .bridge-top-nav,
-  .bridge-page .bridge-banner-wrap,
-  .bridge-page .bridge-quick-section,
-  .bridge-page .bridge-recommend-heading,
-  .bridge-page .bridge-swipe-section {
-    max-width: 640px;
-    margin-left: auto;
-    margin-right: auto;
+  /* ── 相识页桌面双栏:左操作栏(280px)+ 右舞台,充分利用 1100px ── */
+  .bridge-body {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 20px 24px 44px;
   }
 
-  .bridge-page .bridge-swipe-section {
-    padding-bottom: 40px;
+  .bridge-rail {
+    position: sticky;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
 
-  .bridge-page .swipe-wrap {
+  .bridge-rail-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #4a343b;
+  }
+
+  .bridge-rail-menu {
+    background: #fff;
+    border: 1px solid #f2dfe4;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 5px 18px rgba(126, 77, 91, 0.08);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bridge-rail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 10px;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    color: #4a343b;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+
+  .bridge-rail-item:hover {
+    background: #fdf1f3;
+  }
+
+  .bridge-rail-ic {
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: #fbe9ed;
+    color: #b0626f;
+  }
+
+  .bridge-rail-badge {
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    display: grid;
+    place-items: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #8e4b5b;
+    color: #fff;
+    font-size: 10px;
+  }
+
+  .bridge-rail-label {
+    flex: 1;
+  }
+
+  .bridge-rail-hint {
+    border: 1px dashed #f2dfe4;
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    color: #9a8b90;
+  }
+
+  .bridge-rail-hint b {
+    display: block;
+    color: #6d5960;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .bridge-rail-hint p {
+    font-size: 12px;
+    color: #a39499;
+  }
+
+  .bridge-rail-hint kbd {
+    padding: 1px 7px;
+    border: 1px solid #f2dfe4;
+    border-radius: 4px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 11px;
+    color: #8e4b5b;
+  }
+
+  /* 右舞台 */
+  .bridge-stage {
+    min-width: 0;
+  }
+
+  .bridge-stage .bridge-recommend-heading {
+    margin-top: 18px;
+  }
+
+  .bridge-stage .bridge-swipe-section {
+    padding-bottom: 24px;
+  }
+
+  .bridge-stage .swipe-wrap {
     padding: 0 0 8px;
   }
 
-  .bridge-page .swipe-card,
-  .bridge-page .swipe-details-card {
-    max-width: 440px;
+  /* 推荐卡放大填充舞台(卡片仍居中) */
+  .bridge-stage .swipe-card,
+  .bridge-stage .swipe-details-card {
+    max-width: 560px;
   }
 
-  .bridge-page .swipe-photo {
-    aspect-ratio: 4 / 4.4;
+  .bridge-stage .swipe-photo {
+    aspect-ratio: 4 / 4.2;
   }
 
   /* 操作按钮不再悬浮,自然排在卡片下方(桌面无底栏) */
-  .bridge-page .swipe-actions {
+  .bridge-stage .swipe-actions {
     position: static;
     bottom: auto;
-    margin: 26px auto 0;
+    margin: 28px auto 0;
   }
 
   /* 键盘快捷键提示(粉色区 kbd 徽章) */
