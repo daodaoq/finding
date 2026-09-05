@@ -263,6 +263,62 @@
     grid-template-columns: repeat(5, 1fr);
   }
 
+  /* ── 相识页舞台:内容收拢为居中 640px 舞台,卡片放大、操作钮落回文档流 ── */
+  .bridge-page .bridge-top-nav,
+  .bridge-page .bridge-banner-wrap,
+  .bridge-page .bridge-quick-section,
+  .bridge-page .bridge-recommend-heading,
+  .bridge-page .bridge-swipe-section {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .bridge-page .bridge-swipe-section {
+    padding-bottom: 40px;
+  }
+
+  .bridge-page .swipe-wrap {
+    padding: 0 0 8px;
+  }
+
+  .bridge-page .swipe-card,
+  .bridge-page .swipe-details-card {
+    max-width: 440px;
+  }
+
+  .bridge-page .swipe-photo {
+    aspect-ratio: 4 / 4.4;
+  }
+
+  /* 操作按钮不再悬浮,自然排在卡片下方(桌面无底栏) */
+  .bridge-page .swipe-actions {
+    position: static;
+    bottom: auto;
+    margin: 26px auto 0;
+  }
+
+  /* 键盘快捷键提示(粉色区 kbd 徽章) */
+  .bridge-kbd-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: #a39499;
+  }
+
+  .bridge-kbd-hint kbd {
+    padding: 1px 8px;
+    border: 1px solid #f2dfe4;
+    border-radius: 4px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 11px;
+    color: #8e4b5b;
+  }
+
   /* ── 帖子详情:文章列 + 作者/相关右栏 ── */
   .pd-body {
     display: grid;

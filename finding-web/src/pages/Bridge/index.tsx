@@ -8,6 +8,8 @@ import EmptyState from '../../components/EmptyState';
 import { showToast } from '../../components/Toast';
 import { useRequireLogin } from '../../hooks/useRequireLogin';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
+import { useSwipeKeyboard } from '../../hooks/useSwipeKeyboard';
 import PageState from '../../components/PageState';
 import { getErrorMessage } from '../../utils/appError';
 import { useAuthStore } from '../../store/authStore';
@@ -174,6 +176,13 @@ export default function BridgePage() {
     requireLogin(() => navigate('/messages/notifications'));
   };
 
+  // 桌面端键盘操作:← 跳过 / → 心动(仅登录且有候选时)
+  const isDesktop = useIsDesktop();
+  useSwipeKeyboard(isDesktop && isLoggedIn && !!candidate && !loading && !error && !noMore, {
+    onPass: handleSkip,
+    onLike: handleLike,
+  });
+
   return (
     <div className="bridge-page">
       {/* 顶部导航栏 */}
@@ -265,6 +274,9 @@ export default function BridgePage() {
             onSkip={handleSkip}
             disabled={acting}
           />
+        )}
+        {isDesktop && isLoggedIn && candidate && !loading && !error && !noMore && (
+          <div className="bridge-kbd-hint"><kbd>←</kbd> 不喜欢 <span>·</span> <kbd>→</kbd> 心动</div>
         )}
       </div>
 
