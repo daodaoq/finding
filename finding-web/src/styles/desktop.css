@@ -35,9 +35,10 @@
     top: var(--topnav-h);
   }
 
-  /* ── 视口固定条:不再需要为底部导航留白,宽度对齐内容容器 ── */
-  .pd-input-bar,
-  .md-bottom-bar {
+  /* ── 视口固定条:不再需要为底部导航留白,宽度对齐内容容器。
+     注意:页面 CSS 经懒加载 chunk 运行时注入,晚于 desktop.css;凡需覆盖页面既有
+     样式的规则,必须以更高特异性选择器(页面根类前缀)书写,不能依赖加载顺序。── */
+  .md-page .md-bottom-bar {
     bottom: 0;
     max-width: var(--page-max);
   }
@@ -157,6 +158,47 @@
   /* 首页搭子 Tab 在主列内保持单列(覆盖全局 auto-fill 多列规则) */
   .home-body .square-mate-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* ── 帖子详情:文章列 + 作者/相关右栏 ── */
+  .pd-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 28px;
+    align-items: start;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 8px 26px 44px;
+  }
+
+  .pd-article {
+    min-width: 0;
+  }
+
+  /* 文章列内卡片去掉默认左右外边距(由列内距承担) */
+  .pd-article .post-card {
+    margin: 12px 0;
+  }
+
+  /* window 滚动页:右栏吸顶需扣除顶部导航 */
+  .pd-rail .rail-sticky {
+    position: sticky;
+    top: calc(var(--topnav-h) + 16px);
+  }
+
+  /* 评论输入条对齐文章列(1100 容器 - 2×26 内距 → 文章列 680px)。
+     .post-detail-page 前缀:提高特异性压过懒加载的 CommentInput.css;
+     !important 仅用于压过 CommentInput 的移动端键盘内联 bottom:56。 */
+  .post-detail-page .pd-input-bar {
+    bottom: 0 !important;
+    left: max(16px, calc((100vw - var(--page-max)) / 2 + 26px));
+    right: auto;
+    width: min(680px, calc(100vw - 32px));
+    max-width: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    margin: 0 0 14px;
+    box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.07);
   }
 
   /* ── 全局打磨:键盘焦点环(墨色描边)── */

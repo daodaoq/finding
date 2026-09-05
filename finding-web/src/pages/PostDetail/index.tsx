@@ -15,6 +15,8 @@ import type { Post } from '../../types/post';
 import type { Comment } from '../../types/comment';
 import CommentList from './components/CommentList';
 import CommentInput from './components/CommentInput';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
+import PostRail from '../../components/rail/PostRail';
 import './index.css';
 
 export default function PostDetailPage() {
@@ -22,6 +24,7 @@ export default function PostDetailPage() {
   const postId = Number(id);
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
+  const isDesktop = useIsDesktop();
   const { showLogin, requireLogin, handleLoginSuccess, handleClose } = useRequireLogin();
 
   const [post, setPost] = useState<Post | null>(null);
@@ -191,26 +194,33 @@ export default function PostDetailPage() {
         </button>
       </div>
 
-      {/* 动态内容 */}
-      <PostCard
-        post={post}
-        onLike={handleLike}
-        onClick={() => {}}
-        canManage={post.userId === user?.id}
-        onEdit={() => navigate(`/create-post?id=${post.id}`)}
-        onDelete={() => setShowDeleteConfirm(true)}
-      />
+      {/* 桌面 ≥768px:文章列 + 右侧栏;移动端包裹层为无样式 div */}
+      <div className="pd-body">
+        <div className="pd-article">
+          {/* 动态内容 */}
+          <PostCard
+            post={post}
+            onLike={handleLike}
+            onClick={() => {}}
+            canManage={post.userId === user?.id}
+            onEdit={() => navigate(`/create-post?id=${post.id}`)}
+            onDelete={() => setShowDeleteConfirm(true)}
+          />
 
-      {/* 评论列表 */}
-      <CommentList
-        comments={comments}
-        commentCount={post.commentCount}
-        currentUserId={user?.id}
-        onLike={handleCommentLike}
-        onReply={handleReply}
-        onReport={(c) => setReportTarget({ targetType: 'comment', targetId: c.id, title: '该评论' })}
-        onDelete={handleDeleteComment}
-      />
+          {/* 评论列表 */}
+          <CommentList
+            comments={comments}
+            commentCount={post.commentCount}
+            currentUserId={user?.id}
+            onLike={handleCommentLike}
+            onReply={handleReply}
+            onReport={(c) => setReportTarget({ targetType: 'comment', targetId: c.id, title: '该评论' })}
+            onDelete={handleDeleteComment}
+          />
+        </div>
+
+        {isDesktop && <PostRail post={post} />}
+      </div>
 
       {/* 底部输入栏 — 移动端键盘适配 */}
       <CommentInput

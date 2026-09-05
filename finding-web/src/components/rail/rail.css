@@ -157,6 +157,36 @@
   color: var(--ink);
 }
 
+/* 作者操作按钮 */
+.rail-author-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rail-author-btn {
+  height: 32px;
+  border: 1px solid var(--ink);
+  border-radius: 16px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.rail-author-btn.is-followed,
+.rail-author-btn.is-ghost {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.rail-author-btn:disabled {
+  opacity: 0.5;
+}
+
 /* ── 热榜 ── */
 .rail-hot-row {
   display: flex;
