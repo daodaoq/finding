@@ -236,7 +236,7 @@ export default function UserProfilePage() {
         </div>
         <div className="up-profile-body">
           <div className="up-identity-row">
-            <div className="up-avatar">
+            <div className="up-avatar" onClick={previewHandler(profile.avatar)}>
               {profile.avatar ? <img src={profile.avatar} alt="" /> : <AppIcon name="user" size={38} />}
             </div>
             <div className="up-identity-copy">

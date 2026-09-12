@@ -2,6 +2,7 @@ import type { Message } from '../types/message';
 import { formatSessionTime } from '../utils/format';
 import AppIcon from './AppIcon';
 import './MessageItem.css';
+import { previewHandler } from '../utils/preview';
 
 interface Props {
   message: Message;
@@ -14,7 +15,7 @@ export default function MessageItem({ message, onClick }: Props) {
       className={`message-item ${!message.isRead ? 'unread' : ''}`}
       onClick={() => onClick(message)}
     >
-      <div className="msg-avatar">
+      <div className="msg-avatar" onClick={previewHandler(message.fromUserAvatar)}>
         {message.fromUserAvatar ? (
           <img src={message.fromUserAvatar} alt="" />
         ) : (

@@ -7,6 +7,7 @@ import AppIcon from '../../components/AppIcon';
 import { showToast } from '../../components/Toast';
 import type { StrangerMessage } from '../../types/message';
 import './index.css';
+import { previewHandler } from '../../utils/preview';
 
 export default function StrangerMessagesPage() {
   const [messages, setMessages] = useState<StrangerMessage[]>([]);
@@ -59,7 +60,7 @@ export default function StrangerMessagesPage() {
         {loading && <><LoadingSkeleton /><LoadingSkeleton /></>}
         {!loading && messages.map((m) => (
           <div key={m.id} className="sm-item">
-            <div className="conv-avatar">
+            <div className="conv-avatar" onClick={previewHandler(m.otherAvatar)}>
               {m.otherAvatar ? <img src={m.otherAvatar} alt="" /> : <AppIcon name="user" size={21} />}
             </div>
             <div className="sm-info">

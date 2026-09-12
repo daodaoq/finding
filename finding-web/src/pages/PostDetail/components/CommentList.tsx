@@ -3,6 +3,7 @@ import AppIcon from '../../../components/AppIcon';
 import { formatRelativeTime } from '../../../utils/format';
 import type { Comment } from '../../../types/comment';
 import './CommentList.css';
+import { previewHandler } from '../../../utils/preview';
 
 interface Props {
   comments: Comment[];
@@ -28,7 +29,7 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
         {comments.length === 0 && <EmptyState icon="message" message="暂无评论，来说点什么吧" />}
         {comments.map((comment) => (
           <div key={comment.id} className="comment-item">
-            <div className="comment-avatar">
+            <div className="comment-avatar" onClick={previewHandler(comment.avatar)}>
               {comment.avatar ? <img src={comment.avatar} alt="" /> : <AppIcon name="user" size={16} />}
             </div>
             <div className="comment-body">
@@ -56,7 +57,7 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
                 <div className="sub-replies">
                   {comment.replies.map((reply) => (
                     <div key={reply.id} className="reply-item">
-                      <div className="comment-avatar small">
+                      <div className="comment-avatar small" onClick={previewHandler(reply.avatar)}>
                         {reply.avatar ? <img src={reply.avatar} alt="" /> : <AppIcon name="user" size={14} />}
                       </div>
                       <div className="comment-body">

@@ -9,6 +9,7 @@ import { useApplyList, APPLY_STATUS_TABS } from '../../hooks/useApplyList';
 import { formatRelativeTime } from '../../utils/format';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
+import { previewHandler } from '../../utils/preview';
 
 export default function SendApplyList() {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export default function SendApplyList() {
             className="apply-row"
             onClick={() => handleRowClick(apply)}
           >
-            <div className="apply-avatar">
+            <div className="apply-avatar" onClick={previewHandler(apply.toUserAvatar)}>
               {apply.toUserAvatar ? (
                 <img src={apply.toUserAvatar} alt="" />
               ) : (

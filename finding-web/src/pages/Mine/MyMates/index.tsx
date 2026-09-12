@@ -8,6 +8,7 @@ import AppIcon from '../../../components/AppIcon';
 import { showToast } from '../../../components/Toast';
 import type { User } from '../../../types/user';
 import '../subpage.css';
+import { previewHandler } from '../../../utils/preview';
 
 type TabKey = 'following' | 'mutual' | 'followers';
 
@@ -102,7 +103,7 @@ export default function MyMatesPage() {
             className="user-row"
             onClick={() => navigate(`/user/${u.id}`)}
           >
-            <div className="user-row-avatar">
+            <div className="user-row-avatar" onClick={previewHandler(u.avatar)}>
               {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={20} />}
             </div>
             <div className="user-row-info">

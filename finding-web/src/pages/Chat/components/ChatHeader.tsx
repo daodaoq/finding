@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import AppIcon from '../../../components/AppIcon';
 import './ChatHeader.css';
+import { previewHandler } from '../../../utils/preview';
 
 interface Props {
   title: string;
@@ -20,7 +21,7 @@ export default function ChatHeader({ title, subtitle, avatar, onBack, extra, rig
     <div className="chat-header">
       <button className="back-btn" onClick={onBack}>←</button>
       {avatar && (
-        <div className="chat-avatar-sm">
+        <div className="chat-avatar-sm" onClick={previewHandler(avatar)}>
           {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={18} />}
         </div>
       )}

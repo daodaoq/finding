@@ -20,6 +20,7 @@ import type { Banner } from '../../types/message';
 import AppIcon from '../../components/AppIcon';
 import SwipeCard from './components/SwipeCard';
 import './index.css';
+import { previewHandler } from '../../utils/preview';
 
 export default function BridgePage() {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -188,7 +189,7 @@ export default function BridgePage() {
       {/* 顶部导航栏 */}
       <div className="bridge-top-nav">
         <div className="bridge-nav-left">
-          <div className="bridge-nav-avatar">
+          <div className="bridge-nav-avatar" onClick={previewHandler(currentUser?.avatar)}>
             {currentUser?.avatar ? (
               <img src={currentUser.avatar} alt="" />
             ) : (

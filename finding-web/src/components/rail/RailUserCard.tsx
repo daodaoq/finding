@@ -5,6 +5,7 @@ import { userApi } from '../../api/user';
 import type { ProfileCompleteness } from '../../api/user';
 import RailCard from './RailCard';
 import './rail.css';
+import { previewHandler } from '../../utils/preview';
 
 /** 登录:我的资料卡(头像/昵称/完整度进度);未登录:登录引导 + 发帖入口。 */
 export default function RailUserCard() {
@@ -43,7 +44,7 @@ export default function RailUserCard() {
   return (
     <RailCard title="我的">
       <button className="rail-user-top" onClick={() => navigate('/mine/profile')}>
-        <span className="rail-avatar">{user?.avatar ? <img src={user.avatar} alt="" /> : initial}</span>
+        <span className="rail-avatar" onClick={previewHandler(user?.avatar)}>{user?.avatar ? <img src={user.avatar} alt="" /> : initial}</span>
         <span className="rail-user-copy">
           <b>{user?.nickname || '未设置昵称'}</b>
           <span>{user?.school || ''}{user?.realNameVerified === 2 ? <em className="rail-verified">已认证</em> : null}</span>

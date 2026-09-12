@@ -7,6 +7,7 @@ import ReportDialog from '../../components/ReportDialog';
 import AppIcon from '../../components/AppIcon';
 import type { GroupChat, GroupMember, InvitableUser } from '../../types/groupChat';
 import './index.css';
+import { previewHandler } from '../../utils/preview';
 
 export default function GroupInfoPage() {
   const { id } = useParams<{ id: string }>();
@@ -99,7 +100,7 @@ export default function GroupInfoPage() {
 
       {/* 群基本信息 */}
       <div className="gi-basic">
-        <div className="gi-avatar">
+        <div className="gi-avatar" onClick={previewHandler(group.avatar)}>
           {group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={28} />}
         </div>
         <div className="gi-name">{group.name}</div>
@@ -148,8 +149,8 @@ export default function GroupInfoPage() {
         {members.map((m) => {
           const roleLabel = m.role === 2 ? '群主' : m.role === 1 ? '管理员' : '';
           return (
-            <div key={m.userId} className="gi-member-item">
-              <div className="gi-member-avatar" onClick={() => navigate(`/user/${m.userId}`)}>
+            <div key={m.userId} className="gi-member-item" onClick={() => navigate(`/user/${m.userId}`)}>
+              <div className="gi-member-avatar" onClick={previewHandler(m.avatar)}>
                 {m.avatar ? <img src={m.avatar} alt="" /> : <AppIcon name="user" size={18} />}
               </div>
               <div className="gi-member-info">
@@ -160,7 +161,7 @@ export default function GroupInfoPage() {
                 {roleLabel && <span className="gi-role-tag">{roleLabel}</span>}
               </div>
               {isOwner && m.userId !== myId && (
-                <button className="gi-remove-btn" onClick={() => handleRemoveMember(m.userId)}>移除</button>
+                <button className="gi-remove-btn" onClick={(e) => { e.stopPropagation(); handleRemoveMember(m.userId); }}>移除</button>
               )}
             </div>
           );

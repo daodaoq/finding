@@ -6,6 +6,7 @@ import { formatSessionTime } from '../../utils/format';
 import type { Conversation } from '../../types/message';
 import type { GroupChat } from '../../types/groupChat';
 import './index.css';
+import { previewHandler } from '../../utils/preview';
 
 export function previewText(message: string | null | undefined) { if (!message) return '暂无消息'; return message.startsWith('/uploads/') || message.startsWith('http') ? '[图片]' : message; }
 
@@ -29,7 +30,7 @@ export default function ConversationSections({ conversations, groups, loading, c
     <section className="chat-conv-list">
       {loading && <><LoadingSkeleton /><LoadingSkeleton /></>}
       {!loading && conversations.map((conv) => <button key={conv.id} className={`chat-conv-item ${conv.targetUserId === activeUserId ? 'chat-conv-item--active' : ''}`} onClick={() => onOpenPrivate(conv)}>
-        <span className="conv-avatar">{conv.targetAvatar ? <img src={conv.targetAvatar} alt="" /> : <AppIcon name="user" size={21} />}</span>
+        <span className="conv-avatar" onClick={previewHandler(conv.targetAvatar)}>{conv.targetAvatar ? <img src={conv.targetAvatar} alt="" /> : <AppIcon name="user" size={21} />}</span>
         <span className="conv-info"><span className="conv-top"><b>{conv.pinned ? '置顶 · ' : ''}{conv.muted ? '免打扰 · ' : ''}{conv.targetNickname || `用户${conv.targetUserId}`}</b><small>{conv.lastMessageAt ? formatSessionTime(conv.lastMessageAt) : ''}</small></span><span className="conv-bottom"><small>{previewText(conv.lastMessage)}</small>{conv.unreadCount > 0 && <i className="conv-badge">{conv.unreadCount}</i>}</span></span>
       </button>)}
       {!loading && convError && <PageState loading={false} error={convError} onRetry={onRetry} />}
@@ -39,7 +40,7 @@ export default function ConversationSections({ conversations, groups, loading, c
       <div className="section-divider">群聊</div>
       <section className="chat-conv-list">
         {groups.map((group) => <button key={group.id} className={`chat-conv-item ${group.id === activeGroupId ? 'chat-conv-item--active' : ''}`} onClick={() => onOpenGroup(group)}>
-          <span className="conv-avatar">{group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={21} />}</span>
+          <span className="conv-avatar" onClick={previewHandler(group.avatar)}>{group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={21} />}</span>
           <span className="conv-info"><span className="conv-top"><b>{group.name}</b><small>{group.lastMessageAt ? formatSessionTime(group.lastMessageAt) : ''}</small></span><span className="conv-bottom"><small>{previewText(group.lastMessage)}</small></span></span>
         </button>)}
       </section>

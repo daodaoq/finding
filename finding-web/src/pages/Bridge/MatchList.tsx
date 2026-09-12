@@ -8,6 +8,7 @@ import AppIcon from '../../components/AppIcon';
 import { formatRelativeTime } from '../../utils/format';
 import type { MatchUser } from '../../types/bridge';
 import './subpage.css';
+import { previewHandler } from '../../utils/preview';
 
 export type MatchListMode = 'sent' | 'received' | 'matches';
 
@@ -69,7 +70,7 @@ export default function MatchListPage({ mode }: { mode: MatchListMode }) {
 
         {!loading && list.map((m) => (
           <div key={m.userId} className="apply-row" onClick={() => navigate(`/user/${m.userId}`)}>
-            <div className="apply-avatar">
+            <div className="apply-avatar" onClick={previewHandler(m.avatar)}>
               {m.avatar ? <img src={m.avatar} alt="" /> : <AppIcon name="user" size={20} />}
             </div>
             <div className="apply-info">

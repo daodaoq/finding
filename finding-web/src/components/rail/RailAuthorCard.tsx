@@ -6,6 +6,7 @@ import { showToast } from '../Toast';
 import RailCard from './RailCard';
 import type { User } from '../../types/user';
 import './rail.css';
+import { previewHandler } from '../../utils/preview';
 
 /** 帖子作者卡:资料入口 + 关注/私信。作者是自己时不显示操作按钮。 */
 export default function RailAuthorCard({ author }: { author: User }) {
@@ -34,7 +35,7 @@ export default function RailAuthorCard({ author }: { author: User }) {
   return (
     <RailCard title="作者">
       <button className="rail-user-top" onClick={() => navigate(`/user/${author.id}`)}>
-        <span className="rail-avatar">{author.avatar ? <img src={author.avatar} alt="" /> : author.nickname.slice(0, 1)}</span>
+        <span className="rail-avatar" onClick={previewHandler(author.avatar)}>{author.avatar ? <img src={author.avatar} alt="" /> : author.nickname.slice(0, 1)}</span>
         <span className="rail-user-copy">
           <b>{author.nickname}</b>
           <span>{author.school || ''}{author.realNameVerified === 2 ? <em className="rail-verified">已认证</em> : null}</span>
