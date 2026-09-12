@@ -7,6 +7,29 @@ import { login } from './utils';
  */
 
 test.describe('用户端冒烟', () => {
+  test('设置备注后昵称显示备注(用完即清)', async ({ page }) => {
+    await login(page);
+    await page.goto('/user/2');
+    // 种子账号 1 与用户 2 不是同一人 → 显示操作区(含「设置备注」)
+    const remarkBtn = page.locator('.up-remark-btn');
+    await expect(remarkBtn).toBeVisible({ timeout: 8000 });
+
+    const original = (await page.locator('.up-name').textContent())?.trim() || '';
+    const remark = `备注${Date.now() % 100000}`;   // 限 20 字内
+    await remarkBtn.click();
+    await page.fill('.up-remark-input', remark);
+    await page.locator('.up-greeting-send', { hasText: '保存' }).click();
+
+    // 服务端按备注覆盖昵称,页面重拉后昵称位即为备注
+    await expect(page.locator('.up-name')).toHaveText(remark, { timeout: 8000 });
+
+    // 清理:清除备注后恢复真实昵称(避免污染开发库、影响其他用例)
+    await page.locator('.up-remark-btn').click();
+    await page.locator('.up-greeting-cancel', { hasText: '清除' }).click();
+    await expect(page.locator('.up-name')).toHaveText(original, { timeout: 8000 });
+  });
+
+
   test('登录成功进入首页', async ({ page }) => {
     await login(page);
     await expect(page.locator('.bottom-nav, .home-page, .feed').first()).toBeVisible({ timeout: 8000 });

@@ -197,7 +197,12 @@ export default function GroupChatPage() {
         messages={messages}
         currentUserId={user?.id}
         avatarOf={(msg) => (msg as GroupMessage).fromUserAvatar}
-        nicknameOf={(msg) => (msg as GroupMessage).fromUserNickname}
+        // 优先取群成员表(服务端已按备注覆盖),WS 推送的单份负载仅作兜底
+        // (群聊 WS 为单份负载群发,无法按接收者区分备注)
+        nicknameOf={(msg) => {
+          const m = msg as GroupMessage;
+          return members.find((x) => x.userId === m.fromUserId)?.nickname || m.fromUserNickname;
+        }}
         listRef={msgListRef}
         errorNode={loadError ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>

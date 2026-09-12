@@ -243,8 +243,9 @@
   background: #aaa39d;
   cursor: not-allowed;
 }
+/* 「设置备注」与「不再看到此用户」并列一行(安静次级按钮) */
+.up-remark-btn,
 .up-block-btn {
-  grid-column: 1/-1;
   justify-self: center;
   display: flex;
   align-items: center;
@@ -256,6 +257,17 @@
   color: #aaa19a;
   font-size: 12px;
   cursor: pointer;
+}
+.up-remark-btn {
+  grid-column: 1/2;
+}
+.up-block-btn {
+  grid-column: 2/3;
+}
+/* 备注输入框:单行高度(复用打招呼弹窗样式) */
+.up-remark-input {
+  min-height: auto;
+  height: 46px;
 }
 
 .up-content-section {

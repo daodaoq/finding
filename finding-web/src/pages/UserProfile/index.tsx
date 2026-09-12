@@ -38,6 +38,11 @@ export default function UserProfilePage() {
   const [greetingOpen, setGreetingOpen] = useState(false);
   const [greetingText, setGreetingText] = useState('你好，认识一下');
   const [sendingGreeting, setSendingGreeting] = useState(false);
+  // 备注弹窗
+  const [remarkOpen, setRemarkOpen] = useState(false);
+  const [remarkText, setRemarkText] = useState('');
+  const [hasRemark, setHasRemark] = useState(false);
+  const [savingRemark, setSavingRemark] = useState(false);
   const navigate = useNavigate();
   const myId = useAuthStore((s) => s.user?.id);
   const shareVersion = useInfoShareStore((s) => s.version);
@@ -47,6 +52,7 @@ export default function UserProfilePage() {
   const strangerGuard = useStaleGuard();
   const postsGuard = useStaleGuard();
   const resumeGuard = useStaleGuard();
+  const remarkGuard = useStaleGuard();
 
   useEffect(() => {
     setLoading(true);
@@ -105,6 +111,44 @@ export default function UserProfilePage() {
       await postApi.like(postId);
       setUserPosts((prev) => prev.map(p => p.id === postId ? { ...p, isLiked: !p.isLiked, likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1 } : p));
     } catch { /* 拦截器统一提示 */ }
+  };
+
+  // 是否已设置备注(决定按钮文案为「设置备注 / 修改备注」)
+  useEffect(() => {
+    if (!myId || userId === myId) return;
+    setHasRemark(false);
+    const { promise } = remarkGuard.run((signal) => userApi.getRemark(userId, signal));
+    promise.then((res) => setHasRemark(!!(res.data.data || '').trim()))
+      .catch((e) => { if (!isStaleError(e)) { /* 静默 */ } });
+  }, [userId, myId, remarkGuard.run]);
+
+  const openRemark = () => {
+    if (!myId) return;
+    // 打开前拉取当前备注预填,保证与服务端一致
+    const { promise } = remarkGuard.run((signal) => userApi.getRemark(userId, signal));
+    promise
+      .then((res) => { setRemarkText(res.data.data || ''); setRemarkOpen(true); })
+      .catch(() => { setRemarkText(''); setRemarkOpen(true); });
+  };
+
+  const saveRemark = async (clear = false) => {
+    setSavingRemark(true);
+    try {
+      if (clear || !remarkText.trim()) {
+        await userApi.clearRemark(userId);
+        setHasRemark(false);
+        showToast('已清除备注');
+      } else {
+        await userApi.setRemark(userId, remarkText.trim());
+        setHasRemark(true);
+        showToast('已保存备注');
+      }
+      setRemarkOpen(false);
+      // 立即重拉本页:昵称位由服务端按备注覆盖
+      const res = await userApi.getProfile(userId);
+      setProfile(res.data.data);
+    } catch { /* 违禁词等错误提示由拦截器统一弹出 */ }
+    finally { setSavingRemark(false); }
   };
 
   const handleBlock = async () => {
@@ -234,6 +278,9 @@ export default function UserProfilePage() {
               : stranger.received ? '去确认打招呼'
               : '打招呼'}
           </button>
+          <button className="up-remark-btn" onClick={openRemark}>
+            <AppIcon name="pen" size={14} />{hasRemark ? '修改备注' : '设置备注'}
+          </button>
           <button
             className="up-block-btn"
             onClick={handleBlock}
@@ -305,6 +352,28 @@ export default function UserProfilePage() {
           <button className="up-greeting-cancel" disabled={sendingGreeting} onClick={() => setGreetingOpen(false)}>取消</button>
           <button className="up-greeting-send" disabled={sendingGreeting} onClick={confirmGreeting}>
             {sendingGreeting ? '发送中…' : '发送'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* 备注弹窗 */}
+      <Modal visible={remarkOpen} title="设置备注" centered onClose={() => !savingRemark && setRemarkOpen(false)}>
+        <p className="up-greeting-hint">备注仅你可见，设置后会替换对方的昵称展示</p>
+        <input
+          className="up-greeting-input up-remark-input"
+          value={remarkText}
+          maxLength={20}
+          placeholder="例如：小明 / 隔壁班同学"
+          autoFocus
+          onChange={(e) => setRemarkText(e.target.value)}
+        />
+        <div className="up-greeting-actions">
+          {hasRemark && (
+            <button className="up-greeting-cancel" disabled={savingRemark} onClick={() => saveRemark(true)}>清除</button>
+          )}
+          <button className="up-greeting-cancel" disabled={savingRemark} onClick={() => setRemarkOpen(false)}>取消</button>
+          <button className="up-greeting-send" disabled={savingRemark} onClick={() => saveRemark(false)}>
+            {savingRemark ? '保存中…' : '保存'}
           </button>
         </div>
       </Modal>
