@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch, Radio, theme } from 'antd';
+import { Table, Button, Space, Tag, Popconfirm, Modal, Input, message, Switch, Radio, theme, Upload, Alert } from 'antd';
+import { UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import request from '../api/request';
+import { downloadForbiddenWordTemplate } from '../utils/download';
 
 interface ForbiddenWordRecord {
   id: number; word: string; status: number; action: number; createdAt: string;
+}
+
+/** 批量导入结果(后端返回) */
+interface ImportResult {
+  total: number;
+  imported: number;
+  skipped: number;
+  failed: { row: number; word: string; reason: string }[];
 }
 
 export default function ForbiddenWords() {
@@ -17,6 +28,11 @@ export default function ForbiddenWords() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ForbiddenWordRecord | null>(null);
   const [form, setForm] = useState({ word: '', status: 1, action: 0 });
+  // Excel 批量导入
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importAction, setImportAction] = useState(0);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const fetchData = (p = 1, kw?: string) => {
     setLoading(true);
@@ -57,6 +73,47 @@ export default function ForbiddenWords() {
       setModalOpen(false);
       fetchData(page);
     } catch { message.error('操作失败'); }
+  };
+
+  // ── Excel 批量导入 ──
+  const openImport = () => {
+    setImportAction(0);
+    setImportResult(null);
+    setImportOpen(true);
+  };
+
+  const handleImport = async (options: UploadRequestOption) => {
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', options.file as File);
+      const res = await request.post(`/admin/forbidden-words/import?action=${importAction}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const result: ImportResult = res.data?.data;
+      setImportResult(result);
+      options.onSuccess?.(result);
+      if (result.imported > 0) {
+        message.success(`成功导入 ${result.imported} 条违禁词`);
+        fetchData(1);
+      } else {
+        message.warning('没有新增词条，请查看下方结果');
+      }
+    } catch (e: any) {
+      message.error(e?.message || '导入失败，请检查文件格式');
+      options.onError?.(e instanceof Error ? e : new Error('导入失败'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadForbiddenWordTemplate();
+    } catch {
+      message.error('模板下载失败');
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -116,6 +173,7 @@ export default function ForbiddenWords() {
           allowClear
         />
         <Button type="primary" onClick={openCreate}>+ 新增违禁词</Button>
+        <Button icon={<UploadOutlined />} onClick={openImport}>Excel 批量导入</Button>
       </Space>
       <Table
         columns={columns} dataSource={data} rowKey="id" loading={loading}
@@ -159,6 +217,95 @@ export default function ForbiddenWords() {
               ]}
             />
           </div>
+        </div>
+      </Modal>
+
+      {/* Excel 批量导入 */}
+      <Modal
+        title="Excel 批量导入违禁词"
+        open={importOpen}
+        onCancel={() => setImportOpen(false)}
+        footer={<Button onClick={() => setImportOpen(false)}>关闭</Button>}
+        width={560}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* 格式示范 */}
+          <div>
+            <div style={{ marginBottom: 8 }}>
+              表格<b>仅需一列:违禁词</b>,首行表头会自动跳过,空行忽略;导入的词默认启用。
+            </div>
+            <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', background: token.colorFillTertiary, fontWeight: 600 }}>
+                <div style={{ flex: 1, padding: '6px 12px' }}>违禁词</div>
+              </div>
+              {['示例词一', '示例词二'].map((w) => (
+                <div key={w} style={{ display: 'flex', borderTop: `1px solid ${token.colorBorderSecondary}`, color: token.colorTextSecondary }}>
+                  <div style={{ flex: 1, padding: '6px 12px' }}>{w}</div>
+                </div>
+              ))}
+            </div>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ paddingLeft: 0, marginTop: 4 }} onClick={handleDownloadTemplate}>
+              下载 Excel 模板
+            </Button>
+          </div>
+
+          {/* 动作选择 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span>动作:</span>
+            <Radio.Group
+              value={importAction}
+              onChange={(e) => setImportAction(e.target.value)}
+              options={[
+                { label: '拦截', value: 0 },
+                { label: '送审', value: 1 },
+              ]}
+            />
+            <span style={{ fontSize: 12, color: token.colorTextPlaceholder }}>作用于本批全部词条</span>
+          </div>
+
+          {/* 上传 */}
+          <Upload
+            accept=".xlsx,.xls,.csv"
+            showUploadList={false}
+            customRequest={handleImport}
+            disabled={importing}
+          >
+            <Button type="primary" icon={<UploadOutlined />} loading={importing}>
+              {importing ? '导入中...' : '选择文件并导入'}
+            </Button>
+          </Upload>
+
+          {/* 导入结果 */}
+          {importResult && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Alert
+                type={importResult.imported > 0 ? 'success' : 'warning'}
+                showIcon
+                message={
+                  `解析 ${importResult.total} 条：成功导入 ${importResult.imported} 条，` +
+                  `跳过重复 ${importResult.skipped} 条，失败 ${importResult.failed.length} 条`
+                }
+              />
+              {importResult.failed.length > 0 && (
+                <Table
+                  size="small"
+                  rowKey={(r) => `${r.row}-${r.word}`}
+                  dataSource={importResult.failed.slice(0, 20)}
+                  pagination={false}
+                  columns={[
+                    { title: '行号', dataIndex: 'row', width: 70 },
+                    { title: '违禁词', dataIndex: 'word', ellipsis: true },
+                    { title: '原因', dataIndex: 'reason', width: 140 },
+                  ]}
+                />
+              )}
+              {importResult.failed.length > 20 && (
+                <span style={{ fontSize: 12, color: token.colorTextPlaceholder }}>
+                  仅展示前 20 条失败明细
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
     </div>
