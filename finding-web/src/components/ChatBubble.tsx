@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatClockTime } from '../utils/format';
+import { openImagePreview, openVideoPreview } from '../utils/preview';
 import { showToast } from './Toast';
 import AppIcon from './AppIcon';
 import './ChatBubble.css';
@@ -39,11 +40,12 @@ export default function ChatBubble({
   message, isMine, avatar, nickname, replyTo, replyToName,
   onReport, onRecall, onRetry, onReply,
 }: Props) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  // 长按弹出菜单后,浏览器在 touchend 会补发 click;用时间戳吞掉这次 click,
+  // 否则菜单与图片预览会同时打开(菜单层级更高,看起来像预览坏了)
+  const suppressClickUntil = useRef(0);
 
   const handleAvatarClick = () => {
     if (message.fromUserId) {
@@ -53,12 +55,20 @@ export default function ChatBubble({
 
   // 长按 600ms 弹出操作菜单(撤回/举报)
   const startPress = () => {
+    suppressClickUntil.current = 0; // 新手势重置,不误吞后续正常点击
     longPressTimer.current = setTimeout(() => {
+      suppressClickUntil.current = Date.now() + 500;
       setShowMenu(true);
     }, 600);
   };
   const clearPress = () => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  /** 媒体点击统一入口:长按刚触发过菜单则忽略这次 click */
+  const tap = (fn: () => void) => () => {
+    if (Date.now() < suppressClickUntil.current) return;
+    fn();
   };
 
   // 卸载时清理长按定时器,避免消息滚动回收后仍弹出菜单
@@ -84,7 +94,11 @@ export default function ChatBubble({
         onTouchStart={startPress}
         onTouchEnd={clearPress}
         onTouchMove={clearPress}
-        onContextMenu={(e) => { e.preventDefault(); setShowMenu(true); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          suppressClickUntil.current = Date.now() + 500; // 触控板 ctrl+点击也会补发 click
+          setShowMenu(true);
+        }}
       >
         <div className="chat-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
           {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={20} />}
@@ -109,10 +123,10 @@ export default function ChatBubble({
                 src={message.content}
                 alt=""
                 className="chat-image"
-                onClick={() => setPreview(message.content)}
+                onClick={tap(() => openImagePreview(message.content))}
               />
             ) : message.messageType === 'video' ? (
-              <div className="chat-video" onClick={() => setVideoPreview(message.content)}>
+              <div className="chat-video" onClick={tap(() => openVideoPreview(message.content))}>
                 <video src={message.content} muted playsInline preload="metadata" />
                 <div className="chat-video-play">
                   <span><AppIcon name="video" size={20} /></span>
@@ -138,6 +152,12 @@ export default function ChatBubble({
       {showMenu && (
         <div className="chat-menu-overlay" onClick={() => setShowMenu(false)}>
           <div className="chat-menu" onClick={(e) => e.stopPropagation()}>
+            {avatar && (
+              <button
+                className="chat-menu-item"
+                onClick={() => { setShowMenu(false); openImagePreview(avatar); }}
+              >查看头像</button>
+            )}
             <button
               className="chat-menu-item"
               onClick={() => { setShowMenu(false); copyMessage(); }}
@@ -162,28 +182,7 @@ export default function ChatBubble({
         </div>
       )}
 
-      {/* 图片预览遮罩 */}
-      {preview && (
-        <div className="image-preview-overlay" onClick={() => setPreview(null)}>
-          <img src={preview} alt="" className="image-preview-img" onClick={(e) => e.stopPropagation()} />
-          <button className="image-preview-close" onClick={() => setPreview(null)}>✕</button>
-        </div>
-      )}
-
-      {/* 视频预览遮罩 */}
-      {videoPreview && (
-        <div className="image-preview-overlay" onClick={() => setVideoPreview(null)}>
-          <video
-            src={videoPreview}
-            className="image-preview-img"
-            controls
-            autoPlay
-            playsInline
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button className="image-preview-close" onClick={() => setVideoPreview(null)}>✕</button>
-        </div>
-      )}
+      {/* 图片/视频预览已统一到全局 ImagePreviewHost(MainLayout 挂载) */}
     </>
   );
 }

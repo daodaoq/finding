@@ -162,6 +162,35 @@
   object-fit: cover;
   background: var(--primary-soft);
 }
+
+/* 图片预览包裹层:作为 grid item 保持原几何,承载 +N 角标 */
+.post-image-item {
+  position: relative;
+  min-width: 0;
+}
+
+/* 「还有 N 张」角标:右上角,不遮挡第 3 张图主体 */
+.post-image-more {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.6;
+  pointer-events: none; /* 点击穿透到包裹层 */
+}
+
+@media (min-width: 768px) {
+  .post-image-item {
+    cursor: zoom-in;
+  }
+  .post-image-item:hover img {
+    filter: brightness(0.94);
+  }
+}
 .post-footer {
   gap: 0;
   justify-content: space-between;

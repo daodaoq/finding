@@ -100,38 +100,7 @@
   background: rgba(0, 0, 0, 0.45);
 }
 
-/* 图片预览 */
-.image-preview-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.image-preview-img {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: 4px;
-}
-.image-preview-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  color: var(--paper);
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* 图片/视频预览样式已移至 components/ImagePreview.css(全局单实例遮罩) */
 
 /* 长按消息操作菜单(撤回/举报) */
 .chat-menu-overlay {

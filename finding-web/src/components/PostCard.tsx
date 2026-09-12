@@ -5,6 +5,7 @@ import AppIcon from './AppIcon';
 import { usePostShare } from '../hooks/usePostShare';
 import ShareCardModal from './ShareCardModal';
 import { APP_CONFIG } from '../utils/config';
+import { galleryHandler, previewHandler } from '../utils/preview';
 import './PostCard.css';
 
 interface Props { post: Post; onLike: (id: number) => void; onClick: (id: number) => void; canManage?: boolean; onEdit?: (id: number) => void; onDelete?: (id: number) => void; onFavorite?: (id: number) => void; }
@@ -27,11 +28,14 @@ export default function PostCard({ post, onLike, onClick, canManage, onEdit, onD
     share(post).catch(() => {});
   };
   const initial = (post.author?.nickname || '匿').slice(0, 1);
+  // 卡片最多渲染 3 张,但预览传入完整数组(最多 9 张)以便翻看全部
+  const images = post.images || [];
+  const extraCount = Math.max(images.length - 3, 0);
   return (<>
     <article className="post-card" onClick={() => onClick(post.id)}>
     <header className="post-header">
       <div className="post-author">
-        <div className="post-avatar">{post.author?.avatar ? <img src={post.author.avatar} alt="" /> : <span>{initial}</span>}</div>
+        <div className="post-avatar" onClick={previewHandler(post.author?.avatar)}>{post.author?.avatar ? <img src={post.author.avatar} alt="" /> : <span>{initial}</span>}</div>
         <div className="post-author-info">
           <div className="post-nickname-row">
             <span className="post-nickname">{post.author?.nickname || '匿名用户'}</span>
@@ -57,7 +61,16 @@ export default function PostCard({ post, onLike, onClick, canManage, onEdit, onD
         {post.tags.map((t) => <span key={t} className="post-tag">#{t}</span>)}
       </div>
     )}
-    {post.images?.length ? <div className={`post-images images-${Math.min(post.images.length, 3)}`}>{post.images.slice(0, 3).map((url, index) => <img key={index} src={url} alt="" loading="lazy" />)}</div> : null}
+    {images.length > 0 && (
+      <div className={`post-images images-${Math.min(images.length, 3)}`}>
+        {images.slice(0, 3).map((url, index) => (
+          <div key={`${url}-${index}`} className="post-image-item" onClick={galleryHandler(images, index)}>
+            <img src={url} alt="" loading="lazy" />
+            {index === 2 && extraCount > 0 && <span className="post-image-more">+{extraCount}</span>}
+          </div>
+        ))}
+      </div>
+    )}
     <footer className="post-footer"><span><AppIcon name="eye" size={15} />{post.viewCount}</span><button className={`like-btn ${post.isLiked ? 'liked' : ''}`} onClick={(event) => { event.stopPropagation(); onLike(post.id); }}><AppIcon name="heart" size={15} />{post.likeCount}</button><span><AppIcon name="message" size={15} />{post.commentCount}</span>{onFavorite && <button className={`fav-btn ${post.isFavorited ? 'favored' : ''}`} onClick={(event) => { event.stopPropagation(); onFavorite(post.id); }} title={post.isFavorited ? '取消收藏' : '收藏'}><AppIcon name="star" size={15} /></button>}<button className="share-btn" onClick={handleShare} title="分享"><AppIcon name="share" size={15} /></button></footer>
   </article>
   {preview && <ShareCardModal visible image={preview} onClose={() => setPreview(null)} />}
