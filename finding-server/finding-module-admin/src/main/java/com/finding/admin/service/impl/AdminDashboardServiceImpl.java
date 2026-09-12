@@ -1,7 +1,7 @@
 package com.finding.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.finding.admin.service.DashboardService;
+import com.finding.admin.service.AdminDashboardService;
 import com.finding.chat.entity.Report;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.post.entity.Appeal;
@@ -26,7 +26,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
-public class DashboardServiceImpl implements DashboardService {
+public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private final UserMapper userMapper;
     private final UserVerificationMapper verificationMapper;

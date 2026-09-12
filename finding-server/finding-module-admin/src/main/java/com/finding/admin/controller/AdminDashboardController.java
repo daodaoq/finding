@@ -14,7 +14,7 @@ import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.post.mapper.PostMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserVerificationMapper;
-import com.finding.admin.service.DashboardService;
+import com.finding.admin.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,7 +42,7 @@ public class AdminDashboardController {
     private final UserVerificationMapper verificationMapper;
     private final ReportMapper reportMapper;
     private final GroupChatMapper groupChatMapper;
-    private final DashboardService dashboardService;
+    private final AdminDashboardService dashboardService;
 
     @GetMapping("/dashboard")
     public Result<Map<String, Object>> dashboard() {
