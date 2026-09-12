@@ -4,6 +4,7 @@ import BottomNav from '../components/BottomNav';
 import TopNav from '../components/TopNav';
 import CreateActionSheet from '../components/CreateActionSheet';
 import ToastContainer, { showToast } from '../components/Toast';
+import ImagePreviewHost from '../components/ImagePreview';
 import InfoShareModal from '../components/InfoShareModal';
 import AnnouncementModal, { getLastSeenAnnouncementId } from '../components/AnnouncementModal';
 import type { AnnouncementData } from '../components/AnnouncementModal';
@@ -172,6 +173,7 @@ export default function MainLayout() {
         onCreateMate={handleCreateMate}
       />
       <ToastContainer />
+      <ImagePreviewHost />
       <InfoShareModal />
       <AnnouncementModal announcements={announcements} onClose={() => setAnnouncements([])} />
       <BanModal message={banMessage} onClose={handleBanClose} />
