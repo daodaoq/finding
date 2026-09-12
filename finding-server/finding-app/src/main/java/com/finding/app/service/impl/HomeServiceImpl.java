@@ -20,6 +20,7 @@ import com.finding.user.entity.UserFollow;
 import com.finding.common.content.BannerMapper;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.message.service.MessageService;
 
 @Service
@@ -30,6 +31,7 @@ public class HomeServiceImpl implements HomeService {
     private final UserFollowMapper followMapper;
     private final BannerMapper bannerMapper;
     private final MessageService messageService;
+    private final UserRelationshipService relationshipService;
 
     @Override
     public PageVO<HomeFeedVO> getRecommendFeed(Long userId, Double lat, Double lng, int page, int size) {
@@ -49,8 +51,11 @@ public class HomeServiceImpl implements HomeService {
         Page<User> pg = new Page<>(page, size);
         Page<User> result = userMapper.selectPage(pg, wrapper);
 
+        // 备注覆盖:查看者设置过备注的以备注显示(批量取,避免逐行查库)
+        Map<Long, String> remarkMap = relationshipService.remarkMap(userId,
+                result.getRecords().stream().map(User::getId).toList());
         List<HomeFeedVO> records = result.getRecords().stream()
-                .map(u -> toFeedVO(u, lat, lng))
+                .map(u -> toFeedVO(u, lat, lng, remarkMap.get(u.getId())))
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), page, size);
     }
@@ -90,10 +95,10 @@ public class HomeServiceImpl implements HomeService {
         }).collect(Collectors.toList());
     }
 
-    private HomeFeedVO toFeedVO(User user, Double lat, Double lng) {
+    private HomeFeedVO toFeedVO(User user, Double lat, Double lng, String remark) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
-        vo.setNickname(user.getNickname());
+        vo.setNickname(remark != null ? remark : user.getNickname());
         vo.setAvatar(user.getAvatar());
         vo.setGender(user.getGender());
         vo.setSchool(user.getSchool());

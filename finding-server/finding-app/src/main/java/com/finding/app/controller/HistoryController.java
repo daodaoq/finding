@@ -13,6 +13,7 @@ import com.finding.post.mapper.PostMapper;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.security.JwtInterceptor;
+import com.finding.user.service.UserRelationshipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +32,7 @@ public class HistoryController {
     private final ViewHistoryMapper viewHistoryMapper;
     private final PostMapper postMapper;
     private final UserMapper userMapper;
+    private final UserRelationshipService relationshipService;
 
     /** 记录一次浏览(每用户每目标一条,重复浏览刷新时间) */
     @PostMapping
@@ -100,6 +102,10 @@ public class HistoryController {
         if (!targetUserIds.isEmpty()) {
             userMapper.selectBatchIds(targetUserIds).forEach(u -> userMap.put(u.getId(), u));
         }
+        // 备注覆盖:浏览记录里的作者/用户显示备注
+        Map<Long, String> remarkMap = new HashMap<>();
+        remarkMap.putAll(relationshipService.remarkMap(userId, authorNickMap.keySet()));
+        remarkMap.putAll(relationshipService.remarkMap(userId, targetUserIds));
 
         List<Map<String, Object>> records = new ArrayList<>();
         for (ViewHistory h : result.getRecords()) {
@@ -112,11 +118,13 @@ public class HistoryController {
                 if (p == null) continue; // 动态已删除
                 map.put("title", p.getContent());
                 map.put("image", firstImage(p.getImages()));
-                map.put("subtitle", authorNickMap.getOrDefault(p.getUserId(), ""));
+                String authorRemark = remarkMap.get(p.getUserId());
+                map.put("subtitle", authorRemark != null ? authorRemark : authorNickMap.getOrDefault(p.getUserId(), ""));
             } else {
                 User u = userMap.get(h.getTargetId());
                 if (u == null) continue; // 用户不存在
-                map.put("title", u.getNickname());
+                String userRemark = remarkMap.get(h.getTargetId());
+                map.put("title", userRemark != null ? userRemark : u.getNickname());
                 map.put("image", u.getAvatar());
                 map.put("subtitle", u.getSchool() != null ? u.getSchool() : "");
             }

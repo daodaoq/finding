@@ -130,10 +130,13 @@ public class InfoShareServiceImpl implements InfoShareService {
         // 站内通知 + WebSocket 实时推送给接收方(WS 由事务提交后监听投递)
         User fromUser = userMapper.selectById(fromUserId);
         String nickname = fromUser != null ? fromUser.getNickname() : "有人";
+        // 以接收者视角取备注:接收者给发起人设过备注时,通知与弹窗都显示备注
+        String remark = relationshipService.remarkOf(toUserId, fromUserId);
+        String display = remark != null ? remark : nickname;
         messageService.notify(fromUserId, toUserId, "info_share_request",
-                nickname + " 想和你互换详细信息", shareId);
+                display + " 想和你互换详细信息", shareId);
         // WS content 只放昵称,由前端弹窗拼完整文案
-        eventPublisher.publishEvent(new InfoSharePushEvent(toUserId, "request", fromUserId, nickname, shareId));
+        eventPublisher.publishEvent(new InfoSharePushEvent(toUserId, "request", fromUserId, display, shareId));
 
         log.info("Info share request: user {} → user {}, shareId={}", fromUserId, toUserId, shareId);
         return shareId;
@@ -189,7 +192,9 @@ public class InfoShareServiceImpl implements InfoShareService {
         vo.setOtherUserId(otherUserId);
         User other = userMapper.selectById(otherUserId);
         if (other != null) {
-            vo.setOtherNickname(other.getNickname());
+            // 备注覆盖:聊天框「互换信息」标签显示备注
+            String remark = relationshipService.remarkOf(userId, otherUserId);
+            vo.setOtherNickname(remark != null ? remark : other.getNickname());
             vo.setOtherAvatar(other.getAvatar());
         }
 

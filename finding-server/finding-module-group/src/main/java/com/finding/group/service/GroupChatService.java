@@ -28,6 +28,7 @@ import com.finding.group.mapper.GroupChatMemberMapper;
 import com.finding.group.mapper.GroupMessageMapper;
 import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.common.PageVO;
 import com.finding.group.vo.GroupChatVO;
 import com.finding.group.vo.GroupMessageVO;
@@ -43,6 +44,7 @@ public class GroupChatService {
     private final UserFollowMapper followMapper;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final WebSocketServer webSocketServer;
+    private final UserRelationshipService relationshipService;
 
     /** 创建群聊 */
     @Transactional
@@ -145,12 +147,18 @@ public class GroupChatService {
         if (!uids.isEmpty()) {
             userMapper.selectBatchIds(uids).forEach(u -> userMap.put(u.getId(), u));
         }
+        // 备注覆盖:查看者设置过备注的成员以备注显示
+        Map<Long, String> remarkMap = relationshipService.remarkMap(userId, uids);
         vo.setMembers(members.stream().map(m -> {
             GroupChatVO.GroupMemberVO mv = new GroupChatVO.GroupMemberVO();
             mv.setUserId(m.getUserId());
             mv.setRole(m.getRole());
             User u = userMap.get(m.getUserId());
-            if (u != null) { mv.setNickname(u.getNickname()); mv.setAvatar(u.getAvatar()); }
+            if (u != null) {
+                String remark = remarkMap.get(m.getUserId());
+                mv.setNickname(remark != null ? remark : u.getNickname());
+                mv.setAvatar(u.getAvatar());
+            }
             return mv;
         }).toList());
 
@@ -230,6 +238,8 @@ public class GroupChatService {
         if (!uids.isEmpty()) {
             userMapper.selectBatchIds(uids).forEach(u -> userMap.put(u.getId(), u));
         }
+        // 备注覆盖:群聊气泡发送者显示备注
+        Map<Long, String> remarkMap = relationshipService.remarkMap(userId, uids);
 
         List<GroupMessageVO> records = result.getRecords().stream().map(m -> {
             GroupMessageVO vo = new GroupMessageVO();
@@ -237,7 +247,8 @@ public class GroupChatService {
             vo.setGroupId(m.getGroupId());
             vo.setFromUserId(m.getFromUserId());
             User uu = userMap.get(m.getFromUserId());
-            vo.setFromUserNickname(uu != null ? uu.getNickname() : "");
+            String remark = remarkMap.get(m.getFromUserId());
+            vo.setFromUserNickname(remark != null ? remark : (uu != null ? uu.getNickname() : ""));
             vo.setFromUserAvatar(uu != null ? uu.getAvatar() : "");
             vo.setContent(m.getContent());
             vo.setMessageType(m.getMessageType());
@@ -273,13 +284,16 @@ public class GroupChatService {
 
         Map<Long, User> userMap = new HashMap<>();
         userMapper.selectBatchIds(candidates).forEach(u -> userMap.put(u.getId(), u));
+        // 备注覆盖:可邀请列表显示备注
+        Map<Long, String> remarkMap = relationshipService.remarkMap(userId, candidates);
 
         return candidates.stream()
                 .map(uid -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     User u = userMap.get(uid);
+                    String remark = remarkMap.get(uid);
                     m.put("userId", uid);
-                    m.put("nickname", u != null ? u.getNickname() : "");
+                    m.put("nickname", remark != null ? remark : (u != null ? u.getNickname() : ""));
                     m.put("avatar", u != null ? u.getAvatar() : "");
                     return m;
                 })

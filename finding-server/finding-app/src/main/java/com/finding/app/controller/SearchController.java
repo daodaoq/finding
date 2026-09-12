@@ -66,10 +66,14 @@ public class SearchController {
                         .notIn(!blockedIds.isEmpty(), User::getId, blockedIds)
                         .like(User::getNickname, keyword)
                         .orderByDesc(User::getLastLoginAt));
+        // 备注覆盖:搜索结果的用户/作者显示备注
+        Map<Long, String> userRemarkMap = relationshipService.remarkMap(currentUserId,
+                userPage.getRecords().stream().map(User::getId).toList());
         List<Map<String, Object>> users = userPage.getRecords().stream().map(u -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", u.getId());
-            m.put("nickname", u.getNickname());
+            String remark = userRemarkMap.get(u.getId());
+            m.put("nickname", remark != null ? remark : u.getNickname());
             m.put("avatar", u.getAvatar());
             m.put("school", u.getSchool());
             m.put("signature", relationshipService.canViewDetailedProfile(currentUserId, u.getId()) ? u.getSignature() : null);
@@ -110,6 +114,7 @@ public class SearchController {
         if (!postUserIds.isEmpty()) {
             userMapper.selectBatchIds(postUserIds).forEach(u -> postUserMap.put(u.getId(), u));
         }
+        Map<Long, String> postRemarkMap = relationshipService.remarkMap(currentUserId, postUserIds);
         List<Map<String, Object>> posts = postPage.getRecords().stream().map(p -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", p.getId());
@@ -118,7 +123,8 @@ public class SearchController {
             m.put("category", p.getCategory());
             m.put("tags", p.getTags() != null ? List.of(p.getTags().split(",")) : List.of());
             User uu = postUserMap.get(p.getUserId());
-            m.put("userNickname", uu != null ? uu.getNickname() : "");
+            String authorRemark = postRemarkMap.get(p.getUserId());
+            m.put("userNickname", authorRemark != null ? authorRemark : (uu != null ? uu.getNickname() : ""));
             m.put("userAvatar", uu != null ? uu.getAvatar() : "");
             m.put("likeCount", p.getLikeCount());
             m.put("commentCount", p.getCommentCount());

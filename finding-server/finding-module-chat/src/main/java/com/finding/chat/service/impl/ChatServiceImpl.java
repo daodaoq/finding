@@ -227,6 +227,8 @@ public class ChatServiceImpl implements ChatService {
         if (!targetUids.isEmpty()) {
             userMapper.selectBatchIds(targetUids).forEach(u -> userMap.put(u.getId(), u));
         }
+        // 备注覆盖:查看者设置过备注的会话以备注显示
+        Map<Long, String> remarkMap = relationshipService.remarkMap(userId, targetUids);
 
         // 批量:每房间最后一条可见消息 + 未读数(替换原 per-room N+1 循环)
         Map<Long, PrivateChat> lastMsgMap = new HashMap<>();
@@ -253,7 +255,8 @@ public class ChatServiceImpl implements ChatService {
             vo.setId(contact.getRoomId());
             vo.setRoomId(contact.getRoomId());
             vo.setTargetUserId(targetUserId);
-            vo.setTargetNickname(target != null ? target.getNickname() : "用户" + targetUserId);
+            String remark = remarkMap.get(targetUserId);
+            vo.setTargetNickname(remark != null ? remark : (target != null ? target.getNickname() : "用户" + targetUserId));
             vo.setTargetAvatar(target != null ? target.getAvatar() : null);
             vo.setLastMessageAt(contact.getActiveTime());
             vo.setPinned(contact.getPinned() != null && contact.getPinned() == 1);
@@ -645,7 +648,9 @@ public class ChatServiceImpl implements ChatService {
 
         User target = userMapper.selectById(targetUserId);
         if (target != null) {
-            vo.setTargetNickname(target.getNickname());
+            // 备注覆盖:聊天页头部/气泡发送者/回复引用均由此派生
+            String remark = relationshipService.remarkOf(currentUserId, targetUserId);
+            vo.setTargetNickname(remark != null ? remark : target.getNickname());
             vo.setTargetAvatar(target.getAvatar());
         }
 
@@ -725,6 +730,7 @@ public class ChatServiceImpl implements ChatService {
                 .collect(Collectors.toList());
         Map<Long, User> userMap = new HashMap<>();
         userMapper.selectBatchIds(otherIds).forEach(u -> userMap.put(u.getId(), u));
+        Map<Long, String> remarkMap = relationshipService.remarkMap(userId, otherIds);
 
         return msgs.stream().map(m -> {
             boolean sent = m.getFromUserId().equals(userId);
@@ -733,7 +739,8 @@ public class ChatServiceImpl implements ChatService {
             StrangerMessageVO vo = new StrangerMessageVO();
             vo.setId(m.getId());
             vo.setOtherUserId(otherId);
-            vo.setOtherNickname(other != null ? other.getNickname() : "用户" + otherId);
+            String remark = remarkMap.get(otherId);
+            vo.setOtherNickname(remark != null ? remark : (other != null ? other.getNickname() : "用户" + otherId));
             vo.setOtherAvatar(other != null ? other.getAvatar() : null);
             vo.setContent(m.getContent());
             vo.setDirection(sent ? "sent" : "received");

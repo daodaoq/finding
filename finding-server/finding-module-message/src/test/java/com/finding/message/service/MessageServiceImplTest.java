@@ -32,13 +32,14 @@ class MessageServiceImplTest {
     @Mock private ConversationMapper conversationMapper;
     @Mock private com.finding.user.mapper.UserMapper userMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private com.finding.user.service.UserRelationshipService relationshipService;
 
     private MessageServiceImpl service;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        service = new MessageServiceImpl(messageMapper, conversationMapper, userMapper, eventPublisher);
+        service = new MessageServiceImpl(messageMapper, conversationMapper, userMapper, eventPublisher, relationshipService);
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), Message.class);
     }

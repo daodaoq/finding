@@ -12,6 +12,7 @@ import com.finding.message.event.NewNotificationEvent;
 import com.finding.message.mapper.ConversationMapper;
 import com.finding.message.mapper.MessageMapper;
 import com.finding.user.mapper.UserMapper;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.message.service.MessageService;
 import com.finding.message.vo.ConversationVO;
 import com.finding.message.vo.MessageVO;
@@ -31,6 +32,7 @@ public class MessageServiceImpl implements MessageService {
     private final ConversationMapper conversationMapper;
     private final UserMapper userMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserRelationshipService relationshipService;
 
     @Override
     public void notify(Long fromUserId, Long toUserId, String type, String content, Long relatedId) {
@@ -60,7 +62,7 @@ public class MessageServiceImpl implements MessageService {
         Page<Message> result = messageMapper.selectPage(page, wrapper);
 
         List<MessageVO> records = result.getRecords().stream()
-                .map(this::toVO).collect(Collectors.toList());
+                .map(m -> toVO(m, userId)).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), query.getPage(), query.getSize());
     }
 
@@ -118,7 +120,7 @@ public class MessageServiceImpl implements MessageService {
         return PageVO.of(records, result.getTotal(), query.getPage(), query.getSize());
     }
 
-    private MessageVO toVO(Message m) {
+    private MessageVO toVO(Message m, Long viewerId) {
         MessageVO vo = new MessageVO();
         vo.setId(m.getId());
         vo.setFromUserId(m.getFromUserId());
@@ -132,7 +134,9 @@ public class MessageServiceImpl implements MessageService {
         if (m.getFromUserId() != null) {
             User from = userMapper.selectById(m.getFromUserId());
             if (from != null) {
-                vo.setFromUserNickname(from.getNickname());
+                // 查看者设置过备注时以备注显示
+                String remark = relationshipService.remarkOf(viewerId, m.getFromUserId());
+                vo.setFromUserNickname(remark != null ? remark : from.getNickname());
                 vo.setFromUserAvatar(from.getAvatar());
             }
         }
@@ -149,7 +153,9 @@ public class MessageServiceImpl implements MessageService {
 
         User target = userMapper.selectById(targetId);
         if (target != null) {
-            vo.setTargetNickname(target.getNickname());
+            // 查看者设置过备注时以备注显示
+            String remark = relationshipService.remarkOf(currentUserId, targetId);
+            vo.setTargetNickname(remark != null ? remark : target.getNickname());
             vo.setTargetAvatar(target.getAvatar());
         }
         return vo;

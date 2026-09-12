@@ -15,6 +15,8 @@ import com.finding.post.constant.PostCategory;
 
 
 import com.finding.post.service.PostService;
+import com.finding.user.mapper.UserRemarkMapper;
+import com.finding.user.service.UserRelationshipService;
 import com.finding.user.service.UserService;
 import com.finding.user.service.UserWriteGuard;
 import com.finding.post.vo.CommentVO;
@@ -79,6 +81,9 @@ public class PostServiceImpl implements PostService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserWriteGuard userWriteGuard;
+    private final UserRelationshipService relationshipService;
+    /** @提及 按备注反查目标用 */
+    private final UserRemarkMapper userRemarkMapper;
 
     /** 图片 JSON 序列化(独立实例,避免受全局 ObjectMapper 日期格式影响) */
     private static final ObjectMapper IMAGE_OBJECT_MAPPER = new ObjectMapper();
@@ -405,10 +410,11 @@ public class PostServiceImpl implements PostService {
         vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
         vo.setCreatedAt(comment.getCreatedAt());
 
-        // 作者信息
+        // 作者信息(查看者设置过备注时以备注显示)
         User author = userMapper.selectById(comment.getUserId());
         if (author != null) {
-            vo.setNickname(author.getNickname());
+            String remark = relationshipService.remarkOf(currentUserId, comment.getUserId());
+            vo.setNickname(remark != null ? remark : author.getNickname());
             vo.setAvatar(author.getAvatar());
         }
 
@@ -714,6 +720,17 @@ public class PostServiceImpl implements PostService {
             List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
                     .eq(User::getStatus, 1)
                     .eq(User::getNickname, nickname));
+            if (users.isEmpty()) {
+                // 发帖人可能输入的是自己给对方设的备注(展示层已被备注替换),按备注反查兜底
+                Long targetId = userRemarkMapper.findTargetIdByRemark(fromUserId, nickname);
+                if (targetId == null) continue;
+                User target = userMapper.selectById(targetId);
+                if (target == null || target.getStatus() == null || target.getStatus() != 1) continue;
+                if (!targetId.equals(fromUserId)) {
+                    messageService.notify(fromUserId, targetId, "mention", text, relatedId);
+                }
+                continue;
+            }
             if (users.size() == 1 && !users.get(0).getId().equals(fromUserId)) {
                 messageService.notify(fromUserId, users.get(0).getId(), "mention", text, relatedId);
             }

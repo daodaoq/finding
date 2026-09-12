@@ -516,7 +516,7 @@ public class BridgeServiceImpl implements BridgeService {
                         .orderByDesc(ChatApply::getApplyTime));
 
         List<ChatApplyVO> records = result.getRecords().stream()
-                .map(a -> toSentApplyVO(a))
+                .map(a -> toSentApplyVO(a, userId))
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), page, size);
     }
@@ -532,7 +532,7 @@ public class BridgeServiceImpl implements BridgeService {
                         .orderByDesc(ChatApply::getApplyTime));
 
         List<ChatApplyVO> records = result.getRecords().stream()
-                .map(a -> toReceivedApplyVO(a))
+                .map(a -> toReceivedApplyVO(a, userId))
                 .collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), page, size);
     }
@@ -943,7 +943,9 @@ public class BridgeServiceImpl implements BridgeService {
                                 UserCardConfig cardConfig, List<String> matchReasons) {
         HomeFeedVO vo = new HomeFeedVO();
         vo.setUserId(user.getId());
-        vo.setNickname(user.getNickname());
+        // 备注覆盖:必须在 applyCardConfig 之前(showNickname=0 时仍会清空昵称)
+        String remark = relationshipService.remarkOf(currentUserId, user.getId());
+        vo.setNickname(remark != null ? remark : user.getNickname());
         vo.setAvatar(user.getAvatar());
         // 资料可见性投影:不可查看详细资料时只返回公开字段(学校公开,性别/签名/城市隐藏)
         boolean detailed = relationshipService.canViewDetailedProfile(currentUserId, user.getId());
@@ -976,7 +978,7 @@ public class BridgeServiceImpl implements BridgeService {
         return vo;
     }
 
-    private ChatApplyVO toSentApplyVO(ChatApply apply) {
+    private ChatApplyVO toSentApplyVO(ChatApply apply, Long viewerId) {
         ChatApplyVO vo = new ChatApplyVO();
         vo.setId(apply.getId());
         vo.setFromUserId(apply.getFromUserId());
@@ -987,16 +989,17 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setApplyTime(apply.getApplyTime());
         vo.setHandleTime(apply.getHandleTime());
 
-        // Load target user info
+        // Load target user info(查看者设置过备注时以备注显示)
         User target = userMapper.selectById(apply.getToUserId());
         if (target != null) {
-            vo.setToUserNickname(target.getNickname());
+            String remark = relationshipService.remarkOf(viewerId, apply.getToUserId());
+            vo.setToUserNickname(remark != null ? remark : target.getNickname());
             vo.setToUserAvatar(target.getAvatar());
         }
         return vo;
     }
 
-    private ChatApplyVO toReceivedApplyVO(ChatApply apply) {
+    private ChatApplyVO toReceivedApplyVO(ChatApply apply, Long viewerId) {
         ChatApplyVO vo = new ChatApplyVO();
         vo.setId(apply.getId());
         vo.setFromUserId(apply.getFromUserId());
@@ -1007,10 +1010,11 @@ public class BridgeServiceImpl implements BridgeService {
         vo.setApplyTime(apply.getApplyTime());
         vo.setHandleTime(apply.getHandleTime());
 
-        // Load applicant user info
+        // Load applicant user info(查看者设置过备注时以备注显示)
         User from = userMapper.selectById(apply.getFromUserId());
         if (from != null) {
-            vo.setFromUserNickname(from.getNickname());
+            String remark = relationshipService.remarkOf(viewerId, apply.getFromUserId());
+            vo.setFromUserNickname(remark != null ? remark : from.getNickname());
             vo.setFromUserAvatar(from.getAvatar());
         }
         return vo;

@@ -107,7 +107,7 @@ public class MatchServiceImpl implements MatchService {
         Map<Long, LocalDateTime> timeByUser = result.getRecords().stream()
                 .collect(Collectors.toMap(UserLike::getLikedId, UserLike::getCreatedAt, (a, b) -> a));
         Set<Long> matched = likesMeAmong(likedIds, userId);
-        return toVO(result, likedIds, timeByUser, matched);
+        return toVO(result, likedIds, timeByUser, matched, userId);
     }
 
     @Override
@@ -120,7 +120,7 @@ public class MatchServiceImpl implements MatchService {
         Map<Long, LocalDateTime> timeByUser = result.getRecords().stream()
                 .collect(Collectors.toMap(UserLike::getLikerId, UserLike::getCreatedAt, (a, b) -> a));
         Set<Long> matched = myLikesAmong(userId, likerIds);
-        return toVO(result, likerIds, timeByUser, matched);
+        return toVO(result, likerIds, timeByUser, matched, userId);
     }
 
     @Override
@@ -137,7 +137,7 @@ public class MatchServiceImpl implements MatchService {
             timeByUser.put(other, m.getMatchedAt());
         }
         Set<Long> matched = new HashSet<>(otherIds);
-        return toVO(result, otherIds, timeByUser, matched);
+        return toVO(result, otherIds, timeByUser, matched, userId);
     }
 
     // ── helpers ──
@@ -200,22 +200,24 @@ public class MatchServiceImpl implements MatchService {
     }
 
     private PageVO<MatchUserVO> toVO(Page<?> result, List<Long> ids,
-                                     Map<Long, LocalDateTime> timeByUser, Set<Long> matched) {
+                                     Map<Long, LocalDateTime> timeByUser, Set<Long> matched, Long viewerId) {
         List<User> users = ids.isEmpty() ? List.of() : userMapper.selectBatchIds(ids);
         Map<Long, User> userMap = users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        // 备注覆盖:查看者设置过备注的以备注显示
+        Map<Long, String> remarkMap = relationshipService.remarkMap(viewerId, ids);
         List<MatchUserVO> records = new ArrayList<>();
         for (Long id : ids) {
             User u = userMap.get(id);
             if (u == null) continue;
-            records.add(toMatchUserVO(u, timeByUser.get(id), matched.contains(id)));
+            records.add(toMatchUserVO(u, timeByUser.get(id), matched.contains(id), remarkMap.get(id)));
         }
         return PageVO.of(records, result.getTotal(), (int) result.getCurrent(), (int) result.getSize());
     }
 
-    private MatchUserVO toMatchUserVO(User u, LocalDateTime time, boolean matched) {
+    private MatchUserVO toMatchUserVO(User u, LocalDateTime time, boolean matched, String remark) {
         MatchUserVO vo = new MatchUserVO();
         vo.setUserId(u.getId());
-        vo.setNickname(u.getNickname());
+        vo.setNickname(remark != null ? remark : u.getNickname());
         vo.setAvatar(u.getAvatar());
         vo.setGender(u.getGender());
         vo.setSchool(u.getSchool());
