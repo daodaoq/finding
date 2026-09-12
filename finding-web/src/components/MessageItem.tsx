@@ -2,7 +2,7 @@ import type { Message } from '../types/message';
 import { formatSessionTime } from '../utils/format';
 import AppIcon from './AppIcon';
 import './MessageItem.css';
-import { previewHandler } from '../utils/preview';
+import { useProfileClick } from '../hooks/useProfileClick';
 
 interface Props {
   message: Message;
@@ -10,12 +10,13 @@ interface Props {
 }
 
 export default function MessageItem({ message, onClick }: Props) {
+  const profileClick = useProfileClick();
   return (
     <div
       className={`message-item ${!message.isRead ? 'unread' : ''}`}
       onClick={() => onClick(message)}
     >
-      <div className="msg-avatar" onClick={previewHandler(message.fromUserAvatar)}>
+      <div className="msg-avatar" onClick={profileClick(message.fromUserId)}>
         {message.fromUserAvatar ? (
           <img src={message.fromUserAvatar} alt="" />
         ) : (

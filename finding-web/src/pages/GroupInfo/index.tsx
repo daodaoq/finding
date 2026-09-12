@@ -7,9 +7,10 @@ import ReportDialog from '../../components/ReportDialog';
 import AppIcon from '../../components/AppIcon';
 import type { GroupChat, GroupMember, InvitableUser } from '../../types/groupChat';
 import './index.css';
-import { previewHandler } from '../../utils/preview';
+import { useProfileClick } from '../../hooks/useProfileClick';
 
 export default function GroupInfoPage() {
+  const profileClick = useProfileClick();
   const { id } = useParams<{ id: string }>();
   const groupId = Number(id);
   const [group, setGroup] = useState<GroupChat | null>(null);
@@ -100,7 +101,7 @@ export default function GroupInfoPage() {
 
       {/* 群基本信息 */}
       <div className="gi-basic">
-        <div className="gi-avatar" onClick={previewHandler(group.avatar)}>
+        <div className="gi-avatar">
           {group.avatar ? <img src={group.avatar} alt="" /> : <AppIcon name="users" size={28} />}
         </div>
         <div className="gi-name">{group.name}</div>
@@ -150,7 +151,7 @@ export default function GroupInfoPage() {
           const roleLabel = m.role === 2 ? '群主' : m.role === 1 ? '管理员' : '';
           return (
             <div key={m.userId} className="gi-member-item" onClick={() => navigate(`/user/${m.userId}`)}>
-              <div className="gi-member-avatar" onClick={previewHandler(m.avatar)}>
+              <div className="gi-member-avatar" onClick={profileClick(m.userId)}>
                 {m.avatar ? <img src={m.avatar} alt="" /> : <AppIcon name="user" size={18} />}
               </div>
               <div className="gi-member-info">

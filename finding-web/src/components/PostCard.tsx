@@ -5,7 +5,8 @@ import AppIcon from './AppIcon';
 import { usePostShare } from '../hooks/usePostShare';
 import ShareCardModal from './ShareCardModal';
 import { APP_CONFIG } from '../utils/config';
-import { galleryHandler, previewHandler } from '../utils/preview';
+import { galleryHandler } from '../utils/preview';
+import { useProfileClick } from '../hooks/useProfileClick';
 import './PostCard.css';
 
 interface Props { post: Post; onLike: (id: number) => void; onClick: (id: number) => void; canManage?: boolean; onEdit?: (id: number) => void; onDelete?: (id: number) => void; onFavorite?: (id: number) => void; }
@@ -19,6 +20,7 @@ function renderContent(text: string) {
 
 export default function PostCard({ post, onLike, onClick, canManage, onEdit, onDelete, onFavorite }: Props) {
   const { preview, setPreview, share } = usePostShare();
+  const profileClick = useProfileClick();
   const handleShare = (event: React.MouseEvent) => {
     event.stopPropagation();
     if (!APP_CONFIG.SHARE_CARD_LAUNCHED) {
@@ -35,7 +37,7 @@ export default function PostCard({ post, onLike, onClick, canManage, onEdit, onD
     <article className="post-card" onClick={() => onClick(post.id)}>
     <header className="post-header">
       <div className="post-author">
-        <div className="post-avatar" onClick={previewHandler(post.author?.avatar)}>{post.author?.avatar ? <img src={post.author.avatar} alt="" /> : <span>{initial}</span>}</div>
+        <div className="post-avatar" onClick={profileClick(post.userId)}>{post.author?.avatar ? <img src={post.author.avatar} alt="" /> : <span>{initial}</span>}</div>
         <div className="post-author-info">
           <div className="post-nickname-row">
             <span className="post-nickname">{post.author?.nickname || '匿名用户'}</span>

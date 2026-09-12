@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { BridgeRecommendUser } from '../../../types/bridge';
 import AppIcon from '../../../components/AppIcon';
-import { previewHandler } from '../../../utils/preview';
+import { useProfileClick } from '../../../hooks/useProfileClick';
 import './SwipeCard.css';
 
 /** 匹配理由 → 简短解释(「为什么推荐我」面板用) */
@@ -25,6 +25,7 @@ interface Props {
 }
 
 export default function SwipeCard({ user, onLike, onApply, onSkip, disabled }: Props) {
+  const profileClick = useProfileClick();
   const [showWhy, setShowWhy] = useState(false);
   const hasName = !!user.nickname;
   const hasMeta = !!(user.school || user.city || user.distanceKm != null);
@@ -38,7 +39,7 @@ export default function SwipeCard({ user, onLike, onApply, onSkip, disabled }: P
       <div className="swipe-card">
         <div className="swipe-photo">
           {user.avatar
-            ? <img src={user.avatar} alt="" onClick={previewHandler(user.avatar)} />
+            ? <img src={user.avatar} alt="" onClick={profileClick(user.userId)} />
             : <div className="swipe-photo-fallback" />}
           {(hasName || hasMeta || !!targetLabel) && (
             <>

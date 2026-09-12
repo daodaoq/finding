@@ -9,9 +9,10 @@ import { useApplyList, APPLY_STATUS_TABS } from '../../hooks/useApplyList';
 import { formatRelativeTime } from '../../utils/format';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
-import { previewHandler } from '../../utils/preview';
+import { useProfileClick } from '../../hooks/useProfileClick';
 
 export default function SendApplyList() {
+  const profileClick = useProfileClick();
   const navigate = useNavigate();
   const {
     applies, setApplies, loading, loadingMore, page, hasMore, filter,
@@ -67,7 +68,7 @@ export default function SendApplyList() {
             className="apply-row"
             onClick={() => handleRowClick(apply)}
           >
-            <div className="apply-avatar" onClick={previewHandler(apply.toUserAvatar)}>
+            <div className="apply-avatar" onClick={profileClick(apply.toUserId)}>
               {apply.toUserAvatar ? (
                 <img src={apply.toUserAvatar} alt="" />
               ) : (

@@ -1,7 +1,7 @@
 import type { ChatApply } from '../../../types/bridge';
 import AppIcon from '../../../components/AppIcon';
 import './MatchOverlay.css';
-import { previewHandler } from '../../../utils/preview';
+import { useProfileClick } from '../../../hooks/useProfileClick';
 
 interface Props {
   apply: ChatApply;
@@ -13,6 +13,7 @@ interface Props {
 
 /** 相亲「匹配成功」时刻:聊天申请通过后展示双方名片与去聊天入口 */
 export default function MatchOverlay({ apply, myAvatar, myNickname, onGoChat, onClose }: Props) {
+  const profileClick = useProfileClick();
   return (
     <div className="match-overlay" onClick={onClose}>
       <div className="match-card" onClick={(e) => e.stopPropagation()}>
@@ -20,11 +21,11 @@ export default function MatchOverlay({ apply, myAvatar, myNickname, onGoChat, on
         <h3>匹配成功！</h3>
         <p className="match-sub">你们已经开始聊天了</p>
         <div className="match-avatars">
-          <div className="match-avatar" onClick={previewHandler(myAvatar)}>
+          <div className="match-avatar" >
             {myAvatar ? <img src={myAvatar} alt="" /> : <span className="match-avatar-fallback">我</span>}
           </div>
           <span className="match-plus">+</span>
-          <div className="match-avatar" onClick={previewHandler(apply.fromUserAvatar)}>
+          <div className="match-avatar" onClick={profileClick(apply.fromUserId)}>
             {apply.fromUserAvatar ? <img src={apply.fromUserAvatar} alt="" /> : <AppIcon name="user" size={26} />}
           </div>
         </div>

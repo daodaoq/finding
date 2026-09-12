@@ -8,9 +8,10 @@ import { showToast } from '../../components/Toast';
 import { formatSessionTime } from '../../utils/format';
 import type { Conversation } from '../../types/message';
 import './index.css';
-import { previewHandler } from '../../utils/preview';
+import { useProfileClick } from '../../hooks/useProfileClick';
 
 export default function HiddenConversationsPage() {
+  const profileClick = useProfileClick();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [restoringId, setRestoringId] = useState<number | null>(null);
@@ -55,7 +56,7 @@ export default function HiddenConversationsPage() {
         {loading && <><LoadingSkeleton /><LoadingSkeleton /></>}
         {!loading && conversations.map((conv) => (
           <div key={conv.id} className="sm-item">
-            <div className="conv-avatar" onClick={previewHandler(conv.targetAvatar)}>
+            <div className="conv-avatar" onClick={profileClick(conv.targetUserId)}>
               {conv.targetAvatar ? <img src={conv.targetAvatar} alt="" /> : <AppIcon name="user" size={21} />}
             </div>
             <div className="sm-info">

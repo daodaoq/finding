@@ -14,7 +14,6 @@ import { getErrorMessage } from '../../utils/appError';
 import SearchView from './components/SearchView';
 import BackgroundView from './components/BackgroundView';
 import './index.css';
-import { previewHandler } from '../../utils/preview';
 
 const REPORT_REASONS = ['骚扰 / 不文明用语', '诈骗嫌疑', '色情低俗', '冒充身份', '其他'];
 
@@ -172,7 +171,7 @@ export default function ChatSettingsPage() {
 
       {/* 对方名片 → 跳转情感简介 */}
       <div className="cs-contact-card" onClick={openProfile}>
-        <div className="cs-contact-avatar" onClick={previewHandler(peerAvatar)}>
+        <div className="cs-contact-avatar">
           {peerAvatar ? <img src={peerAvatar} alt="" /> : <AppIcon name="user" size={24} />}
         </div>
         <div className="cs-contact-info">

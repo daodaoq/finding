@@ -12,9 +12,10 @@ import { useApplyList, APPLY_STATUS_TABS } from '../../hooks/useApplyList';
 import { formatRelativeTime } from '../../utils/format';
 import type { ChatApply } from '../../types/bridge';
 import './subpage.css';
-import { previewHandler } from '../../utils/preview';
+import { useProfileClick } from '../../hooks/useProfileClick';
 
 export default function ReceiveApplyList() {
+  const profileClick = useProfileClick();
   const [rejectTarget, setRejectTarget] = useState<ChatApply | null>(null);
   // 匹配成功弹层:通过申请后展示
   const [matched, setMatched] = useState<ChatApply | null>(null);
@@ -86,7 +87,7 @@ export default function ReceiveApplyList() {
 
         {!loading && applies.map((apply) => (
           <div key={apply.id} className="apply-row">
-            <div className="apply-avatar" onClick={previewHandler(apply.fromUserAvatar)}>
+            <div className="apply-avatar" onClick={profileClick(apply.fromUserId)}>
               {apply.fromUserAvatar ? (
                 <img src={apply.fromUserAvatar} alt="" />
               ) : (

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import AppIcon from '../../../components/AppIcon';
 import './ChatHeader.css';
-import { previewHandler } from '../../../utils/preview';
 
 interface Props {
   title: string;
@@ -9,6 +8,8 @@ interface Props {
   subtitle?: string;
   avatar?: string;
   onBack: () => void;
+  /** 点击头像(进对方个人主页);群聊场景不传,头像不可点 */
+  onAvatarClick?: () => void;
   /** 标题右侧扩展区（信息互换标签 / 群聊信息按钮等） */
   extra?: ReactNode;
   /** 最右侧图标区 */
@@ -16,12 +17,12 @@ interface Props {
 }
 
 /** 聊天页顶部栏 —— 私聊 / 群聊共用 */
-export default function ChatHeader({ title, subtitle, avatar, onBack, extra, right }: Props) {
+export default function ChatHeader({ title, subtitle, avatar, onBack, onAvatarClick, extra, right }: Props) {
   return (
     <div className="chat-header">
       <button className="back-btn" onClick={onBack}>←</button>
       {avatar && (
-        <div className="chat-avatar-sm" onClick={previewHandler(avatar)}>
+        <div className="chat-avatar-sm" onClick={onAvatarClick} style={onAvatarClick ? { cursor: 'pointer' } : undefined}>
           {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={18} />}
         </div>
       )}

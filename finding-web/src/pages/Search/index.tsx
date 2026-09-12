@@ -10,7 +10,6 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppIcon from '../../components/AppIcon';
 import { useStaleGuard, isStaleError } from '../../hooks/useStaleGuard';
 import './index.css';
-import { previewHandler } from '../../utils/preview';
 
 /** 搜索结果中的动态项(后端扁平结构,含作者昵称/头像) */
 interface SearchPostItem {
@@ -128,7 +127,7 @@ export default function SearchPage() {
             {showTab('users') && results.users.records.map((u: User) => (
               <div key={u.id} className="search-item"
                 onClick={() => navigate(`/user/${u.id}`)}>
-                <div className="sr-avatar" onClick={previewHandler(u.avatar)}>
+                <div className="sr-avatar">
                   {u.avatar ? <img src={u.avatar} alt="" /> : <AppIcon name="user" size={20} />}
                 </div>
                 <div className="sr-info">
@@ -143,7 +142,7 @@ export default function SearchPage() {
             {showTab('posts') && results.posts.records.map((p: SearchPostItem) => (
               <div key={p.id} className="search-item"
                 onClick={() => navigate(`/square/post/${p.id}`)}>
-                <div className="sr-avatar" onClick={previewHandler(p.userAvatar)}>
+                <div className="sr-avatar">
                   {p.userAvatar ? <img src={p.userAvatar} alt="" /> : <AppIcon name="pen" size={20} />}
                 </div>
                 <div className="sr-info">

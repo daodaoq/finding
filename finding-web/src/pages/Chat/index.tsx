@@ -93,6 +93,7 @@ export default function ChatDetailPage() {
         subtitle={socket.isTyping ? '对方正在输入…' : undefined}
         avatar={targetAvatar}
         onBack={() => navigate(-1)}
+        onAvatarClick={targetUserId ? () => navigate(`/user/${targetUserId}`) : undefined}
         extra={
           <ShareStatusTag
             status={actions.shareStatus}

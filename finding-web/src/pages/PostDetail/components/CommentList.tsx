@@ -3,7 +3,7 @@ import AppIcon from '../../../components/AppIcon';
 import { formatRelativeTime } from '../../../utils/format';
 import type { Comment } from '../../../types/comment';
 import './CommentList.css';
-import { previewHandler } from '../../../utils/preview';
+import { useProfileClick } from '../../../hooks/useProfileClick';
 
 interface Props {
   comments: Comment[];
@@ -17,6 +17,7 @@ interface Props {
 
 /** 动态详情 - 评论列表（含子回复） */
 export default function CommentList({ comments, commentCount, currentUserId, onLike, onReply, onReport, onDelete }: Props) {
+  const profileClick = useProfileClick();
   return (
     <>
       {/* 评论标题 */}
@@ -29,7 +30,7 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
         {comments.length === 0 && <EmptyState icon="message" message="暂无评论，来说点什么吧" />}
         {comments.map((comment) => (
           <div key={comment.id} className="comment-item">
-            <div className="comment-avatar" onClick={previewHandler(comment.avatar)}>
+            <div className="comment-avatar" onClick={profileClick(comment.userId)}>
               {comment.avatar ? <img src={comment.avatar} alt="" /> : <AppIcon name="user" size={16} />}
             </div>
             <div className="comment-body">
@@ -57,7 +58,7 @@ export default function CommentList({ comments, commentCount, currentUserId, onL
                 <div className="sub-replies">
                   {comment.replies.map((reply) => (
                     <div key={reply.id} className="reply-item">
-                      <div className="comment-avatar small" onClick={previewHandler(reply.avatar)}>
+                      <div className="comment-avatar small" onClick={profileClick(reply.userId)}>
                         {reply.avatar ? <img src={reply.avatar} alt="" /> : <AppIcon name="user" size={14} />}
                       </div>
                       <div className="comment-body">

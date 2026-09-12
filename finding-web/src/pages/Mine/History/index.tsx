@@ -5,7 +5,6 @@ import EmptyState from '../../../components/EmptyState';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import AppIcon from '../../../components/AppIcon';
 import { formatSessionTime } from '../../../utils/format';
-import { previewHandler } from '../../../utils/preview';
 import '../subpage.css';
 import './index.css';
 
@@ -37,7 +36,7 @@ export default function HistoryPage() {
         <div className="subpage-list">
           {records.map((r) => (
             <div key={`${r.targetType}-${r.targetId}`} className="history-row" onClick={() => go(r)}>
-              <div className="history-avatar" onClick={previewHandler(r.image)}>
+              <div className="history-avatar">
                 {r.image ? <img src={r.image} alt="" /> : (r.targetType === 'post' ? <AppIcon name="file" size={18} /> : <AppIcon name="user" size={18} />)}
               </div>
               <div className="history-info">

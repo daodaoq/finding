@@ -7,9 +7,10 @@ import AppIcon from '../../components/AppIcon';
 import { showToast } from '../../components/Toast';
 import type { StrangerMessage } from '../../types/message';
 import './index.css';
-import { previewHandler } from '../../utils/preview';
+import { useProfileClick } from '../../hooks/useProfileClick';
 
 export default function StrangerMessagesPage() {
+  const profileClick = useProfileClick();
   const [messages, setMessages] = useState<StrangerMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
@@ -60,7 +61,7 @@ export default function StrangerMessagesPage() {
         {loading && <><LoadingSkeleton /><LoadingSkeleton /></>}
         {!loading && messages.map((m) => (
           <div key={m.id} className="sm-item">
-            <div className="conv-avatar" onClick={previewHandler(m.otherAvatar)}>
+            <div className="conv-avatar" onClick={profileClick(m.otherUserId)}>
               {m.otherAvatar ? <img src={m.otherAvatar} alt="" /> : <AppIcon name="user" size={21} />}
             </div>
             <div className="sm-info">
