@@ -1,6 +1,6 @@
 import type { UserResume } from '../types/resume';
 import AppIcon, { type AppIconName } from './AppIcon';
-import { galleryHandler } from '../utils/preview';
+import { galleryHandler, previewHandler } from '../utils/preview';
 import './ResumeView.css';
 
 interface Props {
@@ -34,7 +34,7 @@ export default function ResumeView({ resume, avatar }: Props) {
     <div className="resume-view">
       <Section icon="user" title="基础信息栏" rows={basicRows}>
         <div className="resume-avatar-row">
-          <div className="resume-avatar">
+          <div className="resume-avatar" onClick={previewHandler(avatar)}>
             {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={28} />}
           </div>
           <span className="resume-avatar-label">照片</span>

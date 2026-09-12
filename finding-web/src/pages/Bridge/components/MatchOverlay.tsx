@@ -1,6 +1,7 @@
 import type { ChatApply } from '../../../types/bridge';
 import AppIcon from '../../../components/AppIcon';
 import './MatchOverlay.css';
+import { previewHandler } from '../../../utils/preview';
 
 interface Props {
   apply: ChatApply;
@@ -19,11 +20,11 @@ export default function MatchOverlay({ apply, myAvatar, myNickname, onGoChat, on
         <h3>匹配成功！</h3>
         <p className="match-sub">你们已经开始聊天了</p>
         <div className="match-avatars">
-          <div className="match-avatar">
+          <div className="match-avatar" onClick={previewHandler(myAvatar)}>
             {myAvatar ? <img src={myAvatar} alt="" /> : <span className="match-avatar-fallback">我</span>}
           </div>
           <span className="match-plus">+</span>
-          <div className="match-avatar">
+          <div className="match-avatar" onClick={previewHandler(apply.fromUserAvatar)}>
             {apply.fromUserAvatar ? <img src={apply.fromUserAvatar} alt="" /> : <AppIcon name="user" size={26} />}
           </div>
         </div>

@@ -11,6 +11,7 @@ import AppIcon from '../../components/AppIcon';
 import { showToast } from '../../components/Toast';
 import type { Mate } from '../../types/mate';
 import './index.css';
+import { previewHandler } from '../../utils/preview';
 
 export default function MateDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -156,7 +157,7 @@ export default function MateDetailPage() {
         <div className="md-section">
           <h4 className="md-section-title">发起人</h4>
           <div className="md-author-row">
-            <div className="md-author-avatar">
+            <div className="md-author-avatar" onClick={previewHandler(mate.author.avatar)}>
               {mate.author.avatar ? <img src={mate.author.avatar} alt="" /> : <AppIcon name="user" size={20} />}
             </div>
             <div>
@@ -178,7 +179,7 @@ export default function MateDetailPage() {
             <p className="md-desc" style={{ color: '#999' }}>暂无申请</p>
           ) : participants.map((p) => (
             <div key={p.participantId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0' }}>
+              <div onClick={previewHandler(p.avatar)} style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0' }}>
                 {p.avatar
                   ? <img src={p.avatar} alt="" style={{ width: 36, height: 36, objectFit: 'cover' }} />
                   : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36 }}><AppIcon name="user" size={20} /></span>}
