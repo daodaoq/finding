@@ -1,39 +1,43 @@
 package com.finding.admin.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.finding.common.BusinessException;
+import com.finding.admin.service.AdminLoveGuideService;
 import com.finding.common.PageVO;
 import com.finding.common.Result;
-import com.finding.common.ResultCode;
-import com.finding.common.audit.OperationAuditService;
-import com.finding.message.service.MessageService;
 import com.finding.post.entity.LoveGuide;
-import com.finding.post.mapper.LoveGuideMapper;
 import com.finding.user.security.JwtInterceptor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.Map;
 
+/**
+ * 管理员 - 恋爱经验投稿审核(业务逻辑见 {@link AdminLoveGuideService})。
+ */
 @RestController
 @RequestMapping("/api/v1/admin/love-guides")
 @RequiredArgsConstructor
 public class AdminLoveGuideController {
-    private final LoveGuideMapper mapper; private final MessageService messageService; private final OperationAuditService audit;
+
+    private final AdminLoveGuideService adminLoveGuideService;
+
+    /** 投稿列表:展示全部投稿(待审核/已通过/已拒绝) */
     @GetMapping("/review")
-    public Result<PageVO<LoveGuide>> queue(@RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int size) {
-        // 展示全部投稿(待审核/已通过/已拒绝),按提交时间倒序,便于管理端查看历史
-        Page<LoveGuide> r = mapper.selectPage(new Page<>(page, size), new LambdaQueryWrapper<LoveGuide>().orderByDesc(LoveGuide::getCreatedAt));
-        return Result.ok(PageVO.of(r.getRecords(), r.getTotal(), page, size));
+    public Result<PageVO<LoveGuide>> queue(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return Result.ok(adminLoveGuideService.queue(page, size));
     }
+
+    /** 审核投稿:pass=true 通过,false 拒绝(通知作者) */
     @PutMapping("/{id}/review")
     public Result<Void> review(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        LoveGuide guide = mapper.selectById(id); if (guide == null) throw new BusinessException(ResultCode.PARAM_ERROR, "内容不存在");
-        boolean pass = body.get("pass") != null && Boolean.parseBoolean(body.get("pass").toString());
-        String reason = body.get("reason") == null ? null : body.get("reason").toString(); Long adminId = JwtInterceptor.getCurrentUserId();
-        guide.setReviewStatus(pass ? 1 : 2); guide.setReviewReason(pass ? null : reason); guide.setReviewBy(adminId); guide.setReviewTime(LocalDateTime.now()); mapper.updateById(guide);
-        if (!pass) messageService.notify(adminId, guide.getUserId(), "love_guide_rejected", reason == null || reason.isBlank() ? "你的恋爱经验投稿未通过审核" : "你的恋爱经验投稿未通过审核：" + reason, id);
-        audit.record(adminId, "love_guide_review", "love_guide", id, pass ? "审核通过" : "审核拒绝", reason); return Result.ok();
+        adminLoveGuideService.review(JwtInterceptor.getCurrentUserId(), id, body);
+        return Result.ok();
     }
 }

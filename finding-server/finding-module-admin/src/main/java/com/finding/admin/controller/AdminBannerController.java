@@ -1,50 +1,49 @@
 package com.finding.admin.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.finding.common.BusinessException;
+import com.finding.admin.service.AdminBannerService;
 import com.finding.common.Result;
-import com.finding.common.ResultCode;
 import com.finding.common.content.Banner;
-import com.finding.common.content.BannerMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 /**
- * 管理员 - 首页轮播管理。
+ * 管理员 - 首页轮播管理(业务逻辑见 {@link AdminBannerService})。
  */
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class AdminBannerController {
 
-    private final BannerMapper bannerMapper;
+    private final AdminBannerService adminBannerService;
 
     @GetMapping("/banners")
     public Result<List<Banner>> listBanners() {
-        return Result.ok(bannerMapper.selectList(
-                new LambdaQueryWrapper<Banner>().orderByAsc(Banner::getSortOrder)));
+        return Result.ok(adminBannerService.listBanners());
     }
 
     @PostMapping("/banners")
     public Result<Banner> createBanner(@RequestBody Banner banner) {
-        bannerMapper.insert(banner);
-        return Result.ok(banner);
+        return Result.ok(adminBannerService.createBanner(banner));
     }
 
     @PutMapping("/banners/{id}")
     public Result<Void> updateBanner(@PathVariable Long id, @RequestBody Banner banner) {
-        Banner existing = bannerMapper.selectById(id);
-        if (existing == null) throw new BusinessException(ResultCode.PARAM_ERROR, "轮播图不存在");
-        banner.setId(id);
-        bannerMapper.updateById(banner);
+        adminBannerService.updateBanner(id, banner);
         return Result.ok();
     }
 
     @DeleteMapping("/banners/{id}")
     public Result<Void> deleteBanner(@PathVariable Long id) {
-        bannerMapper.deleteById(id);
+        adminBannerService.deleteBanner(id);
         return Result.ok();
     }
 }
