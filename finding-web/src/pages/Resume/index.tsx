@@ -14,7 +14,10 @@ export default function ResumeEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [realPhotoUploading, setRealPhotoUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // 真实照片单图上传:独立 input(相册那个是多选,不能复用)
+  const realPhotoRef = useRef<HTMLInputElement>(null);
   const dragIndex = useRef<number | null>(null);
   const navigate = useNavigate();
 
@@ -81,6 +84,25 @@ export default function ResumeEditPage() {
     }
   };
 
+  // ── 真实照片上传(单张) ──
+  const handleRealPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRealPhotoUploading(true);
+    try {
+      const res = await uploadApi.uploadImage(file);
+      set('realPhoto', res.data.data);
+      showToast('真实照片上传成功');
+    } catch {
+      showToast('上传失败，请重试');
+    } finally {
+      setRealPhotoUploading(false);
+      if (realPhotoRef.current) realPhotoRef.current.value = '';
+    }
+  };
+
+  const removeRealPhoto = () => set('realPhoto', '');
+
   const removePhoto = (index: number) => {
     setForm((prev) => ({
       ...prev,
@@ -138,6 +160,32 @@ export default function ResumeEditPage() {
       <div className="re-body">
         {/* 板块1 基础信息栏 */}
         <Card icon="user" title="基础信息栏">
+          {/* 真实照片:简历展示用,不显示头像 */}
+          <div className="re-photo-field">
+            <label className="re-field-label">真实照片</label>
+            <p className="re-photo-hint">情感简历展示这张照片（不是头像），对方需与你互换信息后才能看到</p>
+            <div className="re-photo-row">
+              {form.realPhoto ? (
+                <div className="re-photo-preview">
+                  <img src={form.realPhoto} alt="" onClick={() => realPhotoRef.current?.click()} />
+                  <button className="re-photo-del" onClick={removeRealPhoto} aria-label="移除真实照片">✕</button>
+                </div>
+              ) : (
+                <div className="re-photo-add" onClick={() => realPhotoRef.current?.click()}>
+                  {realPhotoUploading
+                    ? <span className="re-photo-uploading">上传中...</span>
+                    : <><AppIcon name="camera" size={18} /><span>上传真实照片</span></>}
+                </div>
+              )}
+              {form.realPhoto && (
+                <button className="re-photo-change" onClick={() => realPhotoRef.current?.click()} disabled={realPhotoUploading}>
+                  {realPhotoUploading ? '上传中...' : '更换照片'}
+                </button>
+              )}
+            </div>
+            <input ref={realPhotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleRealPhotoChange} />
+          </div>
+
           <div className="re-field">
             <label className="re-field-label">性别</label>
             <select

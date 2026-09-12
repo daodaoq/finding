@@ -2,6 +2,8 @@
 export interface UserResume {
   userId: number;
   // 板块1 基础信息
+  /** 真实照片 URL(简历展示用,非头像) */
+  realPhoto?: string;
   gender?: number;
   age?: number;
   birthday?: string;

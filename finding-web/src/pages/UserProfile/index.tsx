@@ -298,7 +298,7 @@ export default function UserProfilePage() {
         {resumeLoading ? (
           <div className="up-resume-loading">加载中...</div>
         ) : resumeView?.infoShared && resumeView.resume ? (
-          <ResumeView resume={resumeView.resume} avatar={profile?.avatar} />
+          <ResumeView resume={resumeView.resume} />
         ) : (
           <div className="up-resume-locked">
             <span className="up-lock-icon"><AppIcon name="lock" size={36} /></span>

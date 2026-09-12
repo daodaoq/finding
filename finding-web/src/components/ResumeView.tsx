@@ -5,11 +5,10 @@ import './ResumeView.css';
 
 interface Props {
   resume: UserResume;
-  avatar?: string;
 }
 
 /** 情感简历 —— 只读 9 卡片展示(互换后可见) */
-export default function ResumeView({ resume, avatar }: Props) {
+export default function ResumeView({ resume }: Props) {
   const genderText = (g?: number) => (g === 1 ? '男' : g === 2 ? '女' : undefined);
   // 提出相册数组,供 map 内做多图预览分组(TS 收窄需在闭包外)
   const album = resume.photoAlbum || [];
@@ -34,10 +33,16 @@ export default function ResumeView({ resume, avatar }: Props) {
     <div className="resume-view">
       <Section icon="user" title="基础信息栏" rows={basicRows}>
         <div className="resume-avatar-row">
-          <div className="resume-avatar" onClick={previewHandler(avatar)}>
-            {avatar ? <img src={avatar} alt="" /> : <AppIcon name="user" size={28} />}
-          </div>
-          <span className="resume-avatar-label">照片</span>
+          {resume.realPhoto ? (
+            <div className="resume-avatar" onClick={previewHandler(resume.realPhoto)}>
+              <img src={resume.realPhoto} alt="" />
+            </div>
+          ) : (
+            <div className="resume-avatar resume-avatar--empty">
+              <AppIcon name="camera" size={24} />
+            </div>
+          )}
+          <span className="resume-avatar-label">{resume.realPhoto ? '真实照片' : '未上传真实照片'}</span>
         </div>
       </Section>
 

@@ -82,3 +82,10 @@
 
 /* 生活相册:可点开预览 */
 .resume-album-img { cursor: zoom-in; }
+
+/* 未上传真实照片时的占位(不使用头像) */
+.resume-avatar--empty {
+  color: var(--text-placeholder);
+  border: 1px dashed var(--border-weak);
+  background: var(--surface);
+}
