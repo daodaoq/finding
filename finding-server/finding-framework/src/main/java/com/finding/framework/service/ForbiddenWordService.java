@@ -3,6 +3,8 @@ package com.finding.framework.service;
 import com.finding.common.PageVO;
 import com.finding.framework.entity.ForbiddenWord;
 
+import java.util.List;
+
 /**
  * 违禁词管理 —— 增删改查 + 启用禁用,每次写操作后刷新内容过滤器。
  */
@@ -22,4 +24,15 @@ public interface ForbiddenWordService {
 
     /** 启用/禁用 */
     void toggleStatus(Long id, Integer status);
+
+    /**
+     * 批量导入(Excel/CSV 解析后的词条)。
+     *
+     * <p>语义:文件内按小写去重、与库中已有词(同样按小写,因 DB 排序规则大小写不敏感)比对后跳过重复,
+     * 逐条插入,最后<b>只刷新一次</b>内容过滤器(避免 N 次重建 AC 自动机)。导入的词一律为启用状态。</p>
+     *
+     * @param words  待导入词条(允许含空白/重复,由本方法归一)
+     * @param action 0=拦截 1=送审(整批统一)
+     */
+    ForbiddenWordImportResult importWords(List<String> words, Integer action);
 }
