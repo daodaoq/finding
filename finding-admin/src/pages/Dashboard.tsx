@@ -56,21 +56,29 @@ export default function Dashboard() {
     }).catch(() => {});
   }, []);
 
+  /**
+   * 柱状图。柱高必须按像素算:各列高度由内容决定(auto),百分比高度在 auto 高度的
+   * 包含块里会退化成 auto,柱子只剩 minHeight 的细线(表现为「没有柱子」)。
+   */
   const renderBars = (values: number[], color: string) => {
-    const max = Math.max(1, ...(values || []));
+    const list = values || [];
+    const max = Math.max(1, ...list);
+    const TRACK = 96; // 柱区高度(px)
     return (
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
-        {values.map((v, i) => (
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        {list.map((v, i) => (
           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 11, color: token.colorTextSecondary }}>{v}</span>
+            <span style={{ fontSize: 11, lineHeight: '16px', color: token.colorTextSecondary }}>{v}</span>
             <div
               style={{
                 width: '100%', background: color, borderRadius: 3,
-                height: `${Math.round((v / max) * 90)}%`, minHeight: v > 0 ? 4 : 1,
+                height: v > 0 ? Math.max(4, Math.round((v / max) * TRACK)) : 2,
                 opacity: v > 0 ? 1 : 0.25,
               }}
             />
-            <span style={{ fontSize: 10, color: token.colorTextTertiary }}>{trend?.dates?.[i]?.slice(5)}</span>
+            <span style={{ fontSize: 10, lineHeight: '14px', color: token.colorTextTertiary }}>
+              {trend?.dates?.[i]?.slice(5)}
+            </span>
           </div>
         ))}
       </div>
