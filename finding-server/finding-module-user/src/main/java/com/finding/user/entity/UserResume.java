@@ -22,6 +22,8 @@ public class UserResume {
     private Long userId;
 
     // ── 板块1 基础信息 ──
+    /** 真实照片 URL(情感简历展示用,非头像) */
+    private String realPhoto;
     private Integer gender;         // 1=男 2=女
     private Integer age;
     private LocalDate birthday;

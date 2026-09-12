@@ -544,6 +544,7 @@ CREATE TABLE IF NOT EXISTS `chat_outbox` (
 CREATE TABLE IF NOT EXISTS `user_resume` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL,
+    `real_photo` VARCHAR(500) DEFAULT NULL COMMENT '真实照片 URL',
     -- 板块1 基础信息
     `gender` TINYINT DEFAULT NULL COMMENT '1=男 2=女',
     `age` INT DEFAULT NULL,

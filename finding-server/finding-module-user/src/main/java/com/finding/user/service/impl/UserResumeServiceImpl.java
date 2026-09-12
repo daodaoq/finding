@@ -51,6 +51,8 @@ public class UserResumeServiceImpl implements UserResumeService {
         }
         // 生活相册数量与 URL 校验
         validatePhotoAlbum(dto.getPhotoAlbum());
+        // 真实照片 URL 校验(空串视为未设置)
+        validateRealPhoto(dto);
 
         UserResume resume = selectByUserId(userId);
         if (resume == null) {
@@ -73,7 +75,7 @@ public class UserResumeServiceImpl implements UserResumeService {
         }
     }
 
-    /** 生活相册校验:数量上限 + 每张 URL 仅允许 http(s) 且长度受限 */
+    /** 生活相册校验:数量上限 + 每张 URL 合法且长度受限 */
     private void validatePhotoAlbum(List<String> album) {
         if (album == null) return;
         if (album.size() > 9) {
@@ -86,10 +88,37 @@ public class UserResumeServiceImpl implements UserResumeService {
             if (url.length() > 1000) {
                 throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册图片 URL 过长");
             }
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册图片 URL 仅支持 http(s)");
+            if (!isAllowedImageUrl(url)) {
+                throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "相册图片 URL 仅支持 http(s) 或站内图片路径");
             }
         }
+    }
+
+    /**
+     * 真实照片校验:空串/null 视为未设置(清空),长度 ≤500 且 URL 合法。
+     * 空串归一为 null,避免存库出现空字符串。
+     */
+    private void validateRealPhoto(UserResumeDTO dto) {
+        String url = dto.getRealPhoto();
+        if (url == null || url.isBlank()) {
+            dto.setRealPhoto(null);
+            return;
+        }
+        if (url.length() > 500) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "真实照片 URL 过长");
+        }
+        if (!isAllowedImageUrl(url)) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "真实照片 URL 仅支持 http(s) 或站内图片路径");
+        }
+    }
+
+    /**
+     * 合法图片地址:外链 http(s) 或本站上传返回的站内路径(/api/v1/images/xxx)。
+     * 上传接口返回的是站内相对路径,故不能只放行 http(s)。
+     */
+    private boolean isAllowedImageUrl(String url) {
+        return url.startsWith("http://") || url.startsWith("https://")
+                || url.startsWith("/api/v1/images/") || url.startsWith("/uploads/");
     }
 
     @Override

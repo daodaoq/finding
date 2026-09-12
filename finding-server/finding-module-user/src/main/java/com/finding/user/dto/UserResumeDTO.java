@@ -19,6 +19,10 @@ import java.util.List;
 public class UserResumeDTO {
 
     // ── 板块1 基础信息 ──
+    /** 真实照片 URL(情感简历展示用,非头像);空串视为未设置 */
+    @Size(max = 500, message = "realPhoto 长度不能超过 500")
+    private String realPhoto;
+
     @Min(value = 1, message = "gender 仅允许 1=男 2=女")
     @Max(value = 2, message = "gender 仅允许 1=男 2=女")
     private Integer gender;         // 1=男 2=女

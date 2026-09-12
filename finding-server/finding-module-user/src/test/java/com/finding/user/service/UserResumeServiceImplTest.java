@@ -83,6 +83,63 @@ class UserResumeServiceImplTest {
         assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
     }
 
+    /** 回归:上传接口返回的是站内相对路径,相册必须能保存(此前只放行 http(s) 导致上传后存不进去) */
+    @Test
+    void saveResume_albumRelativeUploadUrl_accepted() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setPhotoAlbum(List.of("/api/v1/images/abc123.jpg"));
+        when(resumeMapper.selectOne(any())).thenReturn(null);
+        when(resumeMapper.insert(any())).thenReturn(1);
+
+        service.saveResume(1L, dto);
+
+        verify(resumeMapper).insert(any());
+    }
+
+    @Test
+    void saveResume_realPhoto_relativeUploadUrl_acceptedAndPersisted() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setRealPhoto("/api/v1/images/photo123.jpg");
+        when(resumeMapper.selectOne(any())).thenReturn(null);
+        when(resumeMapper.insert(any())).thenReturn(1);
+
+        ArgumentCaptor<UserResume> captor = ArgumentCaptor.forClass(UserResume.class);
+        service.saveResume(1L, dto);
+        verify(resumeMapper).insert(captor.capture());
+        assertEquals("/api/v1/images/photo123.jpg", captor.getValue().getRealPhoto());
+    }
+
+    @Test
+    void saveResume_realPhoto_blankNormalizedToNull() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setRealPhoto("   ");
+        when(resumeMapper.selectOne(any())).thenReturn(null);
+        when(resumeMapper.insert(any())).thenReturn(1);
+
+        ArgumentCaptor<UserResume> captor = ArgumentCaptor.forClass(UserResume.class);
+        service.saveResume(1L, dto);
+        verify(resumeMapper).insert(captor.capture());
+        assertNull(captor.getValue().getRealPhoto());
+    }
+
+    @Test
+    void saveResume_realPhoto_badUrl_rejected() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setRealPhoto("javascript:alert(1)");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.saveResume(1L, dto));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
+    @Test
+    void saveResume_realPhoto_tooLong_rejected() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setRealPhoto("https://a.com/" + "x".repeat(500));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.saveResume(1L, dto));
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+    }
+
     @Test
     void saveResume_insertConflict_reQueriesAndUpdates() {
         UserResumeDTO dto = new UserResumeDTO();
