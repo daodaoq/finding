@@ -2,10 +2,12 @@ package com.finding.user.controller;
 
 import com.finding.common.Result;
 import com.finding.common.PageQueryDTO;
+import com.finding.user.dto.UserRemarkDTO;
 import com.finding.user.security.JwtInterceptor;
 import com.finding.user.service.UserService;
 import com.finding.user.service.UserResumeService;
 import com.finding.user.service.UserBlockService;
+import com.finding.user.service.UserRemarkService;
 import com.finding.user.service.ProfileCompletenessService;
 import com.finding.common.PageVO;
 import com.finding.user.vo.UserVO;
@@ -25,6 +27,7 @@ public class UserController {
     private final UserService userService;
     private final UserResumeService userResumeService;
     private final UserBlockService userBlockService;
+    private final UserRemarkService userRemarkService;
     private final ProfileCompletenessService profileCompletenessService;
 
     /** 我的资料完整度(含缺失项,用于「还缺 xxx」引导) */
@@ -97,5 +100,28 @@ public class UserController {
     @GetMapping("/{id}/block-status")
     public Result<Map<String, Boolean>> blockStatus(@PathVariable Long id) {
         return Result.ok(userBlockService.blockStatus(JwtInterceptor.getCurrentUserId(), id));
+    }
+
+    // ── 备注(私密别名):设置后仅本人视角内以备注替换对方昵称 ──
+
+    /** 设置/修改我对某人的备注 */
+    @PostMapping("/{id}/remark")
+    public Result<Void> setRemark(@PathVariable Long id, @RequestBody UserRemarkDTO dto) {
+        userRemarkService.setRemark(JwtInterceptor.getCurrentUserId(), id, dto.getRemark());
+        return Result.ok();
+    }
+
+    /** 清除我对某人的备注 */
+    @DeleteMapping("/{id}/remark")
+    public Result<Void> clearRemark(@PathVariable Long id) {
+        userRemarkService.clearRemark(JwtInterceptor.getCurrentUserId(), id);
+        return Result.ok();
+    }
+
+    /** 我对某人的备注;无备注返回空串(Result 有 NON_NULL,返回 null 会被省略) */
+    @GetMapping("/{id}/remark")
+    public Result<String> getRemark(@PathVariable Long id) {
+        String remark = userRemarkService.getRemark(JwtInterceptor.getCurrentUserId(), id);
+        return Result.ok(remark == null ? "" : remark);
     }
 }

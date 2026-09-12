@@ -4,6 +4,7 @@ import com.finding.user.vo.UserVO;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -49,6 +50,22 @@ public interface UserRelationshipService {
             vo.setGender(null);
             vo.setSignature(null);
             vo.setCity(null);
+        }
+    }
+
+    // ── 备注(私密别名):仅设置者本人视角内以备注替换昵称 ──
+
+    /** 查看者给目标设置的备注;无备注、查看者为空(匿名)或查看自己时返回 null */
+    String remarkOf(Long viewerId, Long targetId);
+
+    /** 批量取备注:只包含确实设置过的条目(key=目标用户 id);查看者为空/集合为空返回空 Map */
+    Map<Long, String> remarkMap(Long viewerId, Collection<Long> targetIds);
+
+    /** 备注投影:有备注时用备注替换昵称(与 projectDetailedFields 并列调用) */
+    default void projectRemark(Long viewerId, Long targetId, UserVO vo) {
+        String remark = remarkOf(viewerId, targetId);
+        if (remark != null && !remark.isBlank()) {
+            vo.setNickname(remark);
         }
     }
 }

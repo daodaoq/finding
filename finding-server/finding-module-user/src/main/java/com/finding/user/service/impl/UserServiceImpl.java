@@ -64,6 +64,8 @@ public class UserServiceImpl implements UserService {
         // 资料可见性 + 拉黑:不可查看详细资料时,隐藏性别/城市/签名(仅保留公开资料)
         if (currentUserId != null && !userId.equals(currentUserId)) {
             relationshipService.projectDetailedFields(currentUserId, userId, vo);
+            // 备注优先:设置过备注时,在该查看者视角内以备注替换昵称
+            relationshipService.projectRemark(currentUserId, userId, vo);
         }
 
         return vo;
@@ -93,6 +95,7 @@ public class UserServiceImpl implements UserService {
         List<UserVO> records = result.getRecords().stream().map(u -> {
             UserVO vo = toVO(u);
             relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
+            relationshipService.projectRemark(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
@@ -159,6 +162,7 @@ public class UserServiceImpl implements UserService {
             // 检查我是否也关注了ta → 互关
             vo.setIsFollowed(isFollowing(userId, u.getId()));
             relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
+            relationshipService.projectRemark(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
@@ -194,6 +198,7 @@ public class UserServiceImpl implements UserService {
                             .eq(UserFollow::getFolloweeId, userId)) > 0;
             vo.setIsFollowed(mutual); // true=互关 false=仅我关注ta
             relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
+            relationshipService.projectRemark(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, result.getTotal(), pageQuery.getPage(), pageQuery.getSize());
@@ -236,6 +241,7 @@ public class UserServiceImpl implements UserService {
             UserVO vo = toVO(u);
             vo.setIsFollowed(true); // 列表里的都是互相关注
             relationshipService.projectDetailedFields(currentUserId, u.getId(), vo);
+            relationshipService.projectRemark(currentUserId, u.getId(), vo);
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(records, (long) total, pageQuery.getPage(), pageQuery.getSize());
