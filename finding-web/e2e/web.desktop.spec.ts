@@ -23,6 +23,20 @@ test.describe('桌面端布局', () => {
     await expect(rail.locator('.rail-card', { hasText: '热榜' })).toBeVisible();
   });
 
+  test('图片预览遮罩铺满视口(不被 1100px 容器困住)', async ({ page }) => {
+    await login(page);
+    await page.goto('/');
+    const thumb = page.locator('.post-image-item').first();
+    if (await thumb.count() === 0) test.skip(true, '当前无带图动态');
+    await thumb.click();
+    const overlay = page.locator('.image-preview-overlay');
+    await expect(overlay).toBeVisible({ timeout: 8000 });
+    const box = await overlay.boundingBox();
+    expect(box!.width).toBe(1280);
+    await page.keyboard.press('Escape');
+    await expect(overlay).toBeHidden();
+  });
+
   test('消息双栏:左会话栏 + 空态占位,点开会话后仍在', async ({ page }) => {
     await login(page);
     await page.goto('/messages');

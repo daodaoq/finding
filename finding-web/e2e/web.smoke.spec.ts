@@ -1,12 +1,57 @@
 import { test, expect } from '@playwright/test';
 import { login } from './utils';
 
+/** 1×1 PNG,用于上传/预览用例的图片数据 */
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 /**
  * 用户端冒烟:登录 / 发布动态 / 搭子列表 / 聊天发消息 / 信息互换。
  * 依赖后端在线与种子账号(见 playwright.config.ts)。
  */
 
 test.describe('用户端冒烟', () => {
+  test('图片预览:多图浏览 / 计数 / 环绕 / 关闭,且不误跳详情', async ({ page }) => {
+    test.setTimeout(90_000);
+    await login(page);
+
+    // 自建数据:发一条 4 图的动态,避免依赖种子数据是否带图
+    const text = `预览冒烟 ${Date.now()}`;
+    await page.goto('/create-post');
+    await page.locator('.cp-textarea').fill(text);
+    await page.locator('.cp-images input[type="file"]').setInputFiles(
+      [1, 2, 3, 4].map((n) => ({ name: `${n}.png`, mimeType: 'image/png', buffer: PNG_1PX })),
+    );
+    await expect(page.locator('.cp-images img')).toHaveCount(4, { timeout: 30_000 }); // 上传完成
+    await page.locator('.cp-submit-btn').click();
+    await page.waitForURL((u) => !u.pathname.includes('/create-post'), { timeout: 15_000 });
+
+    await page.goto('/');
+    const card = page.locator('.post-card', { hasText: text }).first();
+    await expect(card.locator('.post-image-item')).toHaveCount(3, { timeout: 10_000 }); // 卡片最多渲染 3 张
+    await expect(card.locator('.post-image-more')).toHaveText('+1');                    // 4 张 → +1
+
+    const urlBefore = page.url();
+    await card.locator('.post-image-item').nth(2).click();                              // 点第 3 张
+    const overlay = page.locator('.image-preview-overlay');
+    await expect(overlay).toBeVisible({ timeout: 8000 });
+    await expect(overlay.locator('.image-preview-counter')).toHaveText('3 / 4');        // 整组 4 张可翻
+
+    await page.keyboard.press('ArrowRight');
+    await expect(overlay.locator('.image-preview-counter')).toHaveText('4 / 4');
+    await page.keyboard.press('ArrowRight');
+    await expect(overlay.locator('.image-preview-counter')).toHaveText('1 / 4');        // 环绕到首张
+    await page.keyboard.press('ArrowLeft');
+    await expect(overlay.locator('.image-preview-counter')).toHaveText('4 / 4');
+
+    await page.keyboard.press('Escape');
+    await expect(overlay).toBeHidden();
+    expect(page.url()).toBe(urlBefore);                                                 // 未跳转到详情
+  });
+
+
   test('设置备注后昵称显示备注(用完即清)', async ({ page }) => {
     await login(page);
     await page.goto('/user/2');
