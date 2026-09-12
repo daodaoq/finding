@@ -21,13 +21,20 @@ public class AdminUserLookupServiceImpl implements AdminUserLookupService {
     @Override
     public Map<Long, String> nicknamesByIds(Collection<Long> userIds) {
         Map<Long, String> result = new HashMap<>();
+        usersByIds(userIds).forEach((id, user) -> result.put(id, user.getNickname()));
+        return result;
+    }
+
+    @Override
+    public Map<Long, User> usersByIds(Collection<Long> userIds) {
+        Map<Long, User> result = new HashMap<>();
         if (userIds == null || userIds.isEmpty()) return result;
         Set<Long> ids = new LinkedHashSet<>();
         for (Long id : userIds) {
             if (id != null) ids.add(id);
         }
         if (ids.isEmpty()) return result;
-        userMapper.selectBatchIds(ids).forEach(u -> result.put(u.getId(), u.getNickname()));
+        userMapper.selectBatchIds(ids).forEach(u -> result.put(u.getId(), u));
         return result;
     }
 

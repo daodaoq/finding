@@ -3,6 +3,9 @@ package com.finding.admin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.finding.admin.service.AdminDashboardService;
 import com.finding.chat.entity.Report;
+import com.finding.group.mapper.GroupChatMapper;
+import com.finding.mate.entity.MateInvitation;
+import com.finding.mate.mapper.MateInvitationMapper;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.post.entity.Appeal;
 import com.finding.post.entity.Post;
@@ -16,8 +19,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,6 +39,61 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final PostMapper postMapper;
     private final AppealMapper appealMapper;
     private final ReportMapper reportMapper;
+    private final MateInvitationMapper mateMapper;
+    private final GroupChatMapper groupChatMapper;
+
+
+    @Override
+    public Map<String, Object> summary() {
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalUsers", userMapper.selectCount(null));
+        stats.put("todayPosts", postMapper.selectCount(
+                new LambdaQueryWrapper<Post>().ge(Post::getCreatedAt, todayStart)));
+        stats.put("todayMates", mateMapper.selectCount(
+                new LambdaQueryWrapper<MateInvitation>().ge(MateInvitation::getCreatedAt, todayStart)));
+        stats.put("pendingVerifications", verificationMapper.selectCount(
+                new LambdaQueryWrapper<UserVerification>().eq(UserVerification::getStatus, 0)));
+        stats.put("todayNewUsers", userMapper.selectCount(
+                new LambdaQueryWrapper<User>().ge(User::getCreatedAt, todayStart)));
+        stats.put("totalMates", mateMapper.selectCount(null));
+        stats.put("pendingReports", reportMapper.selectCount(
+                new LambdaQueryWrapper<Report>().eq(Report::getStatus, 0)));
+        stats.put("groupCount", groupChatMapper.selectCount(null));
+        return stats;
+    }
+
+    @Override
+    public Map<String, Object> trend(int days) {
+        int n = Math.min(Math.max(days, 3), 30);
+        LocalDate today = LocalDate.now();
+        List<String> dates = new ArrayList<>();
+        List<Long> newUsers = new ArrayList<>();
+        List<Long> newPosts = new ArrayList<>();
+        List<Long> newMates = new ArrayList<>();
+        List<Long> activeUsers = new ArrayList<>();
+        for (int i = n - 1; i >= 0; i--) {
+            LocalDate d = today.minusDays(i);
+            LocalDateTime start = d.atStartOfDay();
+            LocalDateTime end = d.plusDays(1).atStartOfDay();
+            dates.add(d.toString());
+            newUsers.add(userMapper.selectCount(new LambdaQueryWrapper<User>()
+                    .ge(User::getCreatedAt, start).lt(User::getCreatedAt, end)));
+            newPosts.add(postMapper.selectCount(new LambdaQueryWrapper<Post>()
+                    .ge(Post::getCreatedAt, start).lt(Post::getCreatedAt, end)));
+            newMates.add(mateMapper.selectCount(new LambdaQueryWrapper<MateInvitation>()
+                    .ge(MateInvitation::getCreatedAt, start).lt(MateInvitation::getCreatedAt, end)));
+            activeUsers.add(userMapper.selectCount(new LambdaQueryWrapper<User>()
+                    .ge(User::getLastLoginAt, start).lt(User::getLastLoginAt, end)));
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("dates", dates);
+        result.put("newUsers", newUsers);
+        result.put("newPosts", newPosts);
+        result.put("newMates", newMates);
+        result.put("activeUsers", activeUsers);
+        return result;
+    }
 
     @Override
     public Map<String, Object> quality() {

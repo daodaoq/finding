@@ -1,15 +1,15 @@
-package com.finding.admin.controller;
+package com.finding.admin.service.impl;
 
+import com.finding.admin.service.AdminUserLookupService;
 import com.finding.chat.entity.Report;
 import com.finding.chat.mapper.ReportMapper;
 import com.finding.common.BusinessException;
 import com.finding.common.audit.OperationAuditService;
 import com.finding.message.service.MessageService;
-import com.finding.user.mapper.UserMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,58 +25,63 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 举报处理单测 —— 处理/驳回时写处理记录并通知投诉人。
+ * 举报处理单测 —— 处理/驳回时写处理记录并通知投诉人;处理人取自传入的 adminId。
  */
 @ExtendWith(MockitoExtension.class)
-class AdminReportControllerTest {
+class AdminReportServiceImplTest {
+
+    private static final long ADMIN_ID = 99L;
 
     @Mock private ReportMapper reportMapper;
-    @Mock private UserMapper userMapper;
+    @Mock private AdminUserLookupService userLookupService;
     @Mock private MessageService messageService;
     @Mock private OperationAuditService operationAuditService;
 
-    @InjectMocks
-    private AdminReportController controller;
+    private AdminReportServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        service = new AdminReportServiceImpl(reportMapper, userLookupService, messageService, operationAuditService);
+    }
 
     @Test
     void handleReport_setsFieldsAndNotifiesReporter() {
-        Report report = pendingReport(200L, 300L);
-        when(reportMapper.selectById(1L)).thenReturn(report);
+        when(reportMapper.selectById(1L)).thenReturn(pendingReport(200L, 300L));
 
-        controller.updateReportStatus(1L, Map.of("status", 1, "note", "已封禁处理"));
+        service.updateReportStatus(ADMIN_ID, 1L, Map.of("status", 1, "note", "已封禁处理"));
 
         ArgumentCaptor<Report> cap = ArgumentCaptor.forClass(Report.class);
         verify(reportMapper).updateById(cap.capture());
         Report saved = cap.getValue();
         assertEquals(1, saved.getStatus());
         assertEquals("已封禁处理", saved.getHandleNote());
+        assertEquals(ADMIN_ID, saved.getHandleBy(), "处理人应为当前登录管理员");
         assertNotNull(saved.getHandleTime());
-        verify(messageService).notify(any(), eq(200L), eq("report_handled"), contains("已处理"), eq(1L));
+        verify(messageService).notify(eq(ADMIN_ID), eq(200L), eq("report_handled"), contains("已处理"), eq(1L));
     }
 
     @Test
     void rejectReport_notifiesRejected() {
-        Report report = pendingReport(200L, 300L);
-        when(reportMapper.selectById(1L)).thenReturn(report);
+        when(reportMapper.selectById(1L)).thenReturn(pendingReport(200L, 300L));
 
-        controller.updateReportStatus(1L, Map.of("status", 2));
+        service.updateReportStatus(ADMIN_ID, 1L, Map.of("status", 2));
 
         ArgumentCaptor<Report> cap = ArgumentCaptor.forClass(Report.class);
         verify(reportMapper).updateById(cap.capture());
         assertEquals(2, cap.getValue().getStatus());
-        verify(messageService).notify(any(), eq(200L), eq("report_rejected"), any(), eq(1L));
+        verify(messageService).notify(eq(ADMIN_ID), eq(200L), eq("report_rejected"), any(), eq(1L));
     }
 
     @Test
     void invalidStatus_rejected() {
         when(reportMapper.selectById(1L)).thenReturn(new Report());
-        assertThrows(BusinessException.class, () -> controller.updateReportStatus(1L, Map.of("status", 3)));
+        assertThrows(BusinessException.class, () -> service.updateReportStatus(ADMIN_ID, 1L, Map.of("status", 3)));
     }
 
     @Test
     void reportNotFound_rejected() {
         when(reportMapper.selectById(999L)).thenReturn(null);
-        assertThrows(BusinessException.class, () -> controller.updateReportStatus(999L, Map.of("status", 1)));
+        assertThrows(BusinessException.class, () -> service.updateReportStatus(ADMIN_ID, 999L, Map.of("status", 1)));
     }
 
     private Report pendingReport(Long from, Long target) {

@@ -1,5 +1,7 @@
 package com.finding.admin.service;
 
+import com.finding.user.entity.User;
+
 import java.util.Collection;
 import java.util.Map;
 
@@ -13,6 +15,9 @@ public interface AdminUserLookupService {
 
     /** 批量取昵称:key=用户 id,value=昵称;空入参返回空 Map */
     Map<Long, String> nicknamesByIds(Collection<Long> userIds);
+
+    /** 批量取用户实体(需要昵称之外的字段,如手机号时使用) */
+    Map<Long, User> usersByIds(Collection<Long> userIds);
 
     /** 取单个昵称;用户不存在返回 null */
     String nicknameOf(Long userId);
