@@ -6,6 +6,7 @@ import { userApi } from '../../api/user';
 import { showToast } from '../../components/Toast';
 import AppIcon, { type AppIconName } from '../../components/AppIcon';
 import { APP_CONFIG } from '../../utils/config';
+import { openImagePreview } from '../../utils/preview';
 import type { User } from '../../types/user';
 import './index.css';
 
@@ -52,6 +53,9 @@ export default function MinePage() {
     <section className={`mine-profile-card ${displayUser?.profileBackground ? 'has-cover' : ''}`} style={cardStyle}>
       <div className="mine-profile-shade" />
       <button className="mine-cover-edit" onClick={() => navigate('/mine/profile')} aria-label="编辑个人资料卡背景"><AppIcon name="camera" size={15} /></button>
+      {displayUser?.profileBackground && (
+        <button className="mine-cover-view" onClick={() => openImagePreview(displayUser.profileBackground!)} aria-label="查看背景图"><AppIcon name="image" size={15} /></button>
+      )}
       <div className="mine-profile-main"><button className="mine-avatar" onClick={() => navigate('/mine/profile')} aria-label="编辑头像">{displayUser?.avatar ? <img src={displayUser.avatar} alt="" /> : <span>{initial}</span>}</button><div className="mine-profile-info"><div className="mine-name-row"><h1>{displayUser?.nickname || '未设置昵称'}</h1>{verified ? <span className="mine-verified">已认证</span> : null}</div><button className="mine-school" onClick={() => navigate(verified ? '/mine/profile' : '/mine/verify')}><span className="mine-school-name">{displayUser?.school || APP_CONFIG.SCHOOL_NAME}</span>{!verified ? <span className="mine-school-verify">未认证</span> : null}</button><p>{displayUser?.signature || '写一句签名，让大家更了解你'}</p></div><button className="mine-edit-btn" onClick={() => navigate('/mine/profile')}>编辑资料</button></div>
       <div className="mine-stat-row"><button onClick={() => open('/mine/mates?tab=following')}><b>{displayUser?.followingCount ?? 0}</b><span>关注</span></button><button onClick={() => open('/mine/mates?tab=followers')}><b>{displayUser?.followerCount ?? 0}</b><span>粉丝</span></button><button onClick={() => open('/mine/mates?tab=mutual')}><b>{displayUser?.mutualCount ?? 0}</b><span>好友</span></button></div>
     </section>

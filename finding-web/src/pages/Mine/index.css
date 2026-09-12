@@ -186,6 +186,22 @@
   color: #596273;
   cursor: pointer;
 }
+/* 背景图预览按钮:与右上角「编辑背景」对称放在左上角 */
+.mine-cover-view {
+  position: absolute;
+  z-index: 2;
+  top: 11px;
+  left: 11px;
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.76);
+  color: #596273;
+  cursor: pointer;
+}
 .mine-stat-row {
   position: relative;
   z-index: 1;

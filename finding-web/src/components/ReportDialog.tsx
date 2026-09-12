@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { reportApi } from '../api/report';
 import { uploadApi } from '../api/upload';
 import { showToast } from './Toast';
+import { galleryHandler } from '../utils/preview';
 import './ConfirmDialog.css';
 import './ReportDialog.css';
 
@@ -83,7 +84,7 @@ export default function ReportDialog({ targetType, targetId, roomId, title, onCl
         <div className="report-evidence">
           {evidence.map((url) => (
             <div key={url} className="report-evidence-item">
-              <img src={url} alt="" />
+              <img src={url} alt="" onClick={galleryHandler(evidence, evidence.indexOf(url))} />
               <button
                 className="report-evidence-del"
                 onClick={() => setEvidence((prev) => prev.filter((u) => u !== url))}

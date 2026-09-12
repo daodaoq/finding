@@ -18,6 +18,7 @@ import Modal from '../../components/Modal';
 import AppIcon from '../../components/AppIcon';
 import type { ResumeView as ResumeViewType } from '../../types/resume';
 import { getErrorMessage } from '../../utils/appError';
+import { openImagePreview, previewHandler } from '../../utils/preview';
 import './index.css';
 
 export default function UserProfilePage() {
@@ -229,6 +230,7 @@ export default function UserProfilePage() {
         <div
           className={`up-cover ${profile.profileBackground ? 'has-image' : ''}`}
           style={profile.profileBackground ? { backgroundImage: `url("${profile.profileBackground}")` } : undefined}
+          onClick={profile.profileBackground ? () => openImagePreview(profile.profileBackground!) : undefined}
         >
           <div className="up-cover-shade" />
         </div>

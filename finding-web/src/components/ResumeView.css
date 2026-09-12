@@ -79,3 +79,6 @@
   border-radius: 8px;
   background: var(--primary-soft);
 }
+
+/* 生活相册:可点开预览 */
+.resume-album-img { cursor: zoom-in; }

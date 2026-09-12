@@ -442,3 +442,6 @@
     font-size: 20px;
   }
 }
+
+/* 个人主页背景图:可点开预览 */
+.up-cover.has-image { cursor: zoom-in; }

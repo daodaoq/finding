@@ -1,5 +1,6 @@
 import type { UserResume } from '../types/resume';
 import AppIcon, { type AppIconName } from './AppIcon';
+import { galleryHandler } from '../utils/preview';
 import './ResumeView.css';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 /** 情感简历 —— 只读 9 卡片展示(互换后可见) */
 export default function ResumeView({ resume, avatar }: Props) {
   const genderText = (g?: number) => (g === 1 ? '男' : g === 2 ? '女' : undefined);
+  // 提出相册数组,供 map 内做多图预览分组(TS 收窄需在闭包外)
+  const album = resume.photoAlbum || [];
 
   const basicRows: [string, any][] = [
     ['性别', genderText(resume.gender)],
@@ -84,12 +87,18 @@ export default function ResumeView({ resume, avatar }: Props) {
         ['对新恋情的态度及承诺', resume.loveAttitude],
       ]} />
 
-      {resume.photoAlbum && resume.photoAlbum.length > 0 && (
+      {album.length > 0 && (
         <section className="resume-card">
           <h3 className="resume-card-title"><AppIcon name="image" size={18} />生活相册</h3>
           <div className="resume-album">
-            {resume.photoAlbum.map((url, i) => (
-              <img key={i} src={url} alt="" className="resume-album-img" />
+            {album.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt=""
+                className="resume-album-img"
+                onClick={galleryHandler(album, i)}
+              />
             ))}
           </div>
         </section>
