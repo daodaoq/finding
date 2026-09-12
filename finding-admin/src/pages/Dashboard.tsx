@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, theme } from 'antd';
+import type { CSSProperties } from 'react';
+import { Card, Col, Row, Statistic, Tooltip, theme } from 'antd';
 import {
   UserOutlined, FileTextOutlined, TeamOutlined, CheckCircleOutlined,
   UserAddOutlined, WarningOutlined, UsergroupAddOutlined,
 } from '@ant-design/icons';
 import request from '../api/request';
+import './Dashboard.css';
 
 interface DashboardStats {
   totalUsers: number;
@@ -35,6 +37,106 @@ interface QualityData {
   };
 }
 
+/** 柱区高度(px)。柱高按像素算:百分比高度在 auto 高度的包含块里会退化成 auto,柱子会消失。 */
+const PLOT_H = 120;
+
+/** y 轴刻度阶梯,把最大值向上取整到台阶上,刻度即整数 */
+const TICK_STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
+function niceCeil(v: number): number {
+  if (!Number.isFinite(v) || v <= 0) return 1;
+  const pow = 10 ** Math.floor(Math.log10(v));
+  return (TICK_STEPS.find((s) => v / pow <= s + 1e-9) ?? 10) * pow;
+}
+
+/** 令牌色是 6 位 hex,补 alpha 后缀得到浅色;非 hex 原样返回 */
+const withAlpha = (color: string, alpha: string) =>
+  /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
+
+const fmtTick = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
+interface TrendChartProps {
+  title: string;
+  color: string;
+  values?: number[];
+  dates?: string[];
+}
+
+/** 单条趋势的柱状图:y 轴刻度 + 网格线 + 渐变柱 + 悬停提示 + 空数据态 */
+function TrendChart({ title, color, values = [], dates = [] }: TrendChartProps) {
+  const { token } = theme.useToken();
+  const [grown, setGrown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setGrown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const max = values.length ? Math.max(...values) : 0;
+  const top = niceCeil(max);
+  const sum = values.reduce((a, b) => a + b, 0);
+  const ticks = top >= 2 ? [top, top / 2, 0] : [top, 0];
+  const posOf = (v: number) => `${(v / top) * 100}%`;
+
+  return (
+    <div
+      className="trend-chart"
+      style={{
+        '--plot-h': `${PLOT_H}px`,
+        '--bar-color': color,
+        '--bar-color-soft': withAlpha(color, 'b3'),
+        '--bar-color-line': withAlpha(color, '59'),
+        '--panel-bg': withAlpha(color, '0d'),
+        '--tick-color': token.colorTextTertiary,
+        '--grid-color': token.colorSplit,
+      } as CSSProperties}
+    >
+      <div className="trend-chart__head">
+        <span className="trend-chart__dot" />
+        <span className="trend-chart__title">{title}</span>
+        <span className="trend-chart__sum">7 日合计 {sum}</span>
+      </div>
+
+      <div className="trend-chart__values">
+        {values.map((v, i) => <span key={i}>{v > 0 ? v : ''}</span>)}
+      </div>
+
+      <div className="trend-chart__plot">
+        <div className="trend-chart__yaxis">
+          {ticks.map((t) => (
+            <span key={t} className="trend-chart__tick" style={{ bottom: posOf(t) }}>{fmtTick(t)}</span>
+          ))}
+        </div>
+        <div className="trend-chart__canvas">
+          <div className="trend-chart__grid">
+            {ticks.map((t) => <i key={t} className={t === 0 ? 'is-base' : ''} style={{ bottom: posOf(t) }} />)}
+          </div>
+          {max === 0 && <span className="trend-chart__empty">近 7 天暂无数据</span>}
+          <div className="trend-chart__bars">
+            {values.map((v, i) => (
+              <Tooltip key={i} title={`${dates[i] ?? ''} · ${v}`}>
+                <div className="trend-chart__col">
+                  <div
+                    className="trend-chart__bar"
+                    style={{
+                      height: grown ? Math.max(v > 0 ? 4 : 2, Math.round((v / top) * PLOT_H)) : 0,
+                      opacity: v > 0 ? 1 : 0.3,
+                      transitionDelay: `${i * 40}ms`,
+                    }}
+                  />
+                </div>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="trend-chart__dates">
+        {dates.map((d, i) => <span key={i}>{d?.slice(5)}</span>)}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { token } = theme.useToken();
   const [stats, setStats] = useState<DashboardStats>({
@@ -55,41 +157,6 @@ export default function Dashboard() {
       if (res.data?.data) setQuality(res.data.data);
     }).catch(() => {});
   }, []);
-
-  /**
-   * 柱状图。柱高必须按像素算:各列高度由内容决定(auto),百分比高度在 auto 高度的
-   * 包含块里会退化成 auto,柱子只剩 minHeight 的细线(表现为「没有柱子」)。
-   */
-  const renderBars = (values: number[], color: string) => {
-    const list = values || [];
-    const max = Math.max(1, ...list);
-    const TRACK = 96; // 柱区高度(px)
-    return (
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-        {list.map((v, i) => (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 11, lineHeight: '16px', color: token.colorTextSecondary }}>{v}</span>
-            <div
-              style={{
-                width: '100%', background: color, borderRadius: 3,
-                height: v > 0 ? Math.max(4, Math.round((v / max) * TRACK)) : 2,
-                opacity: v > 0 ? 1 : 0.25,
-              }}
-            />
-            <span style={{ fontSize: 10, lineHeight: '14px', color: token.colorTextTertiary }}>
-              {trend?.dates?.[i]?.slice(5)}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const trendCard = (title: string, values: number[], color: string) => (
-    <Card title={title} style={{ marginTop: 16 }}>
-      {renderBars(values || [], color)}
-    </Card>
-  );
 
   return (
     <div>
@@ -122,12 +189,20 @@ export default function Dashboard() {
       </Row>
       <Card title="近 7 天趋势" style={{ marginTop: 16 }}>
         {trend ? (
-          <div>
-            {trendCard('新增用户', trend.newUsers, token.colorPrimary)}
-            {trendCard('新增动态', trend.newPosts, token.colorSuccess)}
-            {trendCard('新增搭子', trend.newMates, token.colorInfo)}
-            {trendCard('活跃用户(登录)', trend.activeUsers, token.colorWarning)}
-          </div>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} xl={12}>
+              <TrendChart title="新增用户" values={trend.newUsers} dates={trend.dates} color={token.colorPrimary} />
+            </Col>
+            <Col xs={24} xl={12}>
+              <TrendChart title="新增动态" values={trend.newPosts} dates={trend.dates} color={token.colorSuccess} />
+            </Col>
+            <Col xs={24} xl={12}>
+              <TrendChart title="新增搭子" values={trend.newMates} dates={trend.dates} color={token.colorInfo} />
+            </Col>
+            <Col xs={24} xl={12}>
+              <TrendChart title="活跃用户(登录)" values={trend.activeUsers} dates={trend.dates} color={token.colorWarning} />
+            </Col>
+          </Row>
         ) : (
           <p style={{ color: token.colorTextTertiary, textAlign: 'center', padding: 20 }}>加载中...</p>
         )}
