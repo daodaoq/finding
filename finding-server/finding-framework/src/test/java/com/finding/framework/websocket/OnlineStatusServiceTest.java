@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class OnlineStatusServiceTest {
 
     @Mock private RedisUtils redisUtils;
-    @InjectMocks private OnlineStatusService service;
+    @InjectMocks private OnlineStatusServiceImpl service;
 
     @Test
     void markOnline_setsWithTtl() {

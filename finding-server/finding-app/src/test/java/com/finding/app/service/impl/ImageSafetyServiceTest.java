@@ -1,5 +1,6 @@
-package com.finding.app.service;
+package com.finding.app.service.impl;
 
+import com.finding.app.service.ModerationVerdict;
 import com.finding.common.word.ReviewResult;
 import com.finding.common.word.SensitiveWordFilter;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,11 +24,11 @@ class ImageSafetyServiceTest {
     @Mock
     private SensitiveWordFilter sensitiveWordFilter;
 
-    private ImageSafetyService service;
+    private ImageSafetyServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ImageSafetyService(sensitiveWordFilter);
+        service = new ImageSafetyServiceImpl(sensitiveWordFilter);
     }
 
     @Test

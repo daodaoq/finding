@@ -16,11 +16,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.finding.admin.service.impl.ForbiddenWordExcelServiceImpl;
 
 /** 违禁词 Excel/CSV 解析与模板生成单测。 */
 class ForbiddenWordExcelServiceTest {
 
-    private final ForbiddenWordExcelService service = new ForbiddenWordExcelService();
+    private final ForbiddenWordExcelService service = new ForbiddenWordExcelServiceImpl();
 
     private byte[] xlsx(String... columnValues) throws IOException {
         try (Workbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
