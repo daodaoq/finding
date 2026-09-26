@@ -86,9 +86,10 @@ request.interceptors.response.use(
       }
       // 刷新失败:统一清理并登出一次
       logoutOnce();
-    } else if (status === 403) {
-      logoutOnce();
     }
+    // 403 不再登出:后端已改为「未认证返回 401、403 表示已认证但无权限」。
+    // 旧实现对 403 直接登出,而 token 过期恰好返回 403,导致用户被频繁强制重登且
+    // 从不尝试刷新。现在 403 按普通业务错误抛出,由调用方展示提示。
     // 统一抛出 AppError:优先服务端业务文案,网络错误可重试
     const data = error.response?.data as { message?: string; code?: number } | undefined;
     const message = data?.message || error.message || '网络异常，请稍后再试';

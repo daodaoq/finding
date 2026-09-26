@@ -38,13 +38,17 @@ export const tokenStorage = {
     localStorage.setItem(REFRESH_KEY, refresh);
   },
   setAccess: (access: string) => localStorage.setItem(ACCESS_KEY, access),
-  /** 读取并校验 access token;过期则整体清除并返回 null */
+  /**
+   * 读取并校验 access token;过期返回 null 但**不清空存储**。
+   * 旧实现在这里调 clear() 会把 refreshToken 一并删掉 —— access 过期本是正常现象,
+   * 却被当成登出处理,这正是用户「每次打开都要重新登录」的直接原因。
+   */
   getValidAccess: (): string | null => {
     const token = localStorage.getItem(ACCESS_KEY);
-    if (isValid(token)) return token;
-    tokenStorage.clear();
-    return null;
+    return isValid(token) ? token : null;
   },
+  /** 是否存在未过期的 refreshToken:有它就说明会话仍可续期,不能判为未登录 */
+  hasValidRefresh: (): boolean => isValid(localStorage.getItem(REFRESH_KEY)),
   clear: () => {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);

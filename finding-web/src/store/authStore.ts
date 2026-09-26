@@ -30,12 +30,17 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+// 启动时的登录态判定:access 有效,或存在有效 refreshToken。
+// 有 refreshToken 时必须视为已登录 —— access 过期由首次请求的 401 静默续期,
+// 若在这里就判为未登录,用户每次冷启动都会看到未登录状态(旧行为如此)。
 const validToken = tokenStorage.getValidAccess();
+const bootLoggedIn = !!validToken || tokenStorage.hasValidRefresh();
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: validToken,
-  isLoggedIn: !!validToken,
+  // 保留原始 access token(可能已过期):logout 需要它通知服务端销毁会话
+  token: tokenStorage.getAccess(),
+  isLoggedIn: bootLoggedIn,
 
   setAuth: (user, token) => {
     tokenStorage.setAccess(token);
@@ -69,7 +74,8 @@ if (typeof window !== 'undefined') {
     // tokenStorage.clear() 会 removeItem('accessToken') 触发 key='accessToken' 且 newValue=null
     if (event.key !== 'accessToken' && event.key !== null) return;
     const token = tokenStorage.getValidAccess();
-    if (!token) {
+    // 仅当 access 与 refresh 都失效时才同步登出:只有 access 过期不代表会话结束
+    if (!token && !tokenStorage.hasValidRefresh()) {
       // 其他标签页登出或令牌失效 → 本标签页同步登出(不重复通知服务端)
       if (useAuthStore.getState().isLoggedIn) {
         useAuthStore.setState({ user: null, token: null, isLoggedIn: false });

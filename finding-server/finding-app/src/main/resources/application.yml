@@ -38,8 +38,8 @@ mybatis-plus:
 jwt:
   access-secret: ${JWT_ACCESS_SECRET}
   refresh-secret: ${JWT_REFRESH_SECRET}
-  access-expiration: 7200000    # 2 hours
-  refresh-expiration: 604800000  # 7 days
+  access-expiration: 86400000    # 24 hours
+  refresh-expiration: 2592000000  # 30 days
 
 # Knife4j
 springdoc:

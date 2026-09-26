@@ -140,7 +140,11 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(auth);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        redisUtils.set(REFRESH_PREFIX + user.getId(), refreshToken, 7, TimeUnit.DAYS);
+        // TTL 必须与 jwt.refresh-expiration 一致:JWT 自带的 exp 只用于签名校验,
+        // Redis 里这条记录才是「是否仍允许刷新」的唯一依据。此前写死 7 天,配置一旦调大,
+        // 第 7 天记录就消失、刷新恒失败 —— 表现为用户被强制登出。
+        redisUtils.set(REFRESH_PREFIX + user.getId(), refreshToken,
+                jwtTokenProvider.getRefreshExpiration(), TimeUnit.MILLISECONDS);
 
         Map<String, String> result = new HashMap<>();
         result.put("accessToken", accessToken);

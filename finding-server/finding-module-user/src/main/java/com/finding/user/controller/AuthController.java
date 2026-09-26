@@ -54,8 +54,17 @@ public class AuthController {
         return Result.ok(authService.generateCaptcha());
     }
 
+    /**
+     * 刷新 accessToken。
+     * refreshToken 走请求体而非查询参数:查询参数会被 nginx access log、浏览器历史记录下来,
+     * 而 refreshToken 本身就是长期凭据。前端 authStore.tryRefreshToken 也是按请求体发送的。
+     */
     @PostMapping("/refresh")
-    public Result<String> refresh(@RequestParam String refreshToken) {
+    public Result<String> refresh(@RequestBody Map<String, String> body) {
+        String refreshToken = body == null ? null : body.get("refreshToken");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return Result.error(ResultCode.PARAM_ERROR, "缺少必要参数: refreshToken");
+        }
         return Result.ok(authService.refreshToken(refreshToken));
     }
 

@@ -119,6 +119,11 @@ public class JwtTokenProvider {
         return accessExpiration;
     }
 
+    /** refresh 令牌有效期(毫秒)。Redis 刷新记录的 TTL 必须与它一致,见 AuthServiceImpl#login */
+    public long getRefreshExpiration() {
+        return refreshExpiration;
+    }
+
     // ── 内部方法 ──
 
     private Claims parseAccessToken(String token) {
