@@ -1,0 +1,38 @@
+# ============================================================
+# Finding - 后端服务 systemd 单元
+# ------------------------------------------------------------
+# 后端由 systemd 托管，不再用 nohup 直接后台起进程：
+#   - nohup 起的进程在触发它的脚本结束后可能被连带终止
+#   - 崩溃不会自愈，重启服务器后也不会自动恢复
+#   - 会和 systemd 抢 8080 端口，出现两个后端实例互相打架
+#
+# 安装（deploy.sh 会自动完成，也可手动）：
+#   sudo cp /opt/finding/deploy/finding-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now finding-backend
+#
+# 常用命令：
+#   sudo systemctl restart finding-backend        # 重启（换上刚构建的 jar）
+#   systemctl status finding-backend              # 查看状态
+#   journalctl -u finding-backend -f              # 实时日志
+#   journalctl -u finding-backend -n 200          # 最近 200 行日志
+# ============================================================
+[Unit]
+Description=Finding Backend Service
+# 后端依赖 MySQL / Redis / RabbitMQ 等容器，等 docker 起来后再启动
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+# 数据库密码、JWT 密钥等全部来自 deploy/.env
+EnvironmentFile=/opt/finding/deploy/.env
+WorkingDirectory=/opt/finding/deploy
+# jar 路径由 deploy.sh 构建产生，路径固定，重启即加载最新构建产物
+ExecStart=/usr/bin/java -Xmx256m -jar /opt/finding/finding-server/finding-app/target/finding-app-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod --server.port=8080
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

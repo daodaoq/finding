@@ -4,6 +4,11 @@
 # 用法: chmod +x deploy.sh && ./deploy.sh
 # ============================================================
 set -e
+# 构建失败必须让整个脚本失败。
+# 下面各构建步骤都写成 `cmd | tail -N` 的形式，而 set -e 只看管道最后一个命令的
+# 退出码 —— 没有 pipefail 时编译/构建失败会被 tail 吞掉，脚本会拿着上一次的旧产物
+# 一路跑到最后报"部署成功"。pipefail 让管道中任一命令失败都算失败。
+set -o pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -123,7 +128,10 @@ cd "$PROJECT_DIR/finding-server"
 info "编译 Spring Boot (跳过测试)..."
 $MVN clean package -DskipTests -q 2>&1 | tail -3
 
-JAR_FILE=$(ls target/finding-server-*.jar 2>/dev/null | head -1)
+JAR_FILE=$(ls finding-app/target/finding-app-*.jar 2>/dev/null | head -1)
+if [ -z "$JAR_FILE" ]; then
+    JAR_FILE=$(ls target/finding-server-*.jar 2>/dev/null | head -1)
+fi
 if [ -z "$JAR_FILE" ]; then
     err "后端构建失败，未找到 jar 文件"
     exit 1
@@ -137,7 +145,8 @@ info "=== 第 5 步：启动 Docker 中间件 ==="
 cd "$DEPLOY_DIR"
 
 info "拉取镜像..."
-$DOCKER_COMPOSE pull -q 2>&1 | tail -3
+# 拉取失败不致命: 本地已有镜像时仍可正常启动，故显式容忍（pipefail 下否则会中断部署）
+$DOCKER_COMPOSE pull -q 2>&1 | tail -3 || warn "镜像拉取失败，将使用本地已有镜像"
 
 info "启动容器..."
 $DOCKER_COMPOSE up -d
@@ -204,35 +213,44 @@ fi
 echo ""
 info "=== 第 7 步：启动后端服务 ==="
 
-# 先停掉旧进程
-if [ -f "$DEPLOY_DIR/app.pid" ]; then
-    OLD_PID=$(cat "$DEPLOY_DIR/app.pid")
-    if kill -0 "$OLD_PID" 2>/dev/null; then
-        info "停止旧进程 (PID: $OLD_PID)..."
-        kill "$OLD_PID" 2>/dev/null || true
-        sleep 2
+# 后端由 systemd 托管（finding-backend.service）。
+# 不要改回 nohup 直接起进程：会与 systemd 抢 8080 端口，且崩溃不自愈、重启不恢复。
+if ! systemctl cat finding-backend.service >/dev/null 2>&1; then
+    info "未安装 finding-backend.service，正在安装..."
+    if [ ! -f "$DEPLOY_DIR/finding-backend.service" ]; then
+        err "缺少单元文件 $DEPLOY_DIR/finding-backend.service，请检查部署包完整性"
+        exit 1
     fi
+    sudo cp "$DEPLOY_DIR/finding-backend.service" /etc/systemd/system/finding-backend.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable finding-backend >/dev/null 2>&1
+    ok "finding-backend.service 已安装并设为开机自启"
 fi
 
-# 使用环境变量启动 Spring Boot
-nohup java -Xmx256m -jar "$JAR_FILE" \
-    --spring.profiles.active=prod \
-    --server.port=8080 \
-    > "$DEPLOY_DIR/app.log" 2>&1 &
+# 清理历史 nohup 遗留：陈旧的 app.pid 与仍在跑的野进程
+if [ -f "$DEPLOY_DIR/app.pid" ]; then
+    OLD_PID=$(cat "$DEPLOY_DIR/app.pid" 2>/dev/null || true)
+    # 护栏：app.pid 有可能恰好等于当前 systemd 托管的进程，杀它等于打断线上服务
+    SVC_PID=$(systemctl show -p MainPID --value finding-backend 2>/dev/null || echo 0)
+    if [ -n "$OLD_PID" ] && [ "$OLD_PID" != "$SVC_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        warn "发现 nohup 遗留进程 (PID: $OLD_PID)，先停掉以免抢占 8080 端口"
+        kill "$OLD_PID" 2>/dev/null || true
+        sleep 3
+    fi
+    rm -f "$DEPLOY_DIR/app.pid"
+fi
 
-APP_PID=$!
-echo $APP_PID > "$DEPLOY_DIR/app.pid"
-ok "后端已启动 (PID: $APP_PID)"
-info "日志文件: $DEPLOY_DIR/app.log"
+info "重启后端服务 (sudo systemctl restart finding-backend)..."
+sudo systemctl restart finding-backend
 
-# 等待后端启动
+# 等待后端就绪：http_code 为 000 表示端口尚未监听，任何响应码都说明已起来了
 info "等待后端启动..."
 RETRY=0
-until curl -s http://localhost:8080/api/v1 >/dev/null 2>&1; do
+until [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1)" != "000" ]; do
     sleep 3
     RETRY=$((RETRY + 1))
     if [ $RETRY -ge 20 ]; then
-        warn "后端启动超时，请检查日志: tail -f $DEPLOY_DIR/app.log"
+        warn "后端启动超时，请检查日志: journalctl -u finding-backend -n 100 --no-pager"
         break
     fi
 done
@@ -259,7 +277,8 @@ echo -e "${GREEN}║${NC}  API 地址:  http://localhost:8080/api/v1 ${GREEN}║
 echo -e "${GREEN}║${NC}  MinIO:      http://localhost:9001       ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  RabbitMQ:   http://localhost:15672      ${GREEN}║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════╣${NC}"
-echo -e "${GREEN}║${NC}  后端日志:   tail -f $DEPLOY_DIR/app.log ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  后端日志:   journalctl -u finding-backend -f ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  后端状态:   systemctl status finding-backend ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Docker 状态: $DOCKER_COMPOSE ps          ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  停止服务:   $DOCKER_COMPOSE down        ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"

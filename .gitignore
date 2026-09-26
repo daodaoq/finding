@@ -26,6 +26,13 @@ target/
 # 本地密钥(阿里云 AccessKey 等)
 **/application-local.yml
 
+# 部署运行期产物(禁止入库)
+# nginx/ssl/ 内含 TLS 私钥,一旦提交即泄露,必须忽略
+deploy/nginx/ssl/
+deploy/app.pid
+deploy/.auto-deploy.lock
+dist.build/
+
 # Frontend build output
 dist/
 .claude/sessions/
