@@ -31,6 +31,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.finding.user.entity.UserSettings;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserResumeService;
 import com.finding.user.service.UserWriteGuard;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +59,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,6 +91,7 @@ class BridgeServiceImplTest {
     @Mock private UserWriteGuard userWriteGuard;
     @Mock private RedisRateLimiter rateLimiter;
     @Mock private com.finding.framework.websocket.OnlineStatusService onlineStatusService;
+    @Mock private UserResumeService userResumeService;
 
     @InjectMocks
     private BridgeServiceImpl service;
@@ -107,6 +110,10 @@ class BridgeServiceImplTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserMatchPreference.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), com.finding.bridge.entity.RecommendExclude.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), com.finding.bridge.entity.UserCardConfig.class);
+        // 默认放行情感简历准入:本类多数用例关注的是申请状态机与推荐打分。
+        // 准入被拦的场景由 applyChat_*ResumeNotEnabled_* / getRecommendFeed_selfResumeNotEnabled_* 覆盖;
+        // 用 lenient 是因为部分用例(如参数校验)不会走到这道校验。
+        lenient().when(userResumeService.isResumeEnabled(anyLong())).thenReturn(true);
     }
 
     private UserSettings settings(int friendAddMode) {
@@ -523,6 +530,44 @@ class BridgeServiceImplTest {
         when(cardConfigMapper.selectList(any())).thenReturn(List.of());
         when(relationshipService.canViewDetailedProfile(any(), any())).thenReturn(true);
         when(onlineStatusService.isOnlineBatch(any())).thenReturn(Map.of());
+    }
+
+    // ── 情感简历准入:未开启者不参与相识匹配 ──
+
+    /** 自己未开启情感简历:不得主动发聊天申请 */
+    @Test
+    void applyChat_selfResumeNotEnabled_rejected() {
+        allowRateLimit();
+        when(userResumeService.isResumeEnabled(1L)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.applyChat(1L, 2L, null));
+        assertEquals(ResultCode.RESUME_NOT_ENABLED.getCode(), ex.getCode());
+    }
+
+    /** 对方未开启情感简历:不参与相识,提前拒绝而不是静默丢弃申请 */
+    @Test
+    void applyChat_targetResumeNotEnabled_rejected() {
+        allowRateLimit();
+        when(userMapper.selectById(2L)).thenReturn(activeUser());
+        when(userResumeService.isResumeEnabled(2L)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.applyChat(1L, 2L, null));
+        assertEquals(ResultCode.RESUME_NOT_ENABLED.getCode(), ex.getCode());
+    }
+
+    /** 自己未开启情感简历:推荐直接返回空列表,且不查候选池 */
+    @Test
+    void getRecommendFeed_selfResumeNotEnabled_returnsEmpty() {
+        allowRateLimit();
+        when(userResumeService.isResumeEnabled(1L)).thenReturn(false);
+
+        var page = service.getRecommendFeed(1L, null, null, 1, 10);
+
+        assertTrue(page.getRecords().isEmpty());
+        assertEquals(0L, page.getTotal().longValue());
+        verify(userMapper, never()).selectList(any());
     }
 
     @Test

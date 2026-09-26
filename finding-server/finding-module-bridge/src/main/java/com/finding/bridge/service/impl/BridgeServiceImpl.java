@@ -34,6 +34,7 @@ import com.finding.user.mapper.UserFollowMapper;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.mapper.UserSettingsMapper;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserResumeService;
 import com.finding.user.service.UserWriteGuard;
 import com.finding.bridge.service.BridgeService;
 import com.finding.chat.service.ChatService;
@@ -83,6 +84,7 @@ public class BridgeServiceImpl implements BridgeService {
     private final UserSettingsMapper userSettingsMapper;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final UserRelationshipService relationshipService;
+    private final UserResumeService userResumeService;
     private final UserMatchPreferenceMapper preferenceMapper;
     private final RecommendExcludeMapper excludeMapper;
     private final RecommendEventMapper eventMapper;
@@ -107,6 +109,11 @@ public class BridgeServiceImpl implements BridgeService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "分页参数不合法: page>=1, size 1-50");
         }
         validateLatLng(lat, lng);
+
+        // 未开启情感简历不参与相识匹配:直接返回空列表,由前端据自身开关状态引导去开启
+        if (!userResumeService.isResumeEnabled(userId)) {
+            return PageVO.of(List.of(), 0L, page, size);
+        }
 
         Set<Long> excludeIds = new HashSet<>();
         excludeIds.add(userId);
@@ -139,7 +146,9 @@ public class BridgeServiceImpl implements BridgeService {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
                 .eq(User::getStatus, 1)
                 .ne(User::getRole, "admin") // 普通用户不推荐管理员
-                .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds);
+                .notIn(!hiddenIds.isEmpty(), User::getId, hiddenIds)
+                // 候选必须已开启情感简历:未开启者不进入相识推荐池(与 searchable=0 同理)
+                .inSql(User::getId, UserResumeService.ENABLED_USER_IDS_SQL);
         if (!excludeIds.isEmpty()) {
             wrapper.notIn(User::getId, excludeIds);
         }
@@ -425,10 +434,19 @@ public class BridgeServiceImpl implements BridgeService {
         // Check real-name verification
         verificationGuard.checkVerified(fromUserId);
 
+        // 情感简历准入:未开启者不参与相识匹配,不得主动发起申请
+        if (!userResumeService.isResumeEnabled(fromUserId)) {
+            throw new BusinessException(ResultCode.RESUME_NOT_ENABLED);
+        }
+
         // 目标账号必须存在
         User targetUser = userMapper.selectById(toUserId);
         if (targetUser == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        // 对方未开启情感简历则不参与相识,申请会被静默丢弃,故提前拒绝并说明原因
+        if (!userResumeService.isResumeEnabled(toUserId)) {
+            throw new BusinessException(ResultCode.RESUME_NOT_ENABLED, "对方尚未开启情感简历，暂不能发起申请");
         }
         // 统一发现权限:目标账号状态(status==1)/可搜索/双向拉黑(复用 canDiscover)
         if (!relationshipService.canDiscover(fromUserId, toUserId)) {

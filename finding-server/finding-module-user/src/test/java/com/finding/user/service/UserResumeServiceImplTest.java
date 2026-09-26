@@ -24,7 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -167,5 +169,121 @@ class UserResumeServiceImplTest {
 
         assertFalse(vo.getInfoShared());
         assertNull(vo.getResume());
+    }
+
+    // ── 开启开关:核心 10 项必须填写完整 ──
+
+    /** 核心 10 项齐全的 DTO */
+    private UserResumeDTO completeCoreDto() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setRealPhoto("/api/v1/images/photo.jpg");
+        dto.setGender(1);
+        dto.setBirthday(LocalDate.of(2000, 1, 1));
+        dto.setHeightCm(178);
+        dto.setWeightKg(68);
+        dto.setCampus("西校区");
+        dto.setMbti("ENFP");
+        dto.setPersonalityTraits("共情力强、情绪稳定");
+        dto.setWorldview("金钱观与家庭观一致");
+        dto.setCoreBottomLine("不接受欺骗与冷暴力");
+        return dto;
+    }
+
+    /** 开启但核心字段缺失:拒绝保存,并在提示里列出缺哪几项 */
+    @Test
+    void saveResume_enabledWithMissingCoreFields_rejected() {
+        UserResumeDTO dto = completeCoreDto();
+        dto.setEnabled(1);
+        dto.setMbti(null);
+        dto.setRealPhoto(""); // 空串视同未填
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.saveResume(1L, dto));
+
+        assertEquals(ResultCode.PARAM_VALIDATION_FAILED.getCode(), ex.getCode());
+        assertTrue(ex.getMessage().contains("MBTI"), "提示应包含缺失项 MBTI");
+        assertTrue(ex.getMessage().contains("真实照片"), "提示应包含缺失项 真实照片");
+        verify(resumeMapper, never()).insert(any());
+    }
+
+    /** 核心字段齐全时开启:写入 enabled=1 */
+    @Test
+    void saveResume_enabledAndComplete_persistsEnabled() {
+        UserResumeDTO dto = completeCoreDto();
+        dto.setEnabled(1);
+        when(resumeMapper.selectOne(any())).thenReturn(null);
+        when(resumeMapper.insert(any())).thenReturn(1);
+
+        service.saveResume(1L, dto);
+
+        ArgumentCaptor<UserResume> captor = ArgumentCaptor.forClass(UserResume.class);
+        verify(resumeMapper).insert(captor.capture());
+        assertEquals(1, captor.getValue().getEnabled().intValue());
+    }
+
+    /** 未开启时允许只填一部分(存草稿),不应因缺字段被拦 */
+    @Test
+    void saveResume_disabledWithPartialFields_accepted() {
+        UserResumeDTO dto = new UserResumeDTO();
+        dto.setEnabled(0);
+        dto.setCampus("东校区");
+        when(resumeMapper.selectOne(any())).thenReturn(null);
+        when(resumeMapper.insert(any())).thenReturn(1);
+
+        service.saveResume(1L, dto);
+
+        ArgumentCaptor<UserResume> captor = ArgumentCaptor.forClass(UserResume.class);
+        verify(resumeMapper).insert(captor.capture());
+        assertEquals(0, captor.getValue().getEnabled().intValue());
+    }
+
+    /**
+     * enabled 缺省(null)时保持库中原值。
+     * 关键回归:BeanUtils.copyProperties 会把 null 覆盖进实体,而该列是 NOT NULL,
+     * 若不显式还原就会把已开启的简历意外关掉(或插入报错)。
+     */
+    @Test
+    void saveResume_enabledAbsent_keepsExistingValue() {
+        UserResumeDTO dto = completeCoreDto(); // 不带 enabled
+        UserResume existing = new UserResume();
+        existing.setId(5L);
+        existing.setUserId(1L);
+        existing.setEnabled(1);
+        when(resumeMapper.selectOne(any())).thenReturn(existing);
+        when(resumeMapper.updateById(any())).thenReturn(1);
+
+        ArgumentCaptor<UserResume> captor = ArgumentCaptor.forClass(UserResume.class);
+        service.saveResume(1L, dto);
+
+        verify(resumeMapper).updateById(captor.capture());
+        assertEquals(1, captor.getValue().getEnabled().intValue());
+    }
+
+    /** 全新记录且未指定开关时默认关闭 */
+    @Test
+    void saveResume_newAndEnabledAbsent_defaultsToDisabled() {
+        UserResumeDTO dto = new UserResumeDTO();
+        when(resumeMapper.selectOne(any())).thenReturn(null);
+        when(resumeMapper.insert(any())).thenReturn(1);
+
+        ArgumentCaptor<UserResume> captor = ArgumentCaptor.forClass(UserResume.class);
+        service.saveResume(1L, dto);
+
+        verify(resumeMapper).insert(captor.capture());
+        assertEquals(0, captor.getValue().getEnabled().intValue());
+    }
+
+    /** isResumeEnabled:只有开关为 1 才算开启 */
+    @Test
+    void isResumeEnabled_onlyTrueWhenFlagIsOne() {
+        when(resumeMapper.selectCount(any())).thenReturn(1L);
+        assertTrue(service.isResumeEnabled(1L));
+
+        when(resumeMapper.selectCount(any())).thenReturn(0L);
+        assertFalse(service.isResumeEnabled(2L));
+    }
+
+    @Test
+    void isResumeEnabled_nullUserId_false() {
+        assertFalse(service.isResumeEnabled(null));
     }
 }

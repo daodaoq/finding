@@ -15,6 +15,7 @@ import com.finding.message.service.MessageService;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserResumeService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /** 双向心动配对单测 —— 喜欢/配对/取消/三类列表。 */
@@ -48,6 +50,7 @@ class MatchServiceImplTest {
     @Mock private UserMapper userMapper;
     @Mock private MessageService messageService;
     @Mock private UserRelationshipService relationshipService;
+    @Mock private UserResumeService userResumeService;
     @InjectMocks private MatchServiceImpl service;
 
     @BeforeEach
@@ -55,6 +58,10 @@ class MatchServiceImplTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserLike.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), UserMatch.class);
+        // 默认放行情感简历准入:本类多数用例关注的是心动/配对本身。
+        // 准入被拦的场景由 likeUser_selfResumeNotEnabled_* / likeUser_targetResumeNotEnabled_* 覆盖;
+        // 用 lenient 是因为部分用例(如参数错误)不会走到这道校验。
+        lenient().when(userResumeService.isResumeEnabled(anyLong())).thenReturn(true);
     }
 
     private User activeUser(long id) {
@@ -84,6 +91,25 @@ class MatchServiceImplTest {
         when(relationshipService.isBlockedEitherWay(1L, 9L)).thenReturn(true);
         BusinessException ex = assertThrows(BusinessException.class, () -> service.likeUser(1L, 9L));
         assertEquals(ResultCode.RELATION_BLOCKED.getCode(), ex.getCode());
+    }
+
+    /** 未开启情感简历:不参与相识匹配,不得主动心动 */
+    @Test
+    void likeUser_selfResumeNotEnabled_rejected() {
+        when(userResumeService.isResumeEnabled(1L)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.likeUser(1L, 9L));
+        assertEquals(ResultCode.RESUME_NOT_ENABLED.getCode(), ex.getCode());
+    }
+
+    /** 对方未开启情感简历:心动不会被回应,提前拒绝而不是静默写入 */
+    @Test
+    void likeUser_targetResumeNotEnabled_rejected() {
+        when(userMapper.selectById(9L)).thenReturn(activeUser(9L));
+        when(userResumeService.isResumeEnabled(9L)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.likeUser(1L, 9L));
+        assertEquals(ResultCode.RESUME_NOT_ENABLED.getCode(), ex.getCode());
     }
 
     @Test

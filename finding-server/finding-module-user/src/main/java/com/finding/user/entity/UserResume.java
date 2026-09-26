@@ -21,6 +21,9 @@ public class UserResume {
     private Long id;
     private Long userId;
 
+    /** 情感简历开关 0=关闭(默认) 1=开启;未开启不参与相识匹配,也不能心动/发申请 */
+    private Integer enabled;
+
     // ── 板块1 基础信息 ──
     /** 真实照片 URL(情感简历展示用,非头像) */
     private String realPhoto;

@@ -64,6 +64,8 @@ public enum ResultCode {
     CONTACT_PERMISSION_DENIED(9102, "对方暂不允许新的联系"),
     USER_NOT_DISCOVERABLE(9103, "对方关闭了被搜索/发现权限，无法申请"),
     INFO_SHARE_NEED_CHAT(9104, "请先通过聊天申请建立关系，再互换详细信息"),
+    /** 情感简历未开启:未开启者不参与相识匹配,也不能主动心动/发申请(前端据此引导去开启) */
+    RESUME_NOT_ENABLED(9105, "请先开启情感简历，才能参与相识匹配"),
 
     // Common errors (9xxx)
     FORBIDDEN(9004, "无权限访问"),

@@ -1,6 +1,8 @@
 /** 情感简历 —— 与后端 user_resume 对应 */
 export interface UserResume {
   userId: number;
+  /** 情感简历开关 0=关闭(默认) 1=开启;未开启不参与相识匹配,也不能心动/发申请 */
+  enabled?: number;
   // 板块1 基础信息
   /** 真实照片 URL(简历展示用,非头像) */
   realPhoto?: string;

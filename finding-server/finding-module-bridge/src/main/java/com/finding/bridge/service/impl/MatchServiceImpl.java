@@ -15,6 +15,7 @@ import com.finding.message.service.MessageService;
 import com.finding.user.entity.User;
 import com.finding.user.mapper.UserMapper;
 import com.finding.user.service.UserRelationshipService;
+import com.finding.user.service.UserResumeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -47,6 +48,7 @@ public class MatchServiceImpl implements MatchService {
     private final UserMapper userMapper;
     private final MessageService messageService;
     private final UserRelationshipService relationshipService;
+    private final UserResumeService userResumeService;
 
     @Override
     @Transactional
@@ -54,9 +56,17 @@ public class MatchServiceImpl implements MatchService {
         if (targetId == null || userId.equals(targetId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "不能对自己心动");
         }
+        // 情感简历准入:未开启者不参与相识匹配,不得主动心动
+        if (!userResumeService.isResumeEnabled(userId)) {
+            throw new BusinessException(ResultCode.RESUME_NOT_ENABLED);
+        }
         User target = userMapper.selectById(targetId);
         if (target == null || target.getStatus() == null || target.getStatus() != 1) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        // 对方未开启情感简历则不参与相识,心动不会得到回应,故提前拒绝并说明原因
+        if (!userResumeService.isResumeEnabled(targetId)) {
+            throw new BusinessException(ResultCode.RESUME_NOT_ENABLED, "对方尚未开启情感简历，暂不能心动");
         }
         if (relationshipService.isBlockedEitherWay(userId, targetId)) {
             throw new BusinessException(ResultCode.RELATION_BLOCKED);

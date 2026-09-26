@@ -18,6 +18,15 @@ import java.util.List;
 @Data
 public class UserResumeDTO {
 
+    /**
+     * 情感简历开关:0=关闭 1=开启。
+     * 置 1 时核心字段必须填写完整,否则拒绝保存(见 UserResumeServiceImpl.missingCoreFields)。
+     * 缺省(null)表示本次请求未涉及开关:新建视为关闭,已存在则保持原值。
+     */
+    @Min(value = 0, message = "enabled 仅允许 0=关闭 1=开启")
+    @Max(value = 1, message = "enabled 仅允许 0=关闭 1=开启")
+    private Integer enabled;
+
     // ── 板块1 基础信息 ──
     /** 真实照片 URL(情感简历展示用,非头像);空串视为未设置 */
     @Size(max = 500, message = "realPhoto 长度不能超过 500")

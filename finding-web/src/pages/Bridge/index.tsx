@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bridgeApi, matchApi } from '../../api/bridge';
 import { homeApi } from '../../api/home';
+import { resumeApi } from '../../api/resume';
 import BannerCarousel from '../../components/BannerCarousel';
 import LoginModal from '../../components/LoginModal';
 import EmptyState from '../../components/EmptyState';
@@ -37,6 +38,8 @@ export default function BridgePage() {
   const [error, setError] = useState<string | null>(null);
   // 竞态守卫:登录态/定位变化与手动刷新可能并发触发 loadNext,仅最新一次请求生效
   const loadSeqRef = useRef(0);
+  // 我的情感简历开关:undefined=尚未查到(加载中) true/false=已知
+  const [resumeEnabled, setResumeEnabled] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     loadBanners();
@@ -51,17 +54,37 @@ export default function BridgePage() {
     }
   }, [isLoggedIn, setBridgePending]);
 
-  // 登录态变化 / 定位就绪 → 重新加载推荐(定位就绪后带上坐标计算距离)
+  // 未开启情感简历不参与相识匹配:先查自己的开关状态,再决定是否拉推荐。
+  // 服务端同样会拦(未开启时推荐接口返回空列表),这里只是把「空列表」换成明确的引导提示。
   useEffect(() => {
-    if (isLoggedIn) {
-      loadNext();
-    } else {
+    if (!isLoggedIn) { setResumeEnabled(undefined); return; }
+    let alive = true;
+    resumeApi.getMine()
+      .then((res) => { if (alive) setResumeEnabled(res.data.data?.enabled === 1); })
+      // 查询失败不拦页面:开关只做前置引导,最终以服务端裁决为准
+      .catch(() => { if (alive) setResumeEnabled(true); });
+    return () => { alive = false; };
+  }, [isLoggedIn]);
+
+  // 登录态变化 / 定位就绪 / 开关状态就绪 → 重新加载推荐(定位就绪后带上坐标计算距离)
+  useEffect(() => {
+    if (!isLoggedIn) {
       setCandidate(null);
       setNoMore(false);
       setLoading(false);
+      return;
     }
+    // 开关未知时先不发请求,避免多打一次必然为空的推荐接口
+    if (resumeEnabled === undefined) return;
+    if (!resumeEnabled) {
+      setCandidate(null);
+      setNoMore(false);
+      setLoading(false);
+      return;
+    }
+    loadNext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, lat, lng]);
+  }, [isLoggedIn, lat, lng, resumeEnabled]);
 
   const loadBanners = async () => {
     try {
@@ -283,6 +306,12 @@ export default function BridgePage() {
                 icon="heart"
                 message="登录后即可查看推荐用户"
                 action={<button onClick={openLogin}>去登录</button>}
+              />
+            ) : resumeEnabled === false ? (
+              <EmptyState
+                icon="heart"
+                message="请先开启情感简历，才能参与相识推荐"
+                action={<button onClick={() => navigate('/mine/resume')}>去开启情感简历</button>}
               />
             ) : loading ? (
               <div className="bridge-swipe-loading">加载中...</div>

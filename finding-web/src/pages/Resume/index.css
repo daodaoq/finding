@@ -35,6 +35,58 @@
   gap: 12px;
 }
 
+/* 开启开关卡片(样式与 MyCard 的开关保持一致:46x26 胶囊 + 圆形滑块) */
+.re-switch-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.re-switch-info { flex: 1; min-width: 0; }
+.re-switch-info strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 4px;
+}
+.re-switch-info p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #999;
+}
+.re-switch-tip { margin-top: 4px !important; color: #bbb !important; }
+
+.re-switch {
+  flex: none;
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  border: none;
+  background: #e0e0e0;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+}
+.re-switch-dot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: left 0.2s;
+}
+.re-switch.on { background: #29241f; }
+.re-switch.on .re-switch-dot { left: 23px; }
+
 .re-card {
   background: #fff;
   border-radius: 12px;

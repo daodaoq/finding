@@ -55,10 +55,18 @@ public class UserResumeServiceImpl implements UserResumeService {
         validateRealPhoto(dto);
 
         UserResume resume = selectByUserId(userId);
+        // enabled 缺省(null)表示本次请求不涉及开关:新建按关闭,已存在保持原值。
+        // 必须先算出来再 copyProperties —— 否则 dto 的 null 会把实体字段覆盖成 null,而该列 NOT NULL。
+        Integer enabled = dto.getEnabled() != null ? dto.getEnabled()
+                : (resume == null ? 0 : resume.getEnabled());
+        // 开启情感简历要求核心字段填写完整,否则拒绝保存(不完整简历不得进入推荐池)
+        assertResumeEnabledComplete(dto, enabled);
+
         if (resume == null) {
             resume = new UserResume();
             resume.setUserId(userId);
             BeanUtils.copyProperties(dto, resume);
+            resume.setEnabled(enabled);
             try {
                 resumeMapper.insert(resume);
             } catch (DuplicateKeyException e) {
@@ -66,13 +74,58 @@ public class UserResumeServiceImpl implements UserResumeService {
                 resume = selectByUserId(userId);
                 if (resume != null) {
                     BeanUtils.copyProperties(dto, resume, "id", "userId", "createdAt", "updatedAt");
+                    resume.setEnabled(enabled);
                     resumeMapper.updateById(resume);
                 }
             }
         } else {
             BeanUtils.copyProperties(dto, resume, "id", "userId", "createdAt", "updatedAt");
+            resume.setEnabled(enabled);
             resumeMapper.updateById(resume);
         }
+    }
+
+    @Override
+    public boolean isResumeEnabled(Long userId) {
+        if (userId == null) return false;
+        return resumeMapper.selectCount(new LambdaQueryWrapper<UserResume>()
+                .eq(UserResume::getUserId, userId)
+                .eq(UserResume::getEnabled, 1)) > 0;
+    }
+
+    /**
+     * 开启情感简历前必须填写的核心字段。与前端开启开关时的校验一致,
+     * 但服务端为最终裁决方(前端校验可被绕过)。
+     *
+     * @return 缺失项的中文名列表,空列表表示已填完
+     */
+    private List<String> missingCoreFields(UserResumeDTO dto) {
+        List<String> missing = new ArrayList<>();
+        if (isBlank(dto.getRealPhoto())) missing.add("真实照片");
+        if (dto.getGender() == null) missing.add("性别");
+        if (dto.getBirthday() == null) missing.add("生日");
+        if (dto.getHeightCm() == null) missing.add("身高");
+        if (dto.getWeightKg() == null) missing.add("体重");
+        if (isBlank(dto.getCampus())) missing.add("校区");
+        if (isBlank(dto.getMbti())) missing.add("MBTI");
+        if (isBlank(dto.getPersonalityTraits())) missing.add("性格");
+        if (isBlank(dto.getWorldview())) missing.add("三观");
+        if (isBlank(dto.getCoreBottomLine())) missing.add("择偶底线");
+        return missing;
+    }
+
+    /** 开启开关时校验核心字段完整性,未填完则拒绝保存并列出缺失项 */
+    private void assertResumeEnabledComplete(UserResumeDTO dto, Integer enabled) {
+        if (enabled == null || enabled != 1) return;
+        List<String> missing = missingCoreFields(dto);
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED,
+                    "开启情感简历前请先填写完整，还缺：" + String.join("、", missing));
+        }
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     /** 生活相册校验:数量上限 + 每张 URL 合法且长度受限 */

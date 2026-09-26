@@ -8,6 +8,34 @@ import AppIcon, { type AppIconName } from '../../components/AppIcon';
 import type { UserResume } from '../../types/resume';
 import './index.css';
 
+/**
+ * 开启情感简历前必须填完的核心字段。
+ * 必须与后端 UserResumeServiceImpl.missingCoreFields 保持一致:后端是最终裁决方,
+ * 这里只是即时反馈,避免用户以为开了却在保存时被服务端拒绝。
+ */
+const CORE_FIELDS: { key: keyof UserResume; label: string }[] = [
+  { key: 'realPhoto', label: '真实照片' },
+  { key: 'gender', label: '性别' },
+  { key: 'birthday', label: '生日' },
+  { key: 'heightCm', label: '身高' },
+  { key: 'weightKg', label: '体重' },
+  { key: 'campus', label: '校区' },
+  { key: 'mbti', label: 'MBTI' },
+  { key: 'personalityTraits', label: '性格' },
+  { key: 'worldview', label: '三观' },
+  { key: 'coreBottomLine', label: '择偶底线' },
+];
+
+/** 返回尚未填写的核心字段中文名(空数组表示已填完) */
+function missingCoreFields(form: Partial<UserResume>): string[] {
+  return CORE_FIELDS
+    .filter(({ key }) => {
+      const v = form[key];
+      return v == null || (typeof v === 'string' && v.trim() === '');
+    })
+    .map(({ label }) => label);
+}
+
 /** 情感简历编辑页 —— 9 个卡片竖向排列 + 相册上传/拖拽排序/删除,输入框提示语来自填写模板 */
 export default function ResumeEditPage() {
   const [form, setForm] = useState<Partial<UserResume>>({});
@@ -23,6 +51,24 @@ export default function ResumeEditPage() {
 
   const set = <K extends keyof UserResume>(key: K, value: UserResume[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const isEnabled = form.enabled === 1;
+
+  /** 开关:开启前要求核心字段填写完整,未填完则提示并保持关闭 */
+  const handleToggleEnabled = () => {
+    if (isEnabled) {
+      set('enabled', 0);
+      showToast('已关闭情感简历，将不再参与相识匹配');
+      return;
+    }
+    const missing = missingCoreFields(form);
+    if (missing.length > 0) {
+      showToast(`开启前请先填写完整，还缺：${missing.join('、')}`);
+      return;
+    }
+    set('enabled', 1);
+    showToast('已开启，记得点「保存」生效');
   };
 
   useEffect(() => {
@@ -59,6 +105,13 @@ export default function ResumeEditPage() {
     if (birthday) {
       const d = new Date(birthday);
       if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) return '生日不能晚于今天';
+    }
+    // 开关开启时核心字段必须完整(与后端一致):否则不允许保存,提示还缺什么
+    if (form.enabled === 1) {
+      const missing = missingCoreFields(form);
+      if (missing.length > 0) {
+        return `开启情感简历前请先填写完整，还缺：${missing.join('、')}`;
+      }
     }
     return null;
   };
@@ -158,6 +211,30 @@ export default function ResumeEditPage() {
       </div>
 
       <div className="re-body">
+        {/* 开启开关:默认关闭。关闭时不参与相识匹配,也不出现在别人的推荐里 */}
+        <section className="re-switch-card">
+          <div className="re-switch-info">
+            <strong>开启情感简历</strong>
+            <p>
+              开启后才会出现在「相识」推荐中，也可以主动心动或发申请。
+              关闭后不参与相识匹配，已填写内容不会丢失。
+            </p>
+            <p className="re-switch-tip">
+              开启前需填写完整：{CORE_FIELDS.map((f) => f.label).join('、')}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={`re-switch${isEnabled ? ' on' : ''}`}
+            role="switch"
+            aria-checked={isEnabled}
+            aria-label="开启情感简历"
+            onClick={handleToggleEnabled}
+          >
+            <span className="re-switch-dot" />
+          </button>
+        </section>
+
         {/* 板块1 基础信息栏 */}
         <Card icon="user" title="基础信息栏">
           {/* 真实照片:简历展示用,不显示头像 */}
