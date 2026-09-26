@@ -124,6 +124,12 @@ publish_dist() {
         err "[$name] 构建产物缺失: $dir/dist.build/index.html"
         exit 1
     fi
+    # --no-deploy:产物留在 dist.build/ 不发布。前端 dist/ 是 bind mount,
+    # rsync 进去就等于上线(与 nginx 是否重载无关),所以「不生效」必须在这一步拦住。
+    if [ "$NO_DEPLOY" -eq 1 ]; then
+        ok "[$name] 构建通过（未发布）→ ${dir#"$PROJECT_DIR"/}/dist.build/"
+        return 0
+    fi
     mkdir -p "$dir/dist"
     rsync -a --delete "$dir/dist.build/" "$dir/dist/"
     rm -rf "$dir/dist.build"
@@ -196,10 +202,11 @@ build_server() {
         exit 1
     fi
 
-    # 编译退出码为 0 但 jar 没更新 = 构建实际没生效，此时重启会继续跑旧代码
+    # 编译退出码为 0 但 jar 没更新 = 构建实际没生效，此时重启会继续跑旧代码。
+    # 只比对 src/main:测试代码(src/test)不进入 fat jar,改测试不应触发误报。
     if [ "$(stat -c %Y "$JAR_FILE")" -lt "$START_TS" ]; then
         local newer_src
-        newer_src=$(find "$dir" -path '*/src/*' -type f -newer "$JAR_FILE" -print -quit)
+        newer_src=$(find "$dir" -path '*/src/main/*' -type f -newer "$JAR_FILE" -print -quit)
         if [ -n "$newer_src" ]; then
             err "[后端] 源码比 jar 新，但 jar 未被重新打包，拒绝继续"
             err "       源码: ${newer_src#"$PROJECT_DIR"/}"
@@ -263,11 +270,12 @@ fi
 
 if [ "$NO_DEPLOY" -eq 1 ]; then
     echo ""
-    warn "已指定 --no-deploy：构建产物未生效，线上仍运行旧版本"
-    warn "  前端: 稍后执行 nginx 重载即可（或直接重跑本脚本不加 --no-deploy）"
-    warn "  后端: 稍后执行 sudo systemctl restart $BACKEND_UNIT"
+    warn "已指定 --no-deploy：仅编译校验，线上仍运行旧版本"
+    warn "  前端产物留在 dist.build/（未 rsync 进 dist/，因此未上线）"
+    warn "  后端产物已编译但未重启（sudo systemctl restart $BACKEND_UNIT 才会生效）"
+    warn "  需要上线就直接重跑本脚本，不加 --no-deploy"
     echo ""
-    ok "构建完成（未部署），耗时 $(( $(date +%s) - START_TS ))s    模块: ${MODULES[*]}"
+    ok "构建校验完成（未部署），耗时 $(( $(date +%s) - START_TS ))s    模块: ${MODULES[*]}"
     exit 0
 fi
 
