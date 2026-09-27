@@ -127,6 +127,30 @@
 .re-input:focus { border-color: #29241f; }
 textarea.re-input { resize: none; line-height: 1.5; }
 
+/* 必填项未填:输入框标红 + 标签追加「必填」。
+   仅在用户尝试开启/保存后才出现(见 index.tsx 的 showRequiredErrors),
+   关闭状态下允许存草稿,所以不在进页面时就一片红。 */
+.re-field--error .re-input {
+  border-color: #e5484d;
+  background: #fff8f8;
+}
+.re-field--error .re-input:focus { border-color: #e5484d; }
+.re-field--error .re-photo-add {
+  border-color: #e5484d;
+  color: #e5484d;
+}
+.re-field-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #e5484d;
+  background: #fdecec;
+  vertical-align: 1px;
+}
+
 /* 板块8 相册 */
 .re-album-hint {
   font-size: 12px;

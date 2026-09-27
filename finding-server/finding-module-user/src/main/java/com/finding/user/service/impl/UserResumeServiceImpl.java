@@ -94,23 +94,26 @@ public class UserResumeServiceImpl implements UserResumeService {
     }
 
     /**
-     * 开启情感简历前必须填写的核心字段。与前端开启开关时的校验一致,
-     * 但服务端为最终裁决方(前端校验可被绕过)。
+     * 开启情感简历前必须填写的核心字段。
+     * 名称必须与前端表单里这些字段的**实际显示标签逐字一致**
+     * (见 finding-web/src/pages/Resume/index.tsx 的表单与 CORE_FIELDS),
+     * 否则用户拿着「还缺：性格」这类提示在表单上找不到对应的输入框 —— 表单里叫「性格优点」。
+     * 改动字段或名称时,前后端两处必须同时改。
      *
-     * @return 缺失项的中文名列表,空列表表示已填完
+     * @return 缺失项的名称列表,空列表表示已填完
      */
     private List<String> missingCoreFields(UserResumeDTO dto) {
         List<String> missing = new ArrayList<>();
         if (isBlank(dto.getRealPhoto())) missing.add("真实照片");
         if (dto.getGender() == null) missing.add("性别");
         if (dto.getBirthday() == null) missing.add("生日");
-        if (dto.getHeightCm() == null) missing.add("身高");
-        if (dto.getWeightKg() == null) missing.add("体重");
+        if (dto.getHeightCm() == null) missing.add("身高(cm)");
+        if (dto.getWeightKg() == null) missing.add("体重(kg)");
         if (isBlank(dto.getCampus())) missing.add("校区");
-        if (isBlank(dto.getMbti())) missing.add("MBTI");
-        if (isBlank(dto.getPersonalityTraits())) missing.add("性格");
-        if (isBlank(dto.getWorldview())) missing.add("三观");
-        if (isBlank(dto.getCoreBottomLine())) missing.add("择偶底线");
+        if (isBlank(dto.getMbti())) missing.add("MBTI 人格");
+        if (isBlank(dto.getPersonalityTraits())) missing.add("性格优点");
+        if (isBlank(dto.getWorldview())) missing.add("个人三观");
+        if (isBlank(dto.getCoreBottomLine())) missing.add("择偶核心底线");
         return missing;
     }
 

@@ -10,30 +10,36 @@ import './index.css';
 
 /**
  * 开启情感简历前必须填完的核心字段。
- * 必须与后端 UserResumeServiceImpl.missingCoreFields 保持一致:后端是最终裁决方,
- * 这里只是即时反馈,避免用户以为开了却在保存时被服务端拒绝。
+ *
+ * label 必须与下方表单里这些输入框的 label 属性**逐字一致** —— 提示文案和标红
+ * 都直接引用它,标签对不上用户就找不到该填哪个框(例如表单里叫「性格优点」,
+ * 提示里只写「性格」会让人无从下手)。
+ *
+ * 同时必须与后端 UserResumeServiceImpl.missingCoreFields 保持一致:后端是最终裁决方,
+ * 这里只是即时反馈,避免用户以为开了却在保存时被服务端拒绝。改字段或名称时三处同步。
  */
 const CORE_FIELDS: { key: keyof UserResume; label: string }[] = [
   { key: 'realPhoto', label: '真实照片' },
   { key: 'gender', label: '性别' },
   { key: 'birthday', label: '生日' },
-  { key: 'heightCm', label: '身高' },
-  { key: 'weightKg', label: '体重' },
+  { key: 'heightCm', label: '身高(cm)' },
+  { key: 'weightKg', label: '体重(kg)' },
   { key: 'campus', label: '校区' },
-  { key: 'mbti', label: 'MBTI' },
-  { key: 'personalityTraits', label: '性格' },
-  { key: 'worldview', label: '三观' },
-  { key: 'coreBottomLine', label: '择偶底线' },
+  { key: 'mbti', label: 'MBTI 人格' },
+  { key: 'personalityTraits', label: '性格优点' },
+  { key: 'worldview', label: '个人三观' },
+  { key: 'coreBottomLine', label: '择偶核心底线' },
 ];
 
-/** 返回尚未填写的核心字段中文名(空数组表示已填完) */
-function missingCoreFields(form: Partial<UserResume>): string[] {
-  return CORE_FIELDS
-    .filter(({ key }) => {
-      const v = form[key];
-      return v == null || (typeof v === 'string' && v.trim() === '');
-    })
-    .map(({ label }) => label);
+/** 一个核心字段是否已填(空串与纯空格都算未填,与后端 isBlank 语义一致) */
+function isFieldFilled(form: Partial<UserResume>, key: keyof UserResume): boolean {
+  const v = form[key];
+  return !(v == null || (typeof v === 'string' && v.trim() === ''));
+}
+
+/** 返回尚未填写的核心字段(空数组表示已填完) */
+function missingCoreFields(form: Partial<UserResume>): { key: keyof UserResume; label: string }[] {
+  return CORE_FIELDS.filter(({ key }) => !isFieldFilled(form, key));
 }
 
 /** 情感简历编辑页 —— 9 个卡片竖向排列 + 相册上传/拖拽排序/删除,输入框提示语来自填写模板 */
@@ -55,19 +61,30 @@ export default function ResumeEditPage() {
 
   const isEnabled = form.enabled === 1;
 
-  /** 开关:开启前要求核心字段填写完整,未填完则提示并保持关闭 */
+  // 必填项标红的开关:只有用户尝试「开启」或「保存」后才置 true。
+  // 不在进页面时就把缺的框全标红 —— 关闭状态下允许只填一部分存草稿,上来一片红会误导。
+  const [showRequiredErrors, setShowRequiredErrors] = useState(false);
+  const missingCore = missingCoreFields(form);
+  const missingLabels = missingCore.map((f) => f.label);
+  /** 该核心字段此刻是否要标红(填上后立即消失,因为每次都按当前 form 重算) */
+  const isRequiredMissing = (key: keyof UserResume) =>
+    showRequiredErrors && missingCore.some((f) => f.key === key);
+
+  /** 开启前要求核心字段填写完整,未填完则标红缺的字段并保持关闭 */
   const handleToggleEnabled = () => {
     if (isEnabled) {
       set('enabled', 0);
+      setShowRequiredErrors(false);
       showToast('已关闭情感简历，将不再参与相识匹配');
       return;
     }
-    const missing = missingCoreFields(form);
-    if (missing.length > 0) {
-      showToast(`开启前请先填写完整，还缺：${missing.join('、')}`);
+    if (missingLabels.length > 0) {
+      setShowRequiredErrors(true);
+      showToast(`开启前请先填写完整，还缺 ${missingLabels.length} 项：${missingLabels.join('、')}`);
       return;
     }
     set('enabled', 1);
+    setShowRequiredErrors(false);
     showToast('已开启，记得点「保存」生效');
   };
 
@@ -81,6 +98,8 @@ export default function ResumeEditPage() {
   const handleSave = async () => {
     const invalid = validateForm();
     if (invalid) {
+      // 必填项缺失时同时把对应输入框标红,让用户直接看到该补哪几个框
+      if (form.enabled === 1 && missingCore.length > 0) setShowRequiredErrors(true);
       showToast(invalid);
       return;
     }
@@ -106,12 +125,9 @@ export default function ResumeEditPage() {
       const d = new Date(birthday);
       if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) return '生日不能晚于今天';
     }
-    // 开关开启时核心字段必须完整(与后端一致):否则不允许保存,提示还缺什么
-    if (form.enabled === 1) {
-      const missing = missingCoreFields(form);
-      if (missing.length > 0) {
-        return `开启情感简历前请先填写完整，还缺：${missing.join('、')}`;
-      }
+    // 开关开启时核心字段必须完整(与后端一致):否则不允许保存,并列出还缺哪几项
+    if (form.enabled === 1 && missingCore.length > 0) {
+      return `开启情感简历前请先填写完整，还缺 ${missingCore.length} 项：${missingLabels.join('、')}`;
     }
     return null;
   };
@@ -220,7 +236,9 @@ export default function ResumeEditPage() {
               关闭后不参与相识匹配，已填写内容不会丢失。
             </p>
             <p className="re-switch-tip">
-              开启前需填写完整：{CORE_FIELDS.map((f) => f.label).join('、')}
+              {showRequiredErrors && missingLabels.length > 0
+                ? `还缺 ${missingLabels.length} 项：${missingLabels.join('、')}`
+                : `开启前需填写完整：${CORE_FIELDS.map((f) => f.label).join('、')}`}
             </p>
           </div>
           <button
@@ -238,8 +256,11 @@ export default function ResumeEditPage() {
         {/* 板块1 基础信息栏 */}
         <Card icon="user" title="基础信息栏">
           {/* 真实照片:简历展示用,不显示头像 */}
-          <div className="re-photo-field">
-            <label className="re-field-label">真实照片</label>
+          <div className={`re-photo-field${isRequiredMissing('realPhoto') ? ' re-field--error' : ''}`}>
+            <label className="re-field-label">
+              真实照片
+              {isRequiredMissing('realPhoto') && <span className="re-field-tag">必填</span>}
+            </label>
             <p className="re-photo-hint">情感简历展示这张照片（不是头像），对方需与你互换信息后才能看到</p>
             <div className="re-photo-row">
               {form.realPhoto ? (
@@ -263,8 +284,11 @@ export default function ResumeEditPage() {
             <input ref={realPhotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleRealPhotoChange} />
           </div>
 
-          <div className="re-field">
-            <label className="re-field-label">性别</label>
+          <div className={`re-field${isRequiredMissing('gender') ? ' re-field--error' : ''}`}>
+            <label className="re-field-label">
+              性别
+              {isRequiredMissing('gender') && <span className="re-field-tag">必填</span>}
+            </label>
             <select
               className="re-input"
               value={form.gender ?? ''}
@@ -276,26 +300,26 @@ export default function ResumeEditPage() {
             </select>
           </div>
           <Field label="年龄" type="number" value={form.age} onChange={(v) => set('age', v)} placeholder="如 23" />
-          <Field label="生日" type="date" value={form.birthday ?? ''} onChange={(v) => set('birthday', v)} />
+          <Field label="生日" type="date" value={form.birthday ?? ''} onChange={(v) => set('birthday', v)} error={isRequiredMissing('birthday')} />
           <Field label="星座" value={form.constellation ?? ''} onChange={(v) => set('constellation', v)} placeholder="如 金牛座" />
-          <Field label="身高(cm)" type="number" value={form.heightCm} onChange={(v) => set('heightCm', v)} placeholder="如 178" />
-          <Field label="体重(kg)" type="number" value={form.weightKg} onChange={(v) => set('weightKg', v)} placeholder="如 68" />
+          <Field label="身高(cm)" type="number" value={form.heightCm} onChange={(v) => set('heightCm', v)} placeholder="如 178" error={isRequiredMissing('heightCm')} />
+          <Field label="体重(kg)" type="number" value={form.weightKg} onChange={(v) => set('weightKg', v)} placeholder="如 68" error={isRequiredMissing('weightKg')} />
           <Field label="城市" value={form.hometown ?? ''} onChange={(v) => set('hometown', v)} placeholder="如 山东淄博" />
-          <Field label="校区" value={form.campus ?? ''} onChange={(v) => set('campus', v)} placeholder="如 西校区" />
+          <Field label="校区" value={form.campus ?? ''} onChange={(v) => set('campus', v)} placeholder="如 西校区" error={isRequiredMissing('campus')} />
           <Field label="专业年级" value={form.majorGrade ?? ''} onChange={(v) => set('majorGrade', v)} placeholder="如 计算机学院 大四" />
           <Field label="职业" value={form.career ?? ''} onChange={(v) => set('career', v)} placeholder="如 程序员实习生 / 学生" />
           <Field label="日常作息" value={form.dailyRoutine ?? ''} onChange={(v) => set('dailyRoutine', v)} placeholder="如 早睡早起 / 晚上 12 点前必睡" />
           <Field label="恋爱状态" textarea value={form.relationshipStatus ?? ''} onChange={(v) => set('relationshipStatus', v)} placeholder="单身多久了？期待奔结婚 / 长久陪伴 / 轻松恋爱？" />
-          <Field label="择偶核心底线" textarea value={form.coreBottomLine ?? ''} onChange={(v) => set('coreBottomLine', v)} placeholder="绝对不能接受的事，如：欺骗、冷暴力、养鱼、暧昧不清" />
+          <Field label="择偶核心底线" textarea value={form.coreBottomLine ?? ''} onChange={(v) => set('coreBottomLine', v)} placeholder="绝对不能接受的事，如：欺骗、冷暴力、养鱼、暧昧不清" error={isRequiredMissing('coreBottomLine')} />
         </Card>
 
         {/* 板块2 自我画像 */}
         <Card icon="palette" title="自我画像 · 我是一个什么样的人">
-          <Field label="性格优点" textarea value={form.personalityTraits ?? ''} onChange={(v) => set('personalityTraits', v)} placeholder="如：共情力、细心、情绪稳定、有责任感、粘人程度、微拖延等（真实不完美）" />
+          <Field label="性格优点" textarea value={form.personalityTraits ?? ''} onChange={(v) => set('personalityTraits', v)} placeholder="如：共情力、细心、情绪稳定、有责任感、粘人程度、微拖延等（真实不完美）" error={isRequiredMissing('personalityTraits')} />
           <Field label="小缺点" textarea value={form.flaws ?? ''} onChange={(v) => set('flaws', v)} placeholder="如：慢热、偶尔敏感、不会主动、轻微拖延" />
-          <Field label="个人三观" textarea value={form.worldview ?? ''} onChange={(v) => set('worldview', v)} placeholder="金钱观、消费观、婚恋观、家庭观念、吵架处理方式" />
+          <Field label="个人三观" textarea value={form.worldview ?? ''} onChange={(v) => set('worldview', v)} placeholder="金钱观、消费观、婚恋观、家庭观念、吵架处理方式" error={isRequiredMissing('worldview')} />
           <Field label="个人标签" textarea value={form.personalTags ?? ''} onChange={(v) => set('personalTags', v)} placeholder="如：爱吃醋但讲道理、偏爱双向奔赴、不冷暴力" />
-          <Field label="MBTI 人格" value={form.mbti ?? ''} onChange={(v) => set('mbti', v)} placeholder="如 ENFP（可填可不填）" />
+          <Field label="MBTI 人格" value={form.mbti ?? ''} onChange={(v) => set('mbti', v)} placeholder="如 ENFP" error={isRequiredMissing('mbti')} />
           <Field label="恋爱中的样子" textarea value={form.inLoveLook ?? ''} onChange={(v) => set('inLoveLook', v)} placeholder="恋爱时会是什么状态？" />
         </Card>
 
@@ -388,8 +412,9 @@ function Card({ icon = 'book', title, children }: { icon?: AppIconName; title: s
   );
 }
 
-function Field({ label, value, onChange, type = 'text', textarea, placeholder }: {
-  label: string; value: any; onChange: (v: any) => void; type?: string; textarea?: boolean; placeholder?: string;
+/** 表单输入项。error=true 表示该必填项尚未填写:标签追加「必填」标记,输入框标红 */
+function Field({ label, value, onChange, type = 'text', textarea, placeholder, error }: {
+  label: string; value: any; onChange: (v: any) => void; type?: string; textarea?: boolean; placeholder?: string; error?: boolean;
 }) {
   const common = {
     className: 're-input',
@@ -397,8 +422,11 @@ function Field({ label, value, onChange, type = 'text', textarea, placeholder }:
     placeholder,
   };
   return (
-    <div className="re-field">
-      <label className="re-field-label">{label}</label>
+    <div className={`re-field${error ? ' re-field--error' : ''}`}>
+      <label className="re-field-label">
+        {label}
+        {error && <span className="re-field-tag">必填</span>}
+      </label>
       {textarea ? (
         <textarea rows={2} {...common} onChange={(e) => onChange(e.target.value)} />
       ) : (
